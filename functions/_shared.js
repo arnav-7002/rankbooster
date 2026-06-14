@@ -49,7 +49,7 @@ export function userIdFrom(userOrId) {
 }
 export async function saveUser(db, rawUser = {}, extra = {}) {
   const id = userIdFrom(rawUser) || cleanId(crypto.randomUUID());
-  const previousId = cleanId(rawUser.offlineId || rawUser.id || "");
+  const previousId = cleanId(rawUser.previousOfflineId || rawUser.offlineId || rawUser.id || "");
   const email = String(rawUser.email || `${id}@rankbooster.local`).toLowerCase();
   const name = rawUser.name || rawUser.displayName || rawUser.display_name || "Student";
   const role = rawUser.role || "user";

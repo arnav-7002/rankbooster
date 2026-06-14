@@ -425,7 +425,8 @@ function ensureOfflineUser(user) {
   const users = LS.get("users") || [];
   const existing = users.find(u => u.id === user.id || (u.email && user.email && u.email.toLowerCase() === user.email.toLowerCase())) || user;
   const offlineId = stableOfflineId(user) || existing.offlineId || randomOfflineId();
-  const updatedUser = { ...existing, ...user, offlineId };
+  const previousOfflineId = existing.offlineId && existing.offlineId !== offlineId ? existing.offlineId : user.previousOfflineId;
+  const updatedUser = { ...existing, ...user, offlineId, previousOfflineId };
   const nextUsers = users.some(u => u.id === updatedUser.id)
     ? users.map(u => u.id === updatedUser.id ? updatedUser : u)
     : [...users, updatedUser];

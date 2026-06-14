@@ -1,4 +1,4 @@
-# 🚀 RankBooster — JEE Test Series Platform
+# 🚀 RankBooster — JEE Test Series Platforms
 
 ## ⚡ Quick Start (Windows)
 

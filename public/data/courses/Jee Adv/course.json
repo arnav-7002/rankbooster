@@ -1,0 +1,21 @@
+{
+  "id": 1781186591310,
+  "title": "Jee Adv",
+  "subtitle": "",
+  "price": 11,
+  "originalPrice": 1111,
+  "badge": "New",
+  "color": "#7C3AED",
+  "textColor": "#A78BFA",
+  "subjects": [
+    "Physics",
+    "Chemistry",
+    "Mathematics",
+    "ALo"
+  ],
+  "description": "",
+  "enrolledCount": 0,
+  "rating": 4.5,
+  "folderName": "Jee Adv",
+  "updatedAt": "2026-06-11T14:30:49.635Z"
+}

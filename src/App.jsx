@@ -459,6 +459,13 @@ async function syncOfflineUser(userId) {
   }).catch(() => null);
   if (!res?.ok) return user;
   const data = await res.json().catch(() => null);
+  const returnedCourses = Array.isArray(data?.coursesOpted) ? data.coursesOpted : [];
+  const returnedCourseIds = returnedCourses.map(c => c.id).filter(Boolean);
+  if (returnedCourseIds.length) {
+    const uc = LS.get("userCourses") || {};
+    uc[user.id] = returnedCourseIds;
+    LS.set("userCourses", uc);
+  }
   const syncedUser = data?.user ? {
     ...user,
     name: data.user.name || user.name,
@@ -467,9 +474,10 @@ async function syncOfflineUser(userId) {
     avatar: data.user.avatar || user.avatar,
     joinedAt: data.user.joinedAt || user.joinedAt,
     offlineId: data.user.offlineId || user.offlineId,
+    pass: data.pass || data.user.pass || user.pass,
   } : user;
   LS.set("users", users.map(u => u.id === syncedUser.id ? syncedUser : u));
-  return syncedUser;
+  return { ...syncedUser, syncedCourseIds: returnedCourseIds };
 }
 
 function mergeFolderLibrary(localCourses, folderCourses) {
@@ -1209,11 +1217,13 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
     const users = LS.get("users") || [];
     LS.set("users", users.map(u => u.id === user.id ? { ...u, pass: updatedUser.pass } : u));
     onUserUpdate?.(updatedUser);
-    await fetch(`${IMPORTER_API}/users`, {
+    const res = await fetch(`${IMPORTER_API}/users`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user: updatedUser, profileUpdate: true }),
     }).catch(() => null);
+    const data = res?.ok ? await res.json().catch(() => null) : null;
+    if (data?.user) onUserUpdate?.({ ...updatedUser, ...data.user, pass: data.pass || data.user.pass || updatedUser.pass });
     setPassBusy("");
   }
 
@@ -3720,7 +3730,10 @@ export default function App() {
       const hashPage = (window.location.hash || "#dashboard").replace("#", "") || "dashboard";
       setPage(VALID_PAGES.includes(hashPage) ? hashPage : "dashboard");
       syncOfflineUser(offlineUser.id).then(synced => {
-        if (synced) setUser(synced);
+        if (synced) {
+          setUser(synced);
+          if (synced.syncedCourseIds?.length) setUserCourseIds(synced.syncedCourseIds);
+        }
       });
     }
     syncFolderLibrary();
@@ -3758,7 +3771,10 @@ export default function App() {
     setCourses(LS.get("courses") || []);
     setPage("dashboard");
     const synced = await syncOfflineUser(offlineUser.id);
-    if (synced) setUser(synced);
+    if (synced) {
+      setUser(synced);
+      if (synced.syncedCourseIds?.length) setUserCourseIds(synced.syncedCourseIds);
+    }
   }
 
   function handleLogout() {

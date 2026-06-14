@@ -75,5 +75,5 @@ export async function saveUser(db, rawUser = {}, extra = {}) {
       args: [id, JSON.stringify(extra)],
     });
   }
-  return { ...rawUser, id, offlineId: rawUser.offlineId || id, email, name, role, avatar };
+  return { ...rawUser, id, offlineId: id, email, name, role, avatar };
 }

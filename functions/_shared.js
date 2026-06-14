@@ -1,4 +1,4 @@
-﻿import { createClient } from "@tursodatabase/serverless";
+import { createClient } from "@libsql/client/web";
 
 export function json(data, status = 200) {
   return new Response(JSON.stringify(data), {

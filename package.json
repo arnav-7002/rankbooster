@@ -9,7 +9,7 @@
                          "react-dom":  "^18.2.0",
                          "react-scripts":  "5.0.1",
                          "recharts":  "^2.12.7",
-                         "@tursodatabase/serverless":  "^1.2.3"
+                         "@libsql/client":  "^0.17.3"
                      },
     "scripts":  {
                     "start":  "react-scripts start",

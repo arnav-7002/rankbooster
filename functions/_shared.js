@@ -37,14 +37,19 @@ export function cleanId(value) {
   return String(value || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
 }
 
+export function accountIdFromEmail(email) {
+  const slug = String(email || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 64);
+  return slug ? cleanId(`acct_${slug}`) : "";
+}
+
 export function userIdFrom(userOrId) {
   if (typeof userOrId === "string") return cleanId(userOrId);
   const user = userOrId || {};
-  return cleanId(user.offlineId || user.id || user.email || "");
+  return accountIdFromEmail(user.email) || cleanId(user.offlineId || user.id || "");
 }
-
 export async function saveUser(db, rawUser = {}, extra = {}) {
   const id = userIdFrom(rawUser) || cleanId(crypto.randomUUID());
+  const previousId = cleanId(rawUser.offlineId || rawUser.id || "");
   const email = String(rawUser.email || `${id}@rankbooster.local`).toLowerCase();
   const name = rawUser.name || rawUser.displayName || rawUser.display_name || "Student";
   const role = rawUser.role || "user";
@@ -56,6 +61,12 @@ export async function saveUser(db, rawUser = {}, extra = {}) {
           ON CONFLICT(id) DO UPDATE SET email=excluded.email, display_name=excluded.display_name, role=excluded.role, avatar_initials=excluded.avatar_initials, updated_at=CURRENT_TIMESTAMP`,
     args: [id, email, passwordHash, name, role, avatar],
   });
+  if (previousId && previousId !== id) {
+    await db.execute({ sql: "UPDATE attempts SET user_id=? WHERE user_id=?", args: [id, previousId] });
+    await db.execute({ sql: "UPDATE notebooks SET user_id=? WHERE user_id=?", args: [id, previousId] }).catch(() => null);
+    await db.execute({ sql: "UPDATE notebook_questions SET user_id=? WHERE user_id=?", args: [id, previousId] }).catch(() => null);
+    await db.execute({ sql: "UPDATE user_blobs SET user_id=? WHERE user_id=?", args: [id, previousId] }).catch(() => null);
+  }
   if (Object.keys(extra).length) {
     await db.execute({
       sql: `INSERT INTO user_blobs (user_id, blob_key, value_json, updated_at)

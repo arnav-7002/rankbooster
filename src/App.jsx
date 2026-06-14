@@ -409,6 +409,12 @@ const LS = {
 };
 const IMPORTER_API = "";
 
+function stableOfflineId(user) {
+  const email = String(user?.email || "").trim().toLowerCase();
+  if (!email) return "";
+  const slug = email.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 64);
+  return slug ? `acct_${slug}` : "";
+}
 function randomOfflineId() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   return Array.from({ length: 10 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
@@ -417,10 +423,13 @@ function randomOfflineId() {
 function ensureOfflineUser(user) {
   if (!user) return user;
   const users = LS.get("users") || [];
-  const existing = users.find(u => u.id === user.id) || user;
-  const offlineId = existing.offlineId || randomOfflineId();
+  const existing = users.find(u => u.id === user.id || (u.email && user.email && u.email.toLowerCase() === user.email.toLowerCase())) || user;
+  const offlineId = stableOfflineId(user) || existing.offlineId || randomOfflineId();
   const updatedUser = { ...existing, ...user, offlineId };
-  LS.set("users", users.map(u => u.id === updatedUser.id ? updatedUser : u));
+  const nextUsers = users.some(u => u.id === updatedUser.id)
+    ? users.map(u => u.id === updatedUser.id ? updatedUser : u)
+    : [...users, updatedUser];
+  LS.set("users", nextUsers);
   return updatedUser;
 }
 
@@ -1994,11 +2003,25 @@ function NotebookPage({ user }) {
 // ─── ADMIN PAGE ───────────────────────────────────────────────────────────────
 function AdminPage({ allCourses, setAllCourses }) {
   const [tab, setTab] = useState("courses");
+  const [dbStatus, setDbStatus] = useState({ state: "checking", label: "Checking Turso DB", detail: "Pinging database..." });
   const allUsers = LS.get("users") || [];
   const allUC = LS.get("userCourses") || {};
   const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["import", "Folder Sync"], ["users", "Users"]];
   const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
 
+  const checkDatabase = useCallback(async () => {
+    setDbStatus({ state: "checking", label: "Checking Turso DB", detail: "Pinging database..." });
+    const started = Date.now();
+    const res = await fetch(`${IMPORTER_API}/health`, { cache: "no-store" }).catch(() => null);
+    const data = res ? await res.json().catch(() => null) : null;
+    if (res?.ok && data?.ok) {
+      setDbStatus({ state: "connected", label: "Turso DB Connected", detail: `Live in ${data.latencyMs ?? Date.now() - started} ms` });
+      return;
+    }
+    setDbStatus({ state: "error", label: "Turso DB Not Connected", detail: data?.message || "Health check endpoint failed" });
+  }, []);
+
+  useEffect(() => { checkDatabase(); }, [checkDatabase]);
   return (
     <div className="fade-in">
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
@@ -2011,6 +2034,20 @@ function AdminPage({ allCourses, setAllCourses }) {
         </div>
       </div>
 
+      <div className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginBottom: 18, borderColor: dbStatus.state === "connected" ? "rgba(16,185,129,0.28)" : dbStatus.state === "checking" ? "rgba(251,191,36,0.24)" : "rgba(239,68,68,0.3)", background: dbStatus.state === "connected" ? "rgba(16,185,129,0.055)" : dbStatus.state === "checking" ? "rgba(251,191,36,0.055)" : "rgba(239,68,68,0.055)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: dbStatus.state === "connected" ? "rgba(16,185,129,0.16)" : dbStatus.state === "checking" ? "rgba(251,191,36,0.16)" : "rgba(239,68,68,0.16)", color: dbStatus.state === "connected" ? "#34D399" : dbStatus.state === "checking" ? "#FCD34D" : "#F87171", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Icon n={dbStatus.state === "connected" ? "check-circle" : dbStatus.state === "checking" ? "clock" : "alert-tri"} s={19} />
+          </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "#F1F5F9" }}>{dbStatus.label}</div>
+            <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>{dbStatus.detail}</div>
+          </div>
+        </div>
+        <button className="btn-ghost" onClick={checkDatabase} style={{ minHeight: 34, padding: "7px 13px", fontSize: 12 }}>
+          <Icon n="repeat" s={13} />Check Again
+        </button>
+      </div>
       {/* Admin stat bar */}
       <div className="responsive-stats-grid" style={{ marginBottom: 24 }}>
         {[
@@ -3205,7 +3242,14 @@ function TestAttemptReport({ report, user, onBack }) {
   const [reportNotebooks, setReportNotebooks] = useState([]);
 
   const { course, folder, test, attempt } = report || {};
-  const summary = detail || {
+  const attemptHasDetails = !!(
+    attempt && (
+      (Array.isArray(attempt.attemptedQuestions) && attempt.attemptedQuestions.length) ||
+      (attempt.questionTimes && Object.keys(attempt.questionTimes).length) ||
+      (Array.isArray(attempt.subjects) && attempt.subjects.length)
+    )
+  );
+  const summary = detail || (attemptHasDetails ? attempt : null) || {
     attemptId: attempt?.attemptId,
     submittedAt: attempt?.submittedAt,
     source: {
@@ -3225,6 +3269,7 @@ function TestAttemptReport({ report, user, onBack }) {
 
   useEffect(() => {
     let cancelled = false;
+    if (attemptHasDetails) { setDetail(attempt); return undefined; }
     if (!attempt?.attemptId) return undefined;
     if (!user?.offlineId) return undefined;
     setLoadingDetail(true);
@@ -3236,7 +3281,7 @@ function TestAttemptReport({ report, user, onBack }) {
       .catch(() => null)
       .finally(() => { if (!cancelled) setLoadingDetail(false); });
     return () => { cancelled = true; };
-  }, [user?.id, user?.offlineId, attempt?.attemptId]);
+  }, [user?.id, user?.offlineId, attempt?.attemptId, attemptHasDetails, attempt]);
 
   const reportZipName = test?.sourceZip || summary.source?.sourceZip;
   const reportCourseName = course?.folderName || course?.title || summary.source?.courseTitle;
@@ -3431,7 +3476,7 @@ function TestAttemptReport({ report, user, onBack }) {
               <p style={{ color: "#64748B", fontSize: 13 }}>{activeSubject?.name} · {activeQuestion?.type?.toUpperCase() || "MCQ"} · Time spent: {timeForQ ? `${timeForQ}s` : "not recorded"}</p>
           {!detail && loadingDetail && <p style={{ color: "#A78BFA", fontSize: 12, marginTop: 8 }}>Loading detailed attempt...</p>}
           {loadingFullTest && <p style={{ color: "#A78BFA", fontSize: 12, marginTop: 8 }}>Loading original question images...</p>}
-          {!detail && !loadingDetail && <p style={{ color: "#FCD34D", fontSize: 12, marginTop: 8 }}>Detailed attempt file was not found. Restart importer if saved answers are missing.</p>}
+          {!detail && !loadingDetail && !(summary.attemptedQuestions || []).length && <p style={{ color: "#FCD34D", fontSize: 12, marginTop: 8 }}>Full saved answer details are not available for this older attempt.</p>}
             </div>
 
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>

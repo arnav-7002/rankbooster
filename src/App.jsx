@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import TestImporter from "./TestImporter";
 import TestInterface from "./TestInterface";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -518,6 +517,12 @@ function normalizeExternalTestUrl(url) {
     }
   } catch {}
   return raw;
+}
+
+function sameExternalUrl(a, b) {
+  const left = normalizeExternalTestUrl(a);
+  const right = normalizeExternalTestUrl(b);
+  return !!left && !!right && left === right;
 }
 
 async function loadExternalTestJson(sourceUrl) {
@@ -1438,9 +1443,10 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
       const testName = a.testName || a.source?.testName;
       const testId = a.testId || a.source?.testId;
       const sourceZip = a.sourceZip || a.source?.sourceZip;
+      const sourceUrl = a.sourceUrl || a.source?.sourceUrl;
       const sameCourse = courseTitle === course?.title || a.courseId === course?.id || a.source?.courseId === course?.id;
       const sameFolder = !folderName || folderName === folder?.name;
-      const sameTest = testId === test?.id || sourceZip === test?.sourceZip || testName === test?.name;
+      const sameTest = testId === test?.id || sourceZip === test?.sourceZip || sameExternalUrl(sourceUrl, test?.sourceUrl) || testName === test?.name;
       return sameCourse && sameFolder && sameTest;
     });
   }
@@ -1453,9 +1459,10 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
       const folderName = a.folderName || a.source?.folderName;
       const testName = a.testName || a.source?.testName;
       const sourceZip = a.sourceZip || a.source?.sourceZip;
+      const sourceUrl = a.sourceUrl || a.source?.sourceUrl;
       return (courseTitle === course?.title || a.courseId === course?.id || a.source?.courseId === course?.id)
         && (!folderName || folderName === folder?.name)
-        && (sourceZip === test?.sourceZip || testName === test?.name || a.testId === test?.id || a.source?.testId === test?.id);
+        && (sourceZip === test?.sourceZip || sameExternalUrl(sourceUrl, test?.sourceUrl) || testName === test?.name || a.testId === test?.id || a.source?.testId === test?.id);
     };
 
     const localCourses = (() => { try { return JSON.parse(localStorage.getItem("rb_courses") || "[]"); } catch { return []; } })();
@@ -1466,7 +1473,7 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
         tests: (f.tests || []).map(t => {
           const same = (c.id === course?.id || c.title === course?.title)
             && (f.id === folder?.id || f.name === folder?.name)
-            && (t.id === test?.id || (t.sourceZip && t.sourceZip === test?.sourceZip) || t.name === test?.name);
+            && (t.id === test?.id || (t.sourceZip && t.sourceZip === test?.sourceZip) || sameExternalUrl(t.sourceUrl, test?.sourceUrl) || t.name === test?.name);
           return same ? { ...t, attempted: false, score: 0, percentile: 0, attemptedAt: undefined } : t;
         }),
       })),
@@ -1501,7 +1508,17 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
       let fullTest = test;
       if (test.sourceUrl) {
         const data = await loadExternalTestJson(test.sourceUrl);
-        if (data) fullTest = { ...data, sourceUrl: normalizeExternalTestUrl(test.sourceUrl) };
+        if (data) {
+          fullTest = {
+            ...data,
+            id: test.id,
+            name: test.name,
+            title: test.name,
+            duration: test.duration || data.duration,
+            maxMarks: test.maxMarks || data.maxMarks,
+            sourceUrl: normalizeExternalTestUrl(test.sourceUrl),
+          };
+        }
       } else if (test.sourceZip && (test.imagesMissing || !(test.subjects || []).some(s => (s.questions || []).some(q => q.images?.length)))) {
         const qs = new URLSearchParams({
           course: course.folderName || course.title,
@@ -1518,6 +1535,9 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
         courseTitle: course?.title,
         folderId: folder.id,
         folderName: folder.name,
+        id: test.id || fullTest.id,
+        name: test.name || fullTest.name,
+        title: test.name || fullTest.title,
         sourceUrl: normalizeExternalTestUrl(test.sourceUrl || fullTest.sourceUrl || ""),
       });
     } finally {
@@ -2399,8 +2419,6 @@ function AdminTests({ allCourses, setAllCourses }) {
   const [selectedCourse, setSelectedCourse] = useState(allCourses[0]?.id || null);
   const [addFolderModal, setAddFolderModal] = useState(false);
   const [addTestModal, setAddTestModal] = useState(null);   // folderId for manual add
-  const [importModal, setImportModal] = useState(false);    // full-screen importer
-  const [importFolderId, setImportFolderId] = useState(null);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderIcon, setNewFolderIcon] = useState("clipboard");
   const [newTest, setNewTest] = useState({ name: "", sourceUrl: "", duration: 180, maxMarks: 300, date: "", scheduledAt: "", scheduledUntil: "" });
@@ -2663,48 +2681,6 @@ function AdminTests({ allCourses, setAllCourses }) {
     setDeleteTestConfirm(null);
   }
 
-  function handleImport(testObj) {
-    // Add imported test into selected folder (or create new folder if none selected)
-    const fid = importFolderId;
-    const updated = allCourses.map(c => {
-      if (c.id !== selectedCourse) return c;
-      if (fid) {
-        return { ...c, testFolders: c.testFolders.map(f => f.id === fid ? { ...f, tests: [...f.tests, testObj] } : f) };
-      } else {
-        // create a new folder named after the test
-        const newFolder = { id: "f" + Date.now(), name: "Imported Tests", icon: "clipboard", tests: [testObj] };
-        return { ...c, testFolders: [...c.testFolders, newFolder] };
-      }
-    });
-    saveAll(updated);
-    setImportModal(false);
-    setImportFolderId(null);
-  }
-
-  // Full-screen import view
-  if (importModal) {
-    return (
-      <div style={{ minHeight: "60vh" }}>
-        <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
-          <button className="btn-ghost" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={() => { setImportModal(false); setImportFolderId(null); }}>
-            <Icon n="chevleft" s={14} />Back
-          </button>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#F1F5F9" }}>Import Test from ZIP</div>
-            <div style={{ fontSize: 11, color: "#475569" }}>
-              Importing into: <span style={{ color: "#A78BFA" }}>{course?.title}</span>
-              {importFolderId && <> → <span style={{ color: "#A78BFA" }}>{course?.testFolders.find(f => f.id === importFolderId)?.name}</span></>}
-            </div>
-          </div>
-        </div>
-        <TestImporter
-          onImport={handleImport}
-          onCancel={() => { setImportModal(false); setImportFolderId(null); }}
-        />
-      </div>
-    );
-  }
-
   return (
     <div>
       {/* Course selector */}
@@ -2724,9 +2700,6 @@ function AdminTests({ allCourses, setAllCourses }) {
               {course.testFolders.reduce((a, f) => a + f.tests.length, 0)} tests across {course.testFolders.length} folders
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn-ghost" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }} onClick={() => { setImportFolderId(null); setImportModal(true); }}>
-                <Icon n="upload" s={13} />Import ZIP
-              </button>
               <button className="btn-primary" style={{ padding: "10px 18px", fontSize: 13 }} onClick={() => setAddFolderModal(true)}>
                 <Icon n="folder" s={13} />Add Folder
               </button>
@@ -2736,11 +2709,8 @@ function AdminTests({ allCourses, setAllCourses }) {
           {course.testFolders.length === 0 && (
             <div className="card" style={{ textAlign: "center", padding: 40 }}>
               <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}><Icon n="folder" s={32} c="#334155" /></div>
-              <div style={{ color: "#475569", marginBottom: 16 }}>No folders yet. Create a folder or import a test ZIP.</div>
+              <div style={{ color: "#475569", marginBottom: 16 }}>No folders yet. Create a folder, then add tests with GitHub JSON links.</div>
               <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-                <button className="btn-ghost" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={() => { setImportFolderId(null); setImportModal(true); }}>
-                  <Icon n="upload" s={13} />Import ZIP
-                </button>
                 <button className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={() => setAddFolderModal(true)}>
                   <Icon n="folder" s={13} />Add Folder
                 </button>
@@ -2754,9 +2724,6 @@ function AdminTests({ allCourses, setAllCourses }) {
                 <Icon n={folder.icon || "folder"} s={20} c="#7C3AED" />
                 <span style={{ fontSize: 14, fontWeight: 600, color: "#E2E8F0", flex: 1 }}>{folder.name}</span>
                 <span style={{ fontSize: 11, color: "#475569", marginRight: 6 }}>{folder.tests.length} tests</span>
-                <button className="btn-ghost" style={{ padding: "8px 14px", fontSize: 12, minHeight: 36 }} onClick={e => { e.stopPropagation(); setImportFolderId(folder.id); setImportModal(true); }}>
-                  <Icon n="upload" s={12} />Import ZIP
-                </button>
                 <button className="btn-primary" style={{ padding: "8px 14px", fontSize: 12, minHeight: 36 }} onClick={e => { e.stopPropagation(); setAddTestModal(folder.id); }}>+ GitHub Test</button>
                 <button className="btn-danger" style={{ padding: "8px 14px", fontSize: 12, minHeight: 36 }} onClick={e => { e.stopPropagation(); deleteFolder(folder.id); }}>Delete</button>
                 <Icon n={openFolder === folder.id ? "chevdown" : "chevright"} s={14} c="#475569" />
@@ -2766,8 +2733,8 @@ function AdminTests({ allCourses, setAllCourses }) {
                   {folder.tests.length === 0 && (
                     <div style={{ padding: "16px 18px", fontSize: 12, color: "#334155", display: "flex", alignItems: "center", gap: 8 }}>
                       No tests yet.
-                      <button className="btn-ghost" style={{ fontSize: 12, padding: "8px 14px", minHeight: 36 }} onClick={() => { setImportFolderId(folder.id); setImportModal(true); }}>
-                        <Icon n="upload" s={11} />Import ZIP
+                      <button className="btn-ghost" style={{ fontSize: 12, padding: "8px 14px", minHeight: 36 }} onClick={() => setAddTestModal(folder.id)}>
+                        + GitHub Test
                       </button>
                     </div>
                   )}

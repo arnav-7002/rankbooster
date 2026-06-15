@@ -26,6 +26,7 @@ export async function onRequestGet({ request, env }) {
         testFolders: (row.folders_json || []).map(f => ({ id: f.id || f.name, name: f.name, icon: f.icon || "folder", tests: [] })),
       });
     }
+    const seenTests = new Set();
     for (const row of testRows || []) {
       const course = byCourse.get(row.course_id);
       if (!course) continue;
@@ -34,6 +35,10 @@ export async function onRequestGet({ request, env }) {
         folder = { id: `f_${row.folder_name || "Tests"}`, name: row.folder_name || "Tests", icon: "folder", tests: [] };
         course.testFolders.push(folder);
       }
+      const sourceKey = String(row.source_url || "").trim();
+      const dedupeKey = `${row.course_id}::${row.folder_name || "Tests"}::${sourceKey || row.id}`;
+      if (seenTests.has(dedupeKey)) continue;
+      seenTests.add(dedupeKey);
       folder.tests.push({
         id: row.id,
         name: row.title,

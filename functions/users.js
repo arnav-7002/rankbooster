@@ -29,8 +29,67 @@ async function saveEnrollments(env, userId, coursesOpted = []) {
   }
 }
 
+async function saveSubscription(env, userId, pass) {
+  if (!pass?.planId || !pass?.expiresAt) return;
+  await upsertRows(env, "subscriptions", {
+    id: `${userId}_${pass.planId}`,
+    user_id: userId,
+    plan_id: pass.planId,
+    status: "active",
+    starts_at: pass.startedAt || new Date().toISOString(),
+    expires_at: pass.expiresAt,
+    payment_provider: pass.paymentProvider || "mock",
+    payment_ref: pass.paymentRef || "",
+    metadata_json: pass,
+  });
+}
+
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
+  if (url.searchParams.get("all") === "1") {
+    const [userRows, blobRows, enrollmentRows, attemptRows, courseRows, subscriptionRows, planRows] = await Promise.all([
+      supabaseRequest(env, "users?select=id,email,display_name,role,avatar_initials,created_at&order=created_at.asc").catch(() => []),
+      supabaseRequest(env, `user_blobs?select=user_id,value_json&blob_key=${eq("profile")}`).catch(() => []),
+      supabaseRequest(env, "enrollments?select=user_id,course_id,status,created_at").catch(() => []),
+      supabaseRequest(env, "attempts?select=user_id,id,score,max_marks,submitted_at").catch(() => []),
+      supabaseRequest(env, "courses?select=id,title").catch(() => []),
+      supabaseRequest(env, "subscriptions?select=user_id,plan_id,status,starts_at,expires_at&status=eq.active").catch(() => []),
+      supabaseRequest(env, "pass_plans?select=id,name,duration_days,price_inr").catch(() => []),
+    ]);
+    const profiles = new Map((blobRows || []).map(row => [row.user_id, row.value_json || {}]));
+    const courseNames = new Map((courseRows || []).map(row => [row.id, row.title]));
+    const planNames = new Map((planRows || []).map(row => [row.id, row.name]));
+    const users = (userRows || []).map(row => {
+      const profile = profiles.get(row.id) || {};
+      const subscription = (subscriptionRows || []).find(s => s.user_id === row.id && new Date(s.expires_at).getTime() > Date.now());
+      const pass = profile.pass || (subscription ? {
+        planId: subscription.plan_id,
+        planName: planNames.get(subscription.plan_id) || subscription.plan_id,
+        startedAt: subscription.starts_at,
+        expiresAt: subscription.expires_at,
+      } : null);
+      const enrollments = (enrollmentRows || [])
+        .filter(e => e.user_id === row.id)
+        .map(e => ({ id: e.course_id, title: courseNames.get(e.course_id) || e.course_id, status: e.status, createdAt: e.created_at }));
+      const attempts = (attemptRows || []).filter(a => a.user_id === row.id);
+      const bestScore = attempts.reduce((best, a) => Math.max(best, Number(a.score || 0)), 0);
+      return {
+        id: row.id,
+        offlineId: row.id,
+        email: row.email,
+        name: row.display_name,
+        role: row.role || "user",
+        avatar: row.avatar_initials || String(row.display_name || row.email || "U").slice(0, 2).toUpperCase(),
+        joinedAt: row.created_at ? new Date(row.created_at).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "",
+        pass,
+        coursesOpted: profile.coursesOpted || enrollments,
+        enrollments,
+        attemptCount: attempts.length,
+        bestScore,
+      };
+    });
+    return json({ success: true, users });
+  }
   const rawUser = { offlineId: url.searchParams.get("offlineId"), email: url.searchParams.get("email") };
   const userId = userIdFrom(rawUser);
   if (!userId) return json({ user: null, coursesOpted: [], pass: null });
@@ -51,5 +110,6 @@ export async function onRequestPost({ request, env }) {
   const profile = { ...existing, coursesOpted: nextCourses, pass: nextPass, updatedAt: new Date().toISOString() };
   await saveProfile(env, user.id, profile);
   if (nextCourses.length) await saveEnrollments(env, user.id, nextCourses);
+  if (nextPass) await saveSubscription(env, user.id, nextPass);
   return json({ success: true, user: { ...user, pass: nextPass }, coursesOpted: nextCourses, pass: nextPass });
 }

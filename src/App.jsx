@@ -340,7 +340,6 @@ table{min-width:640px}
 const SEED = {
   users: [
     { id: 1, email: "admin@rankbooster.com", password: "Admin@123", name: "Admin User", role: "admin", avatar: "AD", joinedAt: "Jan 2024" },
-    { id: 2, email: "arjun@gmail.com", password: "Test@123", name: "Arjun Student", role: "user", avatar: "AS", joinedAt: "Jan 2024" },
   ],
   courses: [],
   userCourses: {},
@@ -837,25 +836,31 @@ function LoginPage({ onLogin }) {
     return () => { cancelled = true; };
   }, []);
 
-  function handleLogin() {
+  async function handleLogin() {
     if (dbStatus.state !== "connected") { setErr("Database is not connected yet. Try again after it turns green."); return; }
-    const users = LS.get("users") || [];
-    const u = users.find(u => u.email === email && u.password === password);
-    if (u) { setErr(""); onLogin(u); }
-    else setErr("Invalid email or password.");
+    setErr("");
+    const res = await fetch(`${IMPORTER_API}/auth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "login", email, password }),
+    }).catch(() => null);
+    const data = res ? await res.json().catch(() => null) : null;
+    if (res?.ok && data?.user) onLogin({ ...data.user, syncedCourseIds: (data.coursesOpted || []).map(c => c.id).filter(Boolean), pass: data.pass || data.user.pass });
+    else setErr(data?.error || "Invalid email or password.");
   }
 
-  function handleSignup() {
+  async function handleSignup() {
     if (dbStatus.state !== "connected") { setErr("Database is not connected yet. Try again after it turns green."); return; }
     if (!name || !email || !password) { setErr("All fields required."); return; }
-    const users = LS.get("users") || [];
-    if (users.find(u => u.email === email)) { setErr("Email already registered."); return; }
-    const nu = { id: Date.now(), offlineId: randomOfflineId(), email, password, name, role: "user", avatar: name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2), joinedAt: new Date().toLocaleDateString("en-IN", {month:"short", year:"numeric"}) };
-    LS.set("users", [...users, nu]);
-    const uc = LS.get("userCourses") || {};
-    uc[nu.id] = [];
-    LS.set("userCourses", uc);
-    onLogin(nu);
+    setErr("");
+    const res = await fetch(`${IMPORTER_API}/auth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "signup", name, email, password }),
+    }).catch(() => null);
+    const data = res ? await res.json().catch(() => null) : null;
+    if (res?.ok && data?.user) onLogin(data.user);
+    else setErr(data?.error || "Could not create account.");
   }
 
   const authReady = dbStatus.state === "connected";
@@ -952,18 +957,9 @@ function LoginPage({ onLogin }) {
                 {tab === "login" ? <><LoginNudgeIcon s={14} />Log In</> : <><Icon n="plus" s={14} />Create Account</>}
               </button>
             </div>
-            {tab === "login" && (
-              <details style={{ marginTop: 8 }}>
-                <summary style={{ listStyle: "none", cursor: "pointer", color: "#A78BFA", fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <Icon n="chevright" s={11} /> Demo credentials
-                </summary>
-                <div style={{ marginTop: 8, padding: "9px 11px", background: "rgba(124,58,237,0.08)", borderRadius: 8, border: "1px solid rgba(124,58,237,0.15)" }}>
-                <div style={{ fontSize: 11, color: "#64748B", marginBottom: 4 }}>Demo credentials</div>
-                <div style={{ fontSize: 11, color: "#94A3B8" }}>Admin: <span style={{ color: "#A78BFA" }}>admin@rankbooster.com</span> / <span style={{ color: "#A78BFA" }}>Admin@123</span></div>
-                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>User: <span style={{ color: "#34D399" }}>arjun@gmail.com</span> / <span style={{ color: "#34D399" }}>Test@123</span></div>
-                </div>
-              </details>
-            )}
+            <div style={{ marginTop: 10, fontSize: 11, color: "#475569", lineHeight: 1.5 }}>
+              Admin login is created from Supabase SQL. New students can sign up here directly.
+            </div>
           </aside>
         </main>
 
@@ -2085,7 +2081,7 @@ function NotebookPage({ user }) {
 function AdminPage({ allCourses, setAllCourses }) {
   const [tab, setTab] = useState("courses");
   const [dbStatus, setDbStatus] = useState({ state: "checking", label: "Checking Supabase", detail: "Pinging database..." });
-  const allUsers = LS.get("users") || [];
+  const [adminUsers, setAdminUsers] = useState([]);
   const allUC = LS.get("userCourses") || {};
   const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["import", "Folder Sync"], ["users", "Users"]];
   const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
@@ -2103,6 +2099,17 @@ function AdminPage({ allCourses, setAllCourses }) {
   }, []);
 
   useEffect(() => { checkDatabase(); }, [checkDatabase]);
+
+  const loadAdminUsers = useCallback(async () => {
+    const res = await fetch(`${IMPORTER_API}/users?all=1`, { cache: "no-store" }).catch(() => null);
+    const data = res?.ok ? await res.json().catch(() => null) : null;
+    if (data?.users) setAdminUsers(data.users);
+  }, []);
+
+  useEffect(() => { loadAdminUsers(); }, [loadAdminUsers]);
+  useEffect(() => { if (tab === "users") loadAdminUsers(); }, [tab, loadAdminUsers]);
+
+  const totalEnrollments = adminUsers.reduce((sum, u) => sum + (u.enrollments || u.coursesOpted || []).length, 0);
   return (
     <div className="fade-in">
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
@@ -2134,8 +2141,8 @@ function AdminPage({ allCourses, setAllCourses }) {
         {[
           { l: "Total Courses", v: allCourses.length, icon: "courses", c: "#7C3AED" },
           { l: "Total Tests", v: allCourses.reduce((a, c) => a + c.testFolders.reduce((b, f) => b + f.tests.length, 0), 0), icon: "tests", c: "#0EA5E9" },
-          { l: "Registered Users", v: allUsers.filter(u => u.role !== "admin").length, icon: "users", c: "#10B981" },
-          { l: "Total Enrollments", v: Object.values(allUC).reduce((a, v) => a + v.length, 0), icon: "star", c: "#F59E0B" },
+          { l: "Registered Users", v: adminUsers.filter(u => u.role !== "admin").length, icon: "users", c: "#10B981" },
+          { l: "Total Enrollments", v: totalEnrollments || Object.values(allUC).reduce((a, v) => a + v.length, 0), icon: "star", c: "#F59E0B" },
         ].map(s => (
           <div key={s.l} className="card" style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 38, height: 38, borderRadius: 9, background: s.c + "22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -2160,7 +2167,7 @@ function AdminPage({ allCourses, setAllCourses }) {
         {tab === "courses" && <AdminCourses allCourses={allCourses} setAllCourses={setAllCourses} />}
         {tab === "tests" && <AdminTests allCourses={allCourses} setAllCourses={setAllCourses} />}
         {tab === "import" && <ImportPanel allCourses={allCourses} setAllCourses={setAllCourses} />}
-        {tab === "users" && <AdminUsers allUsers={allUsers} allUC={allUC} allCourses={allCourses} />}
+        {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} onRefresh={loadAdminUsers} />}
       </div>
     </div>
   );
@@ -2935,20 +2942,28 @@ function AdminTests({ allCourses, setAllCourses }) {
   );
 }
 
-function AdminUsers({ allUsers, allUC, allCourses }) {
-  const students = allUsers.filter(u => u.role !== "admin");
+function AdminUsers({ allUsers, allUC, allCourses, onRefresh }) {
+  const users = allUsers || [];
 
   return (
     <div>
-      <div style={{ fontSize: 14, fontWeight: 600, color: "#E2E8F0", marginBottom: 14 }}>Registered Students ({students.length})</div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#E2E8F0" }}>Supabase Users ({users.length})</div>
+          <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>Pass, enrolled courses, attempts, and role are loaded from Supabase.</div>
+        </div>
+        <button className="btn-ghost" style={{ minHeight: 34, padding: "7px 13px", fontSize: 12 }} onClick={onRefresh}>
+          <Icon n="repeat" s={13} />Refresh
+        </button>
+      </div>
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead><tr className="table-head">
-            {["Student", "Email", "Joined", "Enrolled Courses", "Pass", "Status"].map(h => <th key={h}>{h}</th>)}
+            {["User", "Email", "Role", "Joined", "Pass", "Courses", "Attempts", "Best"].map(h => <th key={h}>{h}</th>)}
           </tr></thead>
           <tbody>
-            {students.map(u => {
-              const enrolled = (allUC[u.id] || []).map(cid => allCourses.find(c => c.id === cid)?.title).filter(Boolean);
+            {users.map(u => {
+              const enrolled = (u.enrollments || u.coursesOpted || (allUC[u.id] || []).map(cid => ({ title: allCourses.find(c => c.id === cid)?.title || cid }))).map(c => c.title || c.id).filter(Boolean);
               const userPass = passStatus(u.pass);
               return (
                 <tr key={u.id} className="table-row">
@@ -2959,21 +2974,28 @@ function AdminUsers({ allUsers, allUC, allCourses }) {
                     </div>
                   </td>
                   <td style={{ color: "#64748B" }}>{u.email}</td>
+                  <td><span className={u.role === "admin" ? "tag tag-amber" : "tag tag-purple"} style={{ fontSize: 10 }}>{u.role || "user"}</span></td>
                   <td style={{ color: "#475569" }}>{u.joinedAt}</td>
-                  <td>
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                      {enrolled.length === 0 ? <span style={{ color: "#334155", fontSize: 11 }}>None</span> : enrolled.map(e => <span key={e} className="tag tag-purple" style={{ fontSize: 10 }}>{e}</span>)}
-                    </div>
-                  </td>
                   <td>
                     {userPass.active
                       ? <span className="tag tag-green" style={{ fontSize: 10 }}>{u.pass?.planName || "Pass"} · {userPass.daysLeft}d</span>
                       : <span className="tag" style={{ fontSize: 10 }}>No pass</span>}
                   </td>
-                  <td><span className="tag tag-green" style={{ fontSize: 10 }}>Active</span></td>
+                  <td>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {enrolled.length === 0 ? <span style={{ color: "#334155", fontSize: 11 }}>None</span> : enrolled.map(e => <span key={e} className="tag tag-purple" style={{ fontSize: 10 }}>{e}</span>)}
+                    </div>
+                  </td>
+                  <td style={{ color: "#CBD5E1", fontWeight: 700 }}>{u.attemptCount || 0}</td>
+                  <td style={{ color: "#A78BFA", fontWeight: 700 }}>{u.bestScore || 0}</td>
                 </tr>
               );
             })}
+            {users.length === 0 && (
+              <tr className="table-row">
+                <td colSpan={8} style={{ textAlign: "center", color: "#475569", padding: 28 }}>No Supabase users yet.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -3880,7 +3902,13 @@ export default function App() {
     setUser(offlineUser);
     LS.set("sessionUserId", offlineUser.id);
     const uc = LS.get("userCourses") || {};
-    setUserCourseIds(uc[offlineUser.id] || []);
+    if (Array.isArray(u.syncedCourseIds)) {
+      uc[offlineUser.id] = u.syncedCourseIds;
+      LS.set("userCourses", uc);
+      setUserCourseIds(u.syncedCourseIds);
+    } else {
+      setUserCourseIds(uc[offlineUser.id] || []);
+    }
     setCourses(LS.get("courses") || []);
     setPage("dashboard");
     const synced = await syncOfflineUser(offlineUser.id);

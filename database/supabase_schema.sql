@@ -170,3 +170,12 @@ on conflict (id) do update set
   badge = excluded.badge,
   description = excluded.description,
   sort_order = excluded.sort_order;
+
+insert into users (id, email, password_hash, display_name, role, avatar_initials) values
+('acct_admin_rankbooster_com', 'admin@rankbooster.com', 'Admin@123', 'Admin', 'admin', 'AD')
+on conflict (email) do update set
+  password_hash = excluded.password_hash,
+  display_name = excluded.display_name,
+  role = excluded.role,
+  avatar_initials = excluded.avatar_initials,
+  updated_at = now();

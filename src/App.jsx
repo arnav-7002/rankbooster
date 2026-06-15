@@ -336,17 +336,6 @@ table{min-width:640px}
 }
 `;
 
-// ─── SEED DATA ────────────────────────────────────────────────────────────────
-const SEED = {
-  users: [
-    { id: 1, email: "admin@rankbooster.com", password: "Admin@123", name: "Admin User", role: "admin", avatar: "AD", joinedAt: "Jan 2024" },
-  ],
-  courses: [],
-  userCourses: {},
-  wrongQuestions: {},
-  notebooks: {}
-};
-
 const PASS_PLANS = [
   { id: "daily", name: "Daily Pass", durationDays: 1, price: 49, originalPrice: 99, label: "1 day", badge: "Trial", note: "Best for one serious mock day." },
   { id: "monthly", name: "Monthly Pass", durationDays: 30, price: 299, originalPrice: 499, label: "1 month", badge: "Popular", note: "For steady weekly practice." },
@@ -399,12 +388,6 @@ function testScheduleState(test) {
   return { available: true, state: start ? "live" : "open", label: start ? "Live now" : "" };
 }
 
-// localStorage helpers
-const LS = {
-  get: (k) => { try { const v = localStorage.getItem("rb_"+k); return v ? JSON.parse(v) : null; } catch { return null; } },
-  set: (k, v) => { try { localStorage.setItem("rb_"+k, JSON.stringify(v)); } catch {} },
-  remove: (k) => { try { localStorage.removeItem("rb_"+k); } catch {} },
-};
 const IMPORTER_API = "";
 
 function stableOfflineId(user) {
@@ -420,25 +403,13 @@ function randomOfflineId() {
 
 function ensureOfflineUser(user) {
   if (!user) return user;
-  const users = LS.get("users") || [];
-  const existing = users.find(u => u.id === user.id || (u.email && user.email && u.email.toLowerCase() === user.email.toLowerCase())) || user;
-  const offlineId = stableOfflineId(user) || existing.offlineId || randomOfflineId();
-  const previousOfflineId = existing.offlineId && existing.offlineId !== offlineId ? existing.offlineId : user.previousOfflineId;
-  const updatedUser = { ...existing, ...user, offlineId, previousOfflineId };
-  const nextUsers = users.some(u => u.id === updatedUser.id)
-    ? users.map(u => u.id === updatedUser.id ? updatedUser : u)
-    : [...users, updatedUser];
-  LS.set("users", nextUsers);
-  return updatedUser;
+  const offlineId = user.offlineId || stableOfflineId(user) || randomOfflineId();
+  return { ...user, id: user.id || offlineId, offlineId };
 }
 
-async function syncOfflineUser(userId) {
-  const users = LS.get("users") || [];
-  const user = ensureOfflineUser(users.find(u => u.id === userId));
+async function syncOfflineUser(user, optedIds = [], courses = []) {
+  user = ensureOfflineUser(user);
   if (!user) return null;
-  const userCourses = LS.get("userCourses") || {};
-  const courses = LS.get("courses") || [];
-  const optedIds = userCourses[user.id] || [];
   const coursesOpted = optedIds.map(id => {
     const course = courses.find(c => c.id === id);
     if (!course) return null;
@@ -459,11 +430,6 @@ async function syncOfflineUser(userId) {
   const data = await res.json().catch(() => null);
   const returnedCourses = Array.isArray(data?.coursesOpted) ? data.coursesOpted : [];
   const returnedCourseIds = returnedCourses.map(c => c.id).filter(Boolean);
-  if (returnedCourseIds.length) {
-    const uc = LS.get("userCourses") || {};
-    uc[user.id] = returnedCourseIds;
-    LS.set("userCourses", uc);
-  }
   const syncedUser = data?.user ? {
     ...user,
     name: data.user.name || user.name,
@@ -474,7 +440,6 @@ async function syncOfflineUser(userId) {
     offlineId: data.user.offlineId || user.offlineId,
     pass: data.pass || data.user.pass || user.pass,
   } : user;
-  LS.set("users", users.map(u => u.id === syncedUser.id ? syncedUser : u));
   return { ...syncedUser, syncedCourseIds: returnedCourseIds };
 }
 
@@ -553,23 +518,7 @@ function configuredFolders(course) {
   return (course?.testFolders || []).map(f => ({ ...f, tests: configuredTests(f) }));
 }
 
-function initStore() {
-  if (!LS.get("users")) LS.set("users", SEED.users);
-  else {
-    const users = LS.get("users") || [];
-    const merged = [...users];
-    for (const seedUser of SEED.users) {
-      if (!merged.find(u => u.email === seedUser.email)) merged.push(seedUser);
-    }
-    LS.set("users", merged);
-  }
-  if (!LS.get("courses")) LS.set("courses", SEED.courses);
-  if (!LS.get("userCourses")) LS.set("userCourses", SEED.userCourses);
-  if (!LS.get("wrongQuestions")) LS.set("wrongQuestions", SEED.wrongQuestions);
-  LS.remove("notebooks");
-  LS.remove("attempts");
-  LS.remove("attempt_details");
-}
+function initStore() {}
 
 async function loadNotebookStore(user) {
   if (!user?.offlineId) return [];
@@ -808,7 +757,7 @@ function LoginPage({ onLogin }) {
   const [name, setName] = useState("");
   const [err, setErr] = useState("");
   const [dbStatus, setDbStatus] = useState({ state: "checking", label: "Checking database..." });
-  const [publicCourses, setPublicCourses] = useState(() => LS.get("courses") || SEED.courses || []);
+  const [publicCourses, setPublicCourses] = useState([]);
   const [fieldNonce] = useState(() => Math.random().toString(36).slice(2));
 
   useEffect(() => {
@@ -822,15 +771,11 @@ function LoginPage({ onLogin }) {
       else setDbStatus({ state: "error", label: data?.message || "Database not connected" });
     }
     checkDb();
-    const localCourses = LS.get("courses") || SEED.courses || [];
-    setPublicCourses(localCourses);
     fetch(`${IMPORTER_API}/library`)
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (cancelled || !data?.courses) return;
-        const updated = mergeFolderLibrary(localCourses, data.courses || []);
-        LS.set("courses", updated);
-        setPublicCourses(updated);
+        setPublicCourses(data.courses || []);
       })
       .catch(() => null);
     return () => { cancelled = true; };
@@ -1261,8 +1206,6 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
   async function activatePlan(plan) {
     setPassBusy(plan.id);
     const updatedUser = { ...user, pass: createPass(plan) };
-    const users = LS.get("users") || [];
-    LS.set("users", users.map(u => u.id === user.id ? { ...u, pass: updatedUser.pass } : u));
     onUserUpdate?.(updatedUser);
     const res = await fetch(`${IMPORTER_API}/users`, {
       method: "POST",
@@ -1274,14 +1217,22 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
     setPassBusy("");
   }
 
-  function enroll(courseId) {
+  async function enroll(courseId) {
     if (!currentPassStatus.active) return;
-    const nu = [...userCourseIds, courseId];
+    const nu = [...new Set([...userCourseIds, courseId])];
     setUserCourseIds(nu);
-    const uc = LS.get("userCourses") || {};
-    uc[userId] = nu;
-    LS.set("userCourses", uc);
-    syncOfflineUser(userId);
+    const coursesOpted = nu.map(id => {
+      const course = courses.find(c => c.id === id);
+      return course ? { id: course.id, title: course.title, folderName: course.folderName || course.title, optedAt: new Date().toISOString() } : null;
+    }).filter(Boolean);
+    const res = await fetch(`${IMPORTER_API}/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user, coursesOpted }),
+    }).catch(() => null);
+    const data = res?.ok ? await res.json().catch(() => null) : null;
+    if (data?.coursesOpted) setUserCourseIds(data.coursesOpted.map(c => c.id).filter(Boolean));
+    if (data?.user) onUserUpdate?.({ ...user, ...data.user, pass: data.pass || data.user.pass || user.pass });
   }
 
   function isAttemptForTest(attempt, course, folder, test) {
@@ -1461,21 +1412,6 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
         && (sourceZip === test?.sourceZip || sameExternalUrl(sourceUrl, test?.sourceUrl) || testName === test?.name || a.testId === test?.id || a.source?.testId === test?.id);
     };
 
-    const localCourses = (() => { try { return JSON.parse(localStorage.getItem("rb_courses") || "[]"); } catch { return []; } })();
-    const updatedCourses = localCourses.map(c => ({
-      ...c,
-      testFolders: (c.testFolders || []).map(f => ({
-        ...f,
-        tests: (f.tests || []).map(t => {
-          const same = (c.id === course?.id || c.title === course?.title)
-            && (f.id === folder?.id || f.name === folder?.name)
-            && (t.id === test?.id || (t.sourceZip && t.sourceZip === test?.sourceZip) || sameExternalUrl(t.sourceUrl, test?.sourceUrl) || t.name === test?.name);
-          return same ? { ...t, attempted: false, score: 0, percentile: 0, attemptedAt: undefined } : t;
-        }),
-      })),
-    }));
-    localStorage.setItem("rb_courses", JSON.stringify(updatedCourses));
-    setCoursesView(updatedCourses);
     setSavedAttempts(prev => prev.filter(a => !matchesTest(a)));
   }
 
@@ -2082,7 +2018,7 @@ function AdminPage({ allCourses, setAllCourses }) {
   const [tab, setTab] = useState("courses");
   const [dbStatus, setDbStatus] = useState({ state: "checking", label: "Checking Supabase", detail: "Pinging database..." });
   const [adminUsers, setAdminUsers] = useState([]);
-  const allUC = LS.get("userCourses") || {};
+  const allUC = {};
   const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["import", "Folder Sync"], ["users", "Users"]];
   const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
 
@@ -2196,13 +2132,11 @@ function AdminCourses({ allCourses, setAllCourses }) {
     const res = await fetch(`${IMPORTER_API}/library`).catch(() => null);
     if (!res?.ok) {
       setAllCourses(fallbackCourses);
-      LS.set("courses", fallbackCourses);
       return;
     }
     const data = await res.json();
     const updated = mergeFolderLibrary(fallbackCourses, data.courses || []);
     setAllCourses(updated);
-    LS.set("courses", updated);
   }
 
   async function saveEdit(course) {
@@ -2210,7 +2144,6 @@ function AdminCourses({ allCourses, setAllCourses }) {
     const cleaned = normalizeCourseForm(course);
     const optimistic = allCourses.map(c => c.id === course.id ? { ...c, ...cleaned } : c);
     setAllCourses(optimistic);
-    LS.set("courses", optimistic);
     try {
       const res = await fetch(`${IMPORTER_API}/courses`, {
         method: "POST",
@@ -2227,7 +2160,6 @@ function AdminCourses({ allCourses, setAllCourses }) {
       await refreshCoursesFromDisk(updated);
     } catch {
       setAllCourses(optimistic);
-      LS.set("courses", optimistic);
     }
     setEditModal(null);
   }
@@ -2236,7 +2168,6 @@ function AdminCourses({ allCourses, setAllCourses }) {
     const course = allCourses.find(c => c.id === id);
     const updated = allCourses.filter(c => c.id !== id);
     setAllCourses(updated);
-    LS.set("courses", updated);
     if (course?.title) {
       try {
         await fetch(`${IMPORTER_API}/courses`, {
@@ -2272,7 +2203,6 @@ function AdminCourses({ allCourses, setAllCourses }) {
     };
     const updated = [...allCourses, nc];
     setAllCourses(updated);
-    LS.set("courses", updated);
     try {
       await fetch(`${IMPORTER_API}/courses`, {
         method: "POST",
@@ -2439,7 +2369,7 @@ function AdminTests({ allCourses, setAllCourses }) {
 
   const course = allCourses.find(c => c.id === selectedCourse);
 
-  function saveAll(updated) { setAllCourses(updated); LS.set("courses", updated); }
+  function saveAll(updated) { setAllCourses(updated); }
 
   async function addFolder() {
     if (!newFolderName.trim()) return;
@@ -2498,16 +2428,14 @@ function AdminTests({ allCourses, setAllCourses }) {
     const res = await fetch(`${IMPORTER_API}/library`).catch(() => null);
     if (!res?.ok) return;
     const data = await res.json();
-    const updated = mergeFolderLibrary(LS.get("courses") || [], data.courses || []);
-    saveAll(updated);
+    saveAll(data.courses || []);
   }
 
   async function refreshLibrary() {
     const res = await fetch(`${IMPORTER_API}/library`).catch(() => null);
     if (!res?.ok) return;
     const data = await res.json();
-    const updated = mergeFolderLibrary(LS.get("courses") || [], data.courses || []);
-    saveAll(updated);
+    saveAll(data.courses || []);
   }
 
   function openConfig(folder, test) {
@@ -3091,9 +3019,7 @@ function ImportPanel({ allCourses, setAllCourses }) {
         return;
       }
       const data = await res.json();
-      const updated = mergeFolderLibrary(LS.get("courses") || [], data.courses || []);
-      LS.set("courses", updated);
-      setAllCourses(updated);
+      setAllCourses(data.courses || []);
       setLastRefresh(new Date());
     } catch {
       setErr("Could not sync folder library.");
@@ -3839,38 +3765,15 @@ export default function App() {
   const [activeReport, setActiveReport] = useState(null);
 
   const syncFolderLibrary = useCallback(async () => {
-    const localCourses = LS.get("courses") || [];
     const res = await fetch(`${IMPORTER_API}/library`).catch(() => null);
     if (!res?.ok) return;
     const data = await res.json();
-    const updated = mergeFolderLibrary(localCourses, data.courses || []);
-    LS.set("courses", updated);
-    setCourses(updated);
+    setCourses(data.courses || []);
   }, []);
 
   useEffect(() => {
     initStore();
-    const storedCourses = LS.get("courses") || [];
-    const storedWrong = LS.get("wrongQuestions") || {};
-    const storedUsers = LS.get("users") || [];
-    const sessionUserId = LS.get("sessionUserId");
-    const sessionUser = storedUsers.find(u => u.id === sessionUserId);
-    setCourses(storedCourses);
-    setWrongQuestions(storedWrong);
-    if (sessionUser) {
-      const uc = LS.get("userCourses") || {};
-      const offlineUser = ensureOfflineUser(sessionUser);
-      setUser(offlineUser);
-      setUserCourseIds(uc[offlineUser.id] || []);
-      const hashPage = (window.location.hash || "#dashboard").replace("#", "") || "dashboard";
-      setPage(VALID_PAGES.includes(hashPage) ? hashPage : "dashboard");
-      syncOfflineUser(offlineUser.id).then(synced => {
-        if (synced) {
-          setUser(synced);
-          if (synced.syncedCourseIds?.length) setUserCourseIds(synced.syncedCourseIds);
-        }
-      });
-    }
+    setWrongQuestions({});
     syncFolderLibrary();
   }, [syncFolderLibrary]);
 
@@ -3900,18 +3803,13 @@ export default function App() {
   async function handleLogin(u) {
     const offlineUser = ensureOfflineUser(u);
     setUser(offlineUser);
-    LS.set("sessionUserId", offlineUser.id);
-    const uc = LS.get("userCourses") || {};
     if (Array.isArray(u.syncedCourseIds)) {
-      uc[offlineUser.id] = u.syncedCourseIds;
-      LS.set("userCourses", uc);
       setUserCourseIds(u.syncedCourseIds);
     } else {
-      setUserCourseIds(uc[offlineUser.id] || []);
+      setUserCourseIds([]);
     }
-    setCourses(LS.get("courses") || []);
     setPage("dashboard");
-    const synced = await syncOfflineUser(offlineUser.id);
+    const synced = await syncOfflineUser(offlineUser, Array.isArray(u.syncedCourseIds) ? u.syncedCourseIds : [], courses);
     if (synced) {
       setUser(synced);
       if (synced.syncedCourseIds?.length) setUserCourseIds(synced.syncedCourseIds);
@@ -3920,7 +3818,7 @@ export default function App() {
 
   function handleLogout() {
     setUser(null);
-    LS.remove("sessionUserId");
+    setUserCourseIds([]);
     setPage("courses");
     window.location.hash = "";
   }
@@ -3937,8 +3835,6 @@ export default function App() {
       test={activeTest}
       user={user}
       onAttemptSaved={(attempt) => {
-        const updatedCourses = LS.get("courses") || [];
-        setCourses(updatedCourses);
         setActiveTest(null);
         setActiveReport({
           course: { id: activeTest.courseId, title: activeTest.courseTitle },
@@ -3959,7 +3855,7 @@ export default function App() {
       case "tests": return <TestsPage courses={courses} setCoursesView={setCourses} userCourseIds={userCourseIds} onStartTest={setActiveTest} onSetPage={setPage} onViewAnalysis={setActiveReport} user={user} />;
       case "analysis": return <AnalysisPage courses={courses} userCourseIds={userCourseIds} user={user} />;
       case "notebook": return <NotebookPage user={user} />;
-      case "admin": return user.role === "admin" ? <AdminPage allCourses={courses} setAllCourses={c => { setCourses(c); LS.set("courses", c); }} /> : null;
+      case "admin": return user.role === "admin" ? <AdminPage allCourses={courses} setAllCourses={setCourses} /> : null;
       case "settings": return <SettingsPage user={user} onUserUpdate={setUser} onLogout={handleLogout} />;
       default: return null;
     }

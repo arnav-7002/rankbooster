@@ -774,11 +774,21 @@ function LoginPage({ onLogin }) {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [err, setErr] = useState("");
+  const [dbStatus, setDbStatus] = useState({ state: "checking", label: "Checking database..." });
   const [publicCourses, setPublicCourses] = useState(() => LS.get("courses") || SEED.courses || []);
   const [fieldNonce] = useState(() => Math.random().toString(36).slice(2));
 
   useEffect(() => {
     let cancelled = false;
+    async function checkDb() {
+      setDbStatus({ state: "checking", label: "Checking database..." });
+      const res = await fetch(`${IMPORTER_API}/health`, { cache: "no-store" }).catch(() => null);
+      const data = res ? await res.json().catch(() => null) : null;
+      if (cancelled) return;
+      if (res?.ok && data?.ok) setDbStatus({ state: "connected", label: data.message || "Database connected" });
+      else setDbStatus({ state: "error", label: data?.message || "Database not connected" });
+    }
+    checkDb();
     const localCourses = LS.get("courses") || SEED.courses || [];
     setPublicCourses(localCourses);
     fetch(`${IMPORTER_API}/library`)
@@ -794,6 +804,7 @@ function LoginPage({ onLogin }) {
   }, []);
 
   function handleLogin() {
+    if (dbStatus.state !== "connected") { setErr("Database is not connected yet. Try again after it turns green."); return; }
     const users = LS.get("users") || [];
     const u = users.find(u => u.email === email && u.password === password);
     if (u) { setErr(""); onLogin(u); }
@@ -801,6 +812,7 @@ function LoginPage({ onLogin }) {
   }
 
   function handleSignup() {
+    if (dbStatus.state !== "connected") { setErr("Database is not connected yet. Try again after it turns green."); return; }
     if (!name || !email || !password) { setErr("All fields required."); return; }
     const users = LS.get("users") || [];
     if (users.find(u => u.email === email)) { setErr("Email already registered."); return; }
@@ -812,6 +824,7 @@ function LoginPage({ onLogin }) {
     onLogin(nu);
   }
 
+  const authReady = dbStatus.state === "connected";
   const visibleCourses = (publicCourses || []).slice(0, 4);
   const totalTests = (publicCourses || []).reduce((a, c) => a + configuredTestCount(c), 0);
   const scrollToAuth = (nextTab) => {
@@ -881,6 +894,10 @@ function LoginPage({ onLogin }) {
               ))}
             </div>
 
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12, padding: "9px 11px", borderRadius: 10, border: `1px solid ${dbStatus.state === "connected" ? "rgba(16,185,129,0.28)" : dbStatus.state === "checking" ? "rgba(251,191,36,0.25)" : "rgba(239,68,68,0.28)"}`, background: dbStatus.state === "connected" ? "rgba(16,185,129,0.07)" : dbStatus.state === "checking" ? "rgba(251,191,36,0.07)" : "rgba(239,68,68,0.07)", color: dbStatus.state === "connected" ? "#34D399" : dbStatus.state === "checking" ? "#FCD34D" : "#F87171", fontSize: 12, fontWeight: 700 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}><Icon n={dbStatus.state === "connected" ? "check-circle" : dbStatus.state === "checking" ? "clock" : "alert-tri"} s={14} />{dbStatus.label}</span>
+              <button type="button" className="btn-ghost" onClick={() => window.location.reload()} style={{ minHeight: 28, padding: "4px 9px", fontSize: 11 }}>Retry</button>
+            </div>
             <div className="landing-auth-form">
               {tab === "signup" && (
                 <div className="landing-signup-row" style={{ marginBottom: 14 }}>
@@ -890,14 +907,14 @@ function LoginPage({ onLogin }) {
               )}
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 12, color: "#64748B", marginBottom: 5, display: "block" }}>Email</label>
-                <input className="input-field" type="text" inputMode="email" name={`rb_mail_${fieldNonce}`} autoComplete="off" autoCorrect="off" spellCheck="false" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && (tab === "login" ? handleLogin() : handleSignup())} />
+                <input className="input-field" type="text" inputMode="email" name={`rb_mail_${fieldNonce}`} autoComplete="off" autoCorrect="off" spellCheck="false" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && authReady && (tab === "login" ? handleLogin() : handleSignup())} />
               </div>
               <div style={{ marginBottom: 14 }}>
                 <label style={{ fontSize: 12, color: "#64748B", marginBottom: 5, display: "block" }}>Password</label>
-                <input className="input-field" type="password" name={`rb_key_${fieldNonce}`} autoComplete="new-password" autoCorrect="off" spellCheck="false" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && (tab === "login" ? handleLogin() : handleSignup())} />
+                <input className="input-field" type="password" name={`rb_key_${fieldNonce}`} autoComplete="new-password" autoCorrect="off" spellCheck="false" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && authReady && (tab === "login" ? handleLogin() : handleSignup())} />
               </div>
               {err && <div style={{ fontSize: 12, color: "#F87171", marginBottom: 10, background: "rgba(239,68,68,0.08)", padding: "8px 12px", borderRadius: 8 }}>{err}</div>}
-              <button className={`btn-primary ${tab === "login" ? "signin-nudge" : ""}`} style={{ width: "100%", padding: 12, fontSize: 14, marginTop: 0, marginBottom: tab === "login" ? 10 : 0 }} onClick={tab === "login" ? handleLogin : handleSignup}>
+              <button className={`btn-primary ${tab === "login" ? "signin-nudge" : ""}`} disabled={!authReady} style={{ width: "100%", padding: 12, fontSize: 14, marginTop: 0, marginBottom: tab === "login" ? 10 : 0, opacity: authReady ? 1 : 0.55, cursor: authReady ? "pointer" : "not-allowed" }} onClick={tab === "login" ? handleLogin : handleSignup}>
                 {tab === "login" ? <><LoginNudgeIcon s={14} />Log In</> : <><Icon n="plus" s={14} />Create Account</>}
               </button>
             </div>

@@ -611,6 +611,7 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
       testId: test.id || null,
       testName: test.name || "Test",
       sourceZip: test.sourceZip || test.zipName || "",
+      sourceUrl: test.sourceUrl || "",
       durationMinutes: test.duration || 180,
       timeSpentSec,
       maxMarks: totalMarks,

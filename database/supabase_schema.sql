@@ -43,6 +43,7 @@ create table if not exists tests (
   total_questions integer,
   static_json_path text,
   summary_json_path text,
+  source_url text,
   config_json jsonb not null default '{}'::jsonb,
   scheduled_at timestamptz,
   scheduled_until timestamptz,
@@ -152,6 +153,7 @@ create table if not exists admin_events (
 
 create index if not exists idx_attempts_user on attempts(user_id, submitted_at desc);
 create index if not exists idx_attempts_test on attempts(test_id);
+alter table tests add column if not exists source_url text;
 create index if not exists idx_enrollments_user on enrollments(user_id);
 create index if not exists idx_user_blobs_user on user_blobs(user_id);
 

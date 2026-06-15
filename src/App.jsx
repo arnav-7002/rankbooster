@@ -504,8 +504,37 @@ function mergeFolderLibrary(localCourses, folderCourses) {
   return merged;
 }
 
+function normalizeExternalTestUrl(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  try {
+    const u = new URL(raw);
+    if (u.hostname === "github.com") {
+      const parts = u.pathname.split("/").filter(Boolean);
+      const blobIdx = parts.indexOf("blob");
+      if (parts.length >= 5 && blobIdx === 2) {
+        return `https://raw.githubusercontent.com/${parts[0]}/${parts[1]}/${parts.slice(3).join("/")}`;
+      }
+    }
+  } catch {}
+  return raw;
+}
+
+async function loadExternalTestJson(sourceUrl) {
+  const url = normalizeExternalTestUrl(sourceUrl);
+  if (!url) return null;
+  const proxied = await fetch(`${IMPORTER_API}/test?sourceUrl=${encodeURIComponent(url)}`).catch(() => null);
+  if (proxied?.ok) {
+    const data = await proxied.json().catch(() => null);
+    if (data?.test) return data.test;
+  }
+  const direct = await fetch(url, { cache: "force-cache" }).catch(() => null);
+  if (!direct?.ok) return null;
+  return direct.json().catch(() => null);
+}
+
 function isConfiguredTest(test) {
-  return test?.configured === true || !test?.sourceZip;
+  return test?.configured === true || (!test?.sourceZip && !test?.sourceUrl);
 }
 
 function configuredTests(folder) {
@@ -1470,7 +1499,10 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
     setLoadingTestId(testId);
     try {
       let fullTest = test;
-      if (test.sourceZip && (test.imagesMissing || !(test.subjects || []).some(s => (s.questions || []).some(q => q.images?.length)))) {
+      if (test.sourceUrl) {
+        const data = await loadExternalTestJson(test.sourceUrl);
+        if (data) fullTest = { ...data, sourceUrl: normalizeExternalTestUrl(test.sourceUrl) };
+      } else if (test.sourceZip && (test.imagesMissing || !(test.subjects || []).some(s => (s.questions || []).some(q => q.images?.length)))) {
         const qs = new URLSearchParams({
           course: course.folderName || course.title,
           folder: test.sourceFolder || folder.name,
@@ -1486,6 +1518,7 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
         courseTitle: course?.title,
         folderId: folder.id,
         folderName: folder.name,
+        sourceUrl: normalizeExternalTestUrl(test.sourceUrl || fullTest.sourceUrl || ""),
       });
     } finally {
       setLoadingTestId(null);
@@ -2370,7 +2403,7 @@ function AdminTests({ allCourses, setAllCourses }) {
   const [importFolderId, setImportFolderId] = useState(null);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderIcon, setNewFolderIcon] = useState("clipboard");
-  const [newTest, setNewTest] = useState({ name: "", duration: 180, maxMarks: 300, date: "", scheduledAt: "", scheduledUntil: "" });
+  const [newTest, setNewTest] = useState({ name: "", sourceUrl: "", duration: 180, maxMarks: 300, date: "", scheduledAt: "", scheduledUntil: "" });
   const [openFolder, setOpenFolder] = useState(null);
   const [deleteTestConfirm, setDeleteTestConfirm] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -2413,11 +2446,27 @@ function AdminTests({ allCourses, setAllCourses }) {
     }
   }
 
-  function addTest(fid) {
+  async function addTest(fid) {
     if (!newTest.name.trim()) return;
-    const t = { id: "t" + Date.now(), ...newTest, duration: Number(newTest.duration), maxMarks: Number(newTest.maxMarks), attempted: false };
+    const sourceUrl = normalizeExternalTestUrl(newTest.sourceUrl);
+    const t = { id: "t" + Date.now(), ...newTest, sourceUrl, configured: !!sourceUrl, duration: Number(newTest.duration), maxMarks: Number(newTest.maxMarks), attempted: false };
     saveAll(allCourses.map(c => c.id === selectedCourse ? { ...c, testFolders: c.testFolders.map(f => f.id === fid ? { ...f, tests: [...f.tests, t] } : f) } : c));
-    setAddTestModal(null); setNewTest({ name: "", duration: 180, maxMarks: 300, date: "", scheduledAt: "", scheduledUntil: "" });
+    const folder = course?.testFolders?.find(f => f.id === fid);
+    try {
+      await fetch(`${IMPORTER_API}/tests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...t,
+          courseId: course?.id,
+          courseTitle: course?.title,
+          folderName: folder?.name || "Tests",
+          examConfig: { examType: "other" },
+        }),
+      });
+      await refreshLibrary();
+    } catch {}
+    setAddTestModal(null); setNewTest({ name: "", sourceUrl: "", duration: 180, maxMarks: 300, date: "", scheduledAt: "", scheduledUntil: "" });
   }
 
   async function refreshLibraryAfterDelete() {
@@ -2444,6 +2493,9 @@ function AdminTests({ allCourses, setAllCourses }) {
       testId: test.id,
       testName: test.name,
       sourceZip: test.sourceZip,
+      sourceUrl: test.sourceUrl,
+      duration: test.duration || 180,
+      maxMarks: test.maxMarks || 0,
       examType: cfg.examType || "jee_main",
       customExamName: cfg.customExamName || "",
       bitsatHasBonus: cfg.bitsatHasBonus !== false,
@@ -2459,6 +2511,9 @@ function AdminTests({ allCourses, setAllCourses }) {
       testId: test.id,
       testName: test.name,
       sourceZip: test.sourceZip,
+      sourceUrl: test.sourceUrl,
+      duration: test.duration || 180,
+      maxMarks: test.maxMarks || 0,
       configured: test.configured !== false,
       examType: test.examConfig?.examType || "other",
       customExamName: test.examConfig?.customExamName || "",
@@ -2469,23 +2524,48 @@ function AdminTests({ allCourses, setAllCourses }) {
   }
 
   async function saveConfig() {
-    if (!course || !configModal?.folderName || !configModal?.sourceZip) return;
+    if (!course || !configModal?.folderName || (!configModal?.sourceZip && !configModal?.sourceUrl)) return;
     setConfigBusy(true);
     try {
-      await fetch(`${IMPORTER_API}/test-config`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          courseTitle: course.folderName || course.title,
-          folderName: configModal.folderName,
-          zipName: configModal.sourceZip,
-          examType: configModal.examType,
-          customExamName: configModal.customExamName,
-          bitsatHasBonus: configModal.bitsatHasBonus,
-          scheduledAt: configModal.scheduledAt || "",
-          scheduledUntil: configModal.scheduledUntil || "",
-        }),
-      });
+      if (configModal.sourceUrl) {
+        await fetch(`${IMPORTER_API}/tests`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: configModal.testId,
+            name: configModal.testName,
+            courseId: course.id,
+            courseTitle: course.title,
+            folderName: configModal.folderName,
+            sourceUrl: configModal.sourceUrl,
+            duration: configModal.duration || 180,
+            maxMarks: configModal.maxMarks || 0,
+            configured: true,
+            examConfig: {
+              examType: configModal.examType,
+              customExamName: configModal.customExamName,
+              bitsatHasBonus: configModal.bitsatHasBonus,
+            },
+            scheduledAt: configModal.scheduledAt || "",
+            scheduledUntil: configModal.scheduledUntil || "",
+          }),
+        });
+      } else {
+        await fetch(`${IMPORTER_API}/test-config`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            courseTitle: course.folderName || course.title,
+            folderName: configModal.folderName,
+            zipName: configModal.sourceZip,
+            examType: configModal.examType,
+            customExamName: configModal.customExamName,
+            bitsatHasBonus: configModal.bitsatHasBonus,
+            scheduledAt: configModal.scheduledAt || "",
+            scheduledUntil: configModal.scheduledUntil || "",
+          }),
+        });
+      }
       await refreshLibrary();
       setConfigModal(null);
     } finally {
@@ -2507,7 +2587,31 @@ function AdminTests({ allCourses, setAllCourses }) {
     } : c);
     saveAll(updated);
     try {
-      if (scheduleModal.sourceZip) {
+      if (scheduleModal.sourceUrl) {
+        await fetch(`${IMPORTER_API}/tests`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: scheduleModal.testId,
+            name: scheduleModal.testName,
+            courseId: course.id,
+            courseTitle: course.title,
+            folderName: scheduleModal.folderName,
+            sourceUrl: scheduleModal.sourceUrl,
+            duration: scheduleModal.duration || 180,
+            maxMarks: scheduleModal.maxMarks || 0,
+            configured: scheduleModal.configured !== false,
+            examConfig: {
+              examType: scheduleModal.examType,
+              customExamName: scheduleModal.customExamName,
+              bitsatHasBonus: scheduleModal.bitsatHasBonus,
+            },
+            scheduledAt,
+            scheduledUntil,
+          }),
+        });
+        await refreshLibrary();
+      } else if (scheduleModal.sourceZip) {
         await fetch(`${IMPORTER_API}/test-config`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2536,7 +2640,16 @@ function AdminTests({ allCourses, setAllCourses }) {
     if (!folder || !test) return;
     setDeleteBusy(true);
     saveAll(allCourses.map(c => c.id === selectedCourse ? { ...c, testFolders: c.testFolders.map(f => f.id === fid ? { ...f, tests: f.tests.filter(t => t.id !== tid) } : f) } : c));
-    if (course?.title && folder?.name && test?.sourceZip) {
+    if (test?.sourceUrl) {
+      try {
+        await fetch(`${IMPORTER_API}/tests`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ testId: test.id }),
+        });
+        await refreshLibraryAfterDelete();
+      } catch {}
+    } else if (course?.title && folder?.name && test?.sourceZip) {
       try {
         await fetch(`${IMPORTER_API}/tests`, {
           method: "DELETE",
@@ -2644,7 +2757,7 @@ function AdminTests({ allCourses, setAllCourses }) {
                 <button className="btn-ghost" style={{ padding: "8px 14px", fontSize: 12, minHeight: 36 }} onClick={e => { e.stopPropagation(); setImportFolderId(folder.id); setImportModal(true); }}>
                   <Icon n="upload" s={12} />Import ZIP
                 </button>
-                <button className="btn-primary" style={{ padding: "8px 14px", fontSize: 12, minHeight: 36 }} onClick={e => { e.stopPropagation(); setAddTestModal(folder.id); }}>+ Manual</button>
+                <button className="btn-primary" style={{ padding: "8px 14px", fontSize: 12, minHeight: 36 }} onClick={e => { e.stopPropagation(); setAddTestModal(folder.id); }}>+ GitHub Test</button>
                 <button className="btn-danger" style={{ padding: "8px 14px", fontSize: 12, minHeight: 36 }} onClick={e => { e.stopPropagation(); deleteFolder(folder.id); }}>Delete</button>
                 <Icon n={openFolder === folder.id ? "chevdown" : "chevright"} s={14} c="#475569" />
               </div>
@@ -2663,7 +2776,7 @@ function AdminTests({ allCourses, setAllCourses }) {
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 13, color: "#E2E8F0", fontWeight: 500, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                           {test.name}
-                          {test.sourceZip && (
+                          {(test.sourceZip || test.sourceUrl) && (
                             <span className={`tag ${test.configured ? "tag-green" : "tag-amber"}`} style={{ fontSize: 10 }}>
                               {test.configured ? `${(test.examConfig?.examType || "configured").replace("_", " ").toUpperCase()}` : "Not configured"}
                             </span>
@@ -2677,12 +2790,13 @@ function AdminTests({ allCourses, setAllCourses }) {
                           {test.scheduledUntil && <span style={{ color: "#A78BFA" }}>Closes {formatDateTime(test.scheduledUntil)}</span>}
                           {test.subjects && <span style={{ color: "#7C3AED" }}>{test.subjects.length} subjects · {test.subjects.reduce((a, s) => a + s.questions.length, 0)} Qs</span>}
                           {test.hasSolution && <span style={{ color: "#34D399" }}>Has Solutions</span>}
+                          {test.sourceUrl && <span style={{ color: "#38BDF8" }}>GitHub source</span>}
                         </div>
                       </div>
-                      <button className="btn-ghost" style={{ padding: "8px 14px", fontSize: 12, minHeight: 36, opacity: test.sourceZip && !test.configured ? 0.55 : 1 }} disabled={test.sourceZip && !test.configured} title={test.sourceZip && !test.configured ? "Configure this test before scheduling it." : "Schedule test"} onClick={() => openSchedule(folder, test)}>
+                      <button className="btn-ghost" style={{ padding: "8px 14px", fontSize: 12, minHeight: 36, opacity: (test.sourceZip || test.sourceUrl) && !test.configured ? 0.55 : 1 }} disabled={(test.sourceZip || test.sourceUrl) && !test.configured} title={(test.sourceZip || test.sourceUrl) && !test.configured ? "Configure this test before scheduling it." : "Schedule test"} onClick={() => openSchedule(folder, test)}>
                         <Icon n="calendar" s={11} />Schedule
                       </button>
-                      {test.sourceZip && (
+                      {(test.sourceZip || test.sourceUrl) && (
                         <button className="btn-ghost" style={{ padding: "8px 14px", fontSize: 12, minHeight: 36 }} onClick={() => openConfig(folder, test)}>
                           <Icon n="settings" s={11} />Configure
                         </button>
@@ -2717,11 +2831,16 @@ function AdminTests({ allCourses, setAllCourses }) {
         <button className="btn-primary" style={{ width: "100%", padding: 10 }} onClick={addFolder}>Create Folder</button>
       </Modal>
 
-      <Modal open={!!addTestModal} onClose={() => setAddTestModal(null)} title="Add Test Manually" width={480}>
+      <Modal open={!!addTestModal} onClose={() => setAddTestModal(null)} title="Add Test from GitHub" width={520}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
           <div style={{ gridColumn: "1/-1" }}>
             <label style={{ fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" }}>Test Name *</label>
             <input className="input-field" placeholder="JEE Main Full Test 6" value={newTest.name} onChange={e => setNewTest(p => ({ ...p, name: e.target.value }))} autoFocus />
+          </div>
+          <div style={{ gridColumn: "1/-1" }}>
+            <label style={{ fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" }}>GitHub test JSON link *</label>
+            <input className="input-field" placeholder="https://github.com/you/course-tests/blob/main/mock-1.rbtest.json" value={newTest.sourceUrl} onChange={e => setNewTest(p => ({ ...p, sourceUrl: e.target.value }))} />
+            <div style={{ fontSize: 11, color: "#475569", marginTop: 5 }}>GitHub blob links are converted to raw links automatically. Keep the repo public for now.</div>
           </div>
           <div>
             <label style={{ fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" }}>Duration (min)</label>
@@ -2744,7 +2863,7 @@ function AdminTests({ allCourses, setAllCourses }) {
             <input className="input-field" type="datetime-local" value={newTest.scheduledUntil || ""} onChange={e => setNewTest(p => ({ ...p, scheduledUntil: e.target.value }))} />
           </div>
         </div>
-        <button className="btn-primary" style={{ width: "100%", padding: 10 }} onClick={() => addTest(addTestModal)}>Add Test</button>
+        <button className="btn-primary" style={{ width: "100%", padding: 10 }} onClick={() => addTest(addTestModal)}>Add GitHub Test</button>
       </Modal>
 
       <Modal open={!!scheduleModal} onClose={() => !scheduleBusy && setScheduleModal(null)} title="Schedule Test" width={480}>
@@ -3312,11 +3431,20 @@ function TestAttemptReport({ report, user, onBack }) {
   }, [user?.id, user?.offlineId, attempt?.attemptId, attemptHasDetails, attempt]);
 
   const reportZipName = test?.sourceZip || summary.source?.sourceZip;
+  const reportSourceUrl = normalizeExternalTestUrl(test?.sourceUrl || summary.source?.sourceUrl || "");
   const reportCourseName = course?.folderName || course?.title || summary.source?.courseTitle;
   const reportFolderName = test?.sourceFolder || folder?.name || summary.source?.folderName;
   const needsFullTest = !!reportZipName && !(test?.subjects || []).some(s => (s.questions || []).some(q => q.images?.length));
   useEffect(() => {
     let cancelled = false;
+    if (reportSourceUrl) {
+      setLoadingFullTest(true);
+      loadExternalTestJson(reportSourceUrl)
+        .then(data => { if (!cancelled && data) setFullTest({ ...data, sourceUrl: reportSourceUrl }); })
+        .catch(() => null)
+        .finally(() => { if (!cancelled) setLoadingFullTest(false); });
+      return () => { cancelled = true; };
+    }
     const zipName = reportZipName;
     const courseName = reportCourseName;
     const folderName = reportFolderName;
@@ -3332,7 +3460,7 @@ function TestAttemptReport({ report, user, onBack }) {
       .catch(() => null)
       .finally(() => { if (!cancelled) setLoadingFullTest(false); });
     return () => { cancelled = true; };
-  }, [needsFullTest, reportCourseName, reportFolderName, reportZipName, test?.subjects]);
+  }, [needsFullTest, reportCourseName, reportFolderName, reportZipName, reportSourceUrl, test?.subjects]);
 
   const displayTest = fullTest || test;
   const subjects = displayTest?.subjects || [];
@@ -3408,6 +3536,7 @@ function TestAttemptReport({ report, user, onBack }) {
       folderName: reportFolderName || "",
       testName: displayTest?.name || summary.source?.testName || "",
       sourceZip: reportZipName || "",
+      sourceUrl: reportSourceUrl || "",
       marked: marked.length ? marked.map(optLabel).join(", ") : "",
       correct: correct.length ? correct.map(optLabel).join(", ") : "",
       isCorrect: row ? !!row.isCorrect : undefined,

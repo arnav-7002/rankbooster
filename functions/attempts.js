@@ -12,6 +12,7 @@ async function upsertAttemptCourseAndTest(env, detail) {
   await upsertRows(env, "tests", {
     id: testId, course_id: courseId, folder_name: folderName, title: testTitle, slug: slugify(testTitle),
     duration_minutes: Number(detail.durationMinutes || 180), max_marks: Number(detail.maxMarks || 0), total_questions: Number(detail.totalQuestions || 0),
+    source_url: src.sourceUrl || detail.sourceUrl || "",
     is_configured: true, is_published: true, updated_at: new Date().toISOString(),
   });
   return { courseId, testId };
@@ -50,6 +51,7 @@ export async function onRequestPost({ request, env }) {
       testId: attempt.testId || source.testId || null,
       testName: attempt.testName || source.testName || "",
       sourceZip: attempt.sourceZip || source.sourceZip || "",
+      sourceUrl: attempt.sourceUrl || source.sourceUrl || "",
     },
   };
   const refs = await upsertAttemptCourseAndTest(env, detail);

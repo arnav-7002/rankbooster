@@ -803,8 +803,8 @@ function LoginPage({ onLogin, passPlans = PASS_PLANS }) {
       const res = await fetch(`${IMPORTER_API}/health`, { cache: "no-store" }).catch(() => null);
       const data = res ? await res.json().catch(() => null) : null;
       if (cancelled) return;
-      if (res?.ok && data?.ok) setDbStatus({ state: "connected", label: data.message || "Database connected" });
-      else setDbStatus({ state: "error", label: data?.message || "Database not connected" });
+      if (res?.ok && data?.ok) setDbStatus({ state: "connected", label: "Database connected" });
+      else setDbStatus({ state: "error", label: "Database offline" });
     }
     checkDb();
     fetch(`${IMPORTER_API}/library`)
@@ -847,6 +847,11 @@ function LoginPage({ onLogin, passPlans = PASS_PLANS }) {
   const authReady = dbStatus.state === "connected";
   const visibleCourses = (publicCourses || []).slice(0, 4);
   const totalTests = (publicCourses || []).reduce((a, c) => a + configuredTestCount(c), 0);
+  const connectionTone = dbStatus.state === "connected"
+    ? { border: "rgba(16,185,129,0.28)", bg: "rgba(16,185,129,0.07)", color: "#34D399", icon: "check-circle" }
+    : dbStatus.state === "checking"
+      ? { border: "rgba(251,191,36,0.25)", bg: "rgba(251,191,36,0.07)", color: "#FCD34D", icon: "clock" }
+      : { border: "rgba(239,68,68,0.28)", bg: "rgba(239,68,68,0.07)", color: "#F87171", icon: "alert-tri" };
   const scrollToAuth = (nextTab) => {
     setTab(nextTab);
     setErr("");
@@ -856,12 +861,21 @@ function LoginPage({ onLogin, passPlans = PASS_PLANS }) {
   return (
     <div className="landing-shell">
       <div className="landing-wrap">
-        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 46 }}>
+        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 46, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
             <div style={{ width: 40, height: 40, background: "linear-gradient(135deg,#7C3AED,#4F46E5)", borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 800 }}>R</div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 800 }}>RankBooster</div>
               <div style={{ fontSize: 11, color: "#475569" }}>Offline-ready test series platform</div>
+            </div>
+          </div>
+          <div style={{ flex: 1, minWidth: 190, display: "flex", justifyContent: "center" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 11px", borderRadius: 999, border: `1px solid ${connectionTone.border}`, background: connectionTone.bg, color: connectionTone.color, fontSize: 12, fontWeight: 750 }}>
+              <Icon n={connectionTone.icon} s={14} />
+              <span>{dbStatus.label}</span>
+              {dbStatus.state !== "connected" && (
+                <button type="button" className="btn-ghost" onClick={() => window.location.reload()} style={{ minHeight: 24, padding: "2px 7px", fontSize: 10, marginLeft: 2 }}>Retry</button>
+              )}
             </div>
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -914,10 +928,6 @@ function LoginPage({ onLogin, passPlans = PASS_PLANS }) {
               ))}
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12, padding: "9px 11px", borderRadius: 10, border: `1px solid ${dbStatus.state === "connected" ? "rgba(16,185,129,0.28)" : dbStatus.state === "checking" ? "rgba(251,191,36,0.25)" : "rgba(239,68,68,0.28)"}`, background: dbStatus.state === "connected" ? "rgba(16,185,129,0.07)" : dbStatus.state === "checking" ? "rgba(251,191,36,0.07)" : "rgba(239,68,68,0.07)", color: dbStatus.state === "connected" ? "#34D399" : dbStatus.state === "checking" ? "#FCD34D" : "#F87171", fontSize: 12, fontWeight: 700 }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}><Icon n={dbStatus.state === "connected" ? "check-circle" : dbStatus.state === "checking" ? "clock" : "alert-tri"} s={14} />{dbStatus.label}</span>
-              <button type="button" className="btn-ghost" onClick={() => window.location.reload()} style={{ minHeight: 28, padding: "4px 9px", fontSize: 11 }}>Retry</button>
-            </div>
             <div className="landing-auth-form">
               {tab === "signup" && (
                 <div className="landing-signup-row" style={{ marginBottom: 14 }}>
@@ -939,7 +949,7 @@ function LoginPage({ onLogin, passPlans = PASS_PLANS }) {
               </button>
             </div>
             <div style={{ marginTop: 10, fontSize: 11, color: "#475569", lineHeight: 1.5 }}>
-              Admin login is created from Supabase SQL. New students can sign up here directly.
+              Admin login is preconfigured. New students can sign up here directly.
             </div>
           </aside>
         </main>

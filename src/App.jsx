@@ -970,24 +970,24 @@ function LoginPage({ onLogin, passPlans = PASS_PLANS }) {
               <div style={{ color: "#94A3B8", marginTop: 10, fontSize: 13 }}>No public courses yet. Add courses from Admin Panel.</div>
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,360px))", justifyContent: "start", gap: 14 }}>
               {visibleCourses.map(course => {
                 const testCount = configuredTestCount(course);
                 return (
                   <div key={course.id || course.title} className="card card-hover landing-hover-card landing-course-card" style={{ padding: 0, overflow: "hidden" }}>
                     <div style={{ height: 4, background: course.color || "#7C3AED" }} />
-                    <div style={{ padding: 18 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
+                    <div style={{ padding: 16 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
                         <div title={course.title} style={{ fontSize: 15, fontWeight: 800, color: "#E2E8F0", lineHeight: 1.25, overflowWrap: "anywhere" }}>{course.title}</div>
                         <span className="tag tag-purple" style={{ flexShrink: 0 }}>{course.badge || "New"}</span>
                       </div>
-                      <div style={{ minHeight: 34, color: "#64748B", fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>{course.subtitle || course.description || "Mock test series"}</div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+                      <div style={{ color: "#64748B", fontSize: 12, lineHeight: 1.45, marginBottom: 10 }}>{course.subtitle || course.description || "Mock test series"}</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
                         {(course.subjects || []).slice(0, 4).map(s => <span key={s} className="tag" style={{ background: "rgba(124,58,237,0.16)", color: "#A78BFA", fontSize: 10 }}>{s}</span>)}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                         <div>
-                          <div style={{ color: course.textColor || "#A78BFA", fontSize: 20, fontWeight: 850 }}>Included</div>
+                          <div style={{ color: course.textColor || "#A78BFA", fontSize: 15, fontWeight: 800 }}>Included</div>
                           <div style={{ color: "#475569", fontSize: 11 }}>{testCount} tests available</div>
                         </div>
                         <button className="btn-ghost" style={{ minHeight: 34, padding: "7px 11px", fontSize: 12 }} onClick={() => scrollToAuth("signup")}>Enroll</button>

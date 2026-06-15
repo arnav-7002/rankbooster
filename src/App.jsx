@@ -275,6 +275,10 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .solution-qbtn.wrong{background:rgba(239,68,68,0.16);border-color:rgba(239,68,68,0.38);color:#FCA5A5}
 .solution-qbtn.blank{background:rgba(124,58,237,0.12);color:#A78BFA}
 .solution-qbtn.active{box-shadow:0 0 0 2px rgba(167,139,250,0.6)}
+.solution-image-watermark-wrap{position:relative;display:inline-block;max-width:100%;background:#fff;border-radius:8px;border:1px solid rgba(255,255,255,0.08);overflow:hidden}
+.solution-image-watermark-wrap img{display:block;max-width:100%;max-height:360px;object-fit:contain;object-position:left top;background:#fff}
+.solution-watermark-layer{position:absolute;inset:-18px;display:grid;grid-template-columns:repeat(4,minmax(145px,1fr));grid-auto-rows:88px;pointer-events:none;overflow:hidden}
+.solution-watermark-layer span{align-self:center;justify-self:center;color:rgba(100,116,139,0.20);font-size:13px;font-weight:650;line-height:1;white-space:nowrap;transform:rotate(-48deg);user-select:none}
 .insight-card{position:relative;background:rgba(255,255,255,0.035);border:1px solid rgba(255,255,255,0.065);border-radius:12px;padding:13px 13px 13px 36px}
 .insight-card::before{content:"";position:absolute;left:14px;top:16px;width:8px;height:8px;border-radius:50%;background:#A78BFA;box-shadow:0 0 0 4px rgba(124,58,237,0.16)}
 .review-option{padding:10px 12px;border-radius:9px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:#94A3B8;font-size:13px;font-weight:500}
@@ -3628,6 +3632,8 @@ function TestAttemptReport({ report, user, onBack }) {
     const marks = row ? row.marksAwarded : 0;
     const numOpts = parseInt(activeQuestion?.answerOptions) || 4;
     const timeForQ = row?.timeSpentSec || summary.questionTimes?.[activeQuestion?.id] || 0;
+    const watermarkEmail = String(user?.email || "").trim();
+    const watermarkTiles = Array.from({ length: 28 });
     function setSolutionQuestion(si, qi) {
       setSolutionSubjectIdx(si);
       setSolutionQIdx(qi);
@@ -3696,7 +3702,14 @@ function TestAttemptReport({ report, user, onBack }) {
                     {activeImages.length > 0 ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
                         {activeImages.map((src, i) => (
-                          <img key={i} src={src} alt="" style={{ maxWidth: "100%", maxHeight: 360, objectFit: "contain", objectPosition: "left top", background: "white", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)" }} />
+                          <div key={i} className="solution-image-watermark-wrap">
+                            <img src={src} alt="" />
+                            {watermarkEmail && (
+                              <div className="solution-watermark-layer" aria-hidden="true">
+                                {watermarkTiles.map((_, wi) => <span key={wi}>{watermarkEmail}</span>)}
+                              </div>
+                            )}
+                          </div>
                         ))}
                       </div>
                     ) : (

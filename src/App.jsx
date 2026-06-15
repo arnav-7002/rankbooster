@@ -2965,6 +2965,7 @@ function AdminTests({ allCourses, setAllCourses }) {
 function AdminPlans({ passPlans, setPassPlans }) {
   const [plans, setPlans] = useState(passPlans?.length ? passPlans : PASS_PLANS);
   const [saving, setSaving] = useState(false);
+  const [deletingPlanId, setDeletingPlanId] = useState(null);
 
   useEffect(() => { setPlans(passPlans?.length ? passPlans : PASS_PLANS); }, [passPlans]);
 
@@ -2975,6 +2976,32 @@ function AdminPlans({ passPlans, setPassPlans }) {
   function addPlan() {
     const id = `plan_${Date.now()}`;
     setPlans(prev => [...prev, { id, name: "New Pass", durationDays: 30, price: 0, originalPrice: 0, label: "30 days", badge: "New", note: "Describe this pass.", isActive: true, sortOrder: prev.length + 1 }]);
+  }
+
+  async function deletePlan(plan) {
+    if (!plan?.id) return;
+    if (!window.confirm(`Delete "${plan.name || "this pass"}"? Students will not see this pass option anymore.`)) return;
+    if (String(plan.id).startsWith("plan_")) {
+      setPlans(prev => prev.filter(p => p.id !== plan.id));
+      return;
+    }
+    setDeletingPlanId(plan.id);
+    try {
+      const res = await fetch(`${IMPORTER_API}/pass-plans`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId: plan.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Plan could not be deleted.");
+      const next = plans.filter(p => p.id !== plan.id).map((p, idx) => ({ ...p, sortOrder: idx + 1 }));
+      setPlans(next);
+      setPassPlans(next);
+    } catch (err) {
+      alert(err.message || "Pass delete failed.");
+    } finally {
+      setDeletingPlanId(null);
+    }
   }
 
   async function savePlans() {
@@ -3021,10 +3048,15 @@ function AdminPlans({ passPlans, setPassPlans }) {
           <div key={plan.id} className="card landing-hover-card" style={{ display: "grid", gap: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               <span className="tag tag-purple">#{idx + 1}</span>
-              <label style={{ display: "flex", alignItems: "center", gap: 7, color: "#94A3B8", fontSize: 12 }}>
-                <input type="checkbox" checked={plan.isActive !== false} onChange={e => updatePlan(plan.id, { isActive: e.target.checked })} />
-                Active
-              </label>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 7, color: "#94A3B8", fontSize: 12 }}>
+                  <input type="checkbox" checked={plan.isActive !== false} onChange={e => updatePlan(plan.id, { isActive: e.target.checked })} />
+                  Active
+                </label>
+                <button className="btn-danger" disabled={deletingPlanId === plan.id || plans.length <= 1} title={plans.length <= 1 ? "Keep at least one pass plan" : "Delete pass plan"} onClick={() => deletePlan(plan)} style={{ minHeight: 30, padding: "5px 9px", fontSize: 11 }}>
+                  <Icon n="trash" s={11} />{deletingPlanId === plan.id ? "Deleting" : "Delete"}
+                </button>
+              </div>
             </div>
             <input className="input-field" value={plan.name} onChange={e => updatePlan(plan.id, { name: e.target.value })} placeholder="Plan name" />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>

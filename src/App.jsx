@@ -1485,6 +1485,11 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
             duration: test.duration || data.duration,
             maxMarks: test.maxMarks || data.maxMarks,
             sourceUrl: normalizeExternalTestUrl(test.sourceUrl),
+            examType: test.examType || data.examType,
+            examConfig: {
+              ...(data.examConfig || data.config || {}),
+              ...(test.examConfig || test.config || {}),
+            },
           };
         }
       } else if (test.sourceZip && (test.imagesMissing || !(test.subjects || []).some(s => (s.questions || []).some(q => q.images?.length)))) {
@@ -1507,6 +1512,11 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
         name: test.name || fullTest.name,
         title: test.name || fullTest.title,
         sourceUrl: normalizeExternalTestUrl(test.sourceUrl || fullTest.sourceUrl || ""),
+        examType: test.examType || fullTest.examType,
+        examConfig: {
+          ...(fullTest.examConfig || fullTest.config || {}),
+          ...(test.examConfig || test.config || {}),
+        },
       });
     } finally {
       setLoadingTestId(null);

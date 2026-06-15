@@ -141,127 +141,13 @@ function SectionInfoModal({ section, onClose }) {
   );
 }
 
-// ─── RESULTS PAGE ─────────────────────────────────────────────────────────────
-function ResultsPage({ test, subjects, allResponses, onClose }) {
-  const [viewSolution, setViewSolution] = useState(false);
-  const [lightbox, setLightbox] = useState(null);
-  const [activeSubj, setActiveSubj] = useState(0);
-
-  let correct=0, wrong=0, unattempted=0, totalMarks=0, scored=0;
-  subjects.forEach(s => s.questions.forEach(q => {
-    totalMarks += (q.marks?.cm||4);
-    const resp = allResponses[q.id] || [];
-    if (!resp.length) { unattempted++; return; }
-    const ca = (Array.isArray(q.correctAnswer)?q.correctAnswer:[q.correctAnswer]).map(Number);
-    const ua = resp.map(Number);
-    const ok = ca.length===ua.length && ca.every(x=>ua.includes(x));
-    if (ok) { correct++; scored+=(q.marks?.cm||4); }
-    else    { wrong++;   scored+=(q.marks?.im||-1); }
-  }));
-  const pct = totalMarks>0 ? Math.round((scored/totalMarks)*100) : 0;
-  const subj = subjects[activeSubj];
-  const offset = subjects.slice(0,activeSubj).reduce((a,s)=>a+s.questions.length,0);
-
-  return (
-    <div style={{ minHeight:"100vh",background:"#F3F4F6",fontFamily:"'Inter',sans-serif",color:"#111827" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#2563EB;border-radius:4px}`}</style>
-      <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>
-      {/* Header */}
-      <div style={{ background:"#1E3A8A",padding:"12px 28px",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
-        <div>
-          <div style={{ fontSize:15,fontWeight:700,color:"white" }}>{test.name} — Results</div>
-          <div style={{ fontSize:11,color:"#93C5FD",marginTop:2 }}>Test submitted on {new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}</div>
-        </div>
-        <button onClick={onClose} style={{ padding:"8px 18px",background:"rgba(255,255,255,0.15)",border:"1px solid rgba(255,255,255,0.3)",borderRadius:6,color:"white",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,fontWeight:600,display:"flex",alignItems:"center",gap:6 }}>
-          <I n="x" s={14}/>Close
-        </button>
-      </div>
-      <div style={{ maxWidth:1100,margin:"0 auto",padding:"24px 20px" }}>
-        {/* Score cards */}
-        <div style={{ display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:24 }}>
-          {[
-            {l:"Score",       v:`${scored}/${totalMarks}`, c:"#2563EB"},
-            {l:"Percentage",  v:`${pct}%`,                  c:pct>=50?"#10B981":"#EF4444"},
-            {l:"Correct",     v:correct,                    c:"#10B981"},
-            {l:"Wrong",       v:wrong,                      c:"#EF4444"},
-            {l:"Unattempted", v:unattempted,                 c:"#6B7280"},
-          ].map(s=>(
-            <div key={s.l} style={{ background:"white",border:"1px solid #E5E7EB",borderRadius:8,padding:16,textAlign:"center" }}>
-              <div style={{ fontSize:22,fontWeight:800,color:s.c }}>{s.v}</div>
-              <div style={{ fontSize:11,color:"#9CA3AF",marginTop:4,textTransform:"uppercase",letterSpacing:"0.5px" }}>{s.l}</div>
-            </div>
-          ))}
-        </div>
-        {/* Subject tabs */}
-        <div style={{ display:"flex",gap:6,marginBottom:16,flexWrap:"wrap",alignItems:"center" }}>
-          {subjects.map((s,i)=>(
-            <button key={i} onClick={()=>setActiveSubj(i)} style={{ padding:"7px 16px",borderRadius:6,border:`1px solid ${activeSubj===i?"#2563EB":"#D1D5DB"}`,background:activeSubj===i?"#EFF6FF":"white",color:activeSubj===i?"#2563EB":"#6B7280",fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:activeSubj===i?600:400 }}>{s.name}</button>
-          ))}
-          {test.hasSolution && (
-            <button onClick={()=>setViewSolution(!viewSolution)} style={{ marginLeft:"auto",padding:"7px 16px",borderRadius:6,border:`1px solid ${viewSolution?"#10B981":"#D1D5DB"}`,background:viewSolution?"#F0FDF4":"white",color:viewSolution?"#10B981":"#6B7280",fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600,display:"flex",alignItems:"center",gap:6 }}>
-              <I n="solution" s={13}/>{viewSolution?"Hide":"Show"} Solutions
-            </button>
-          )}
-        </div>
-        {/* Question cards */}
-        {subj.questions.map((q,qi)=>{
-          const resp = allResponses[q.id]||[];
-          const ca = (Array.isArray(q.correctAnswer)?q.correctAnswer:[q.correctAnswer]).map(Number);
-          const ua = resp.map(Number);
-          const attempted = ua.length>0;
-          const ok = attempted && ca.length===ua.length && ca.every(x=>ua.includes(x));
-          const marks = ok?(q.marks?.cm||4):attempted?(q.marks?.im||-1):0;
-          return (
-            <div key={q.id} style={{ background:"white",border:`1px solid ${ok?"#10B981":attempted?"#EF4444":"#E5E7EB"}`,borderRadius:8,marginBottom:10,overflow:"hidden" }}>
-              <div style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 16px",background:ok?"#F0FDF4":attempted?"#FEF2F2":"transparent" }}>
-                <div style={{ width:28,height:28,borderRadius:6,background:ok?"#10B981":attempted?"#EF4444":"#F3F4F6",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-                  {ok?<I n="check" s={14} c="white"/>:attempted?<I n="x" s={14} c="white"/>:<span style={{fontSize:12,color:"#9CA3AF"}}>—</span>}
-                </div>
-                <span style={{ fontSize:13,fontWeight:600,color:"#111827" }}>Q{offset+qi+1}</span>
-                <span style={{ fontSize:11,color:"#9CA3AF" }}>{q.type?.toUpperCase()||"MCQ"}</span>
-                <span style={{ fontSize:12,fontWeight:700,color:ok?"#10B981":attempted?"#EF4444":"#9CA3AF",marginLeft:"auto" }}>{marks>0?`+${marks}`:marks}</span>
-              </div>
-              {q.images?.length>0 && (
-                <div style={{ padding:"10px 16px 4px",display:"flex",gap:8,flexWrap:"wrap" }}>
-                  {q.images.map((src,i)=>(
-                    <img key={i} src={src} alt="" onClick={()=>setLightbox(src)} style={{ maxHeight:100,maxWidth:300,objectFit:"contain",borderRadius:4,border:"1px solid #E5E7EB",cursor:"pointer" }}/>
-                  ))}
-                </div>
-              )}
-              <div style={{ padding:"8px 16px 12px",display:"flex",gap:6,flexWrap:"wrap",alignItems:"center" }}>
-                <span style={{ fontSize:11,color:"#6B7280" }}>Correct:</span>
-                {ca.map(o=><span key={o} style={{ padding:"2px 10px",borderRadius:4,background:"#D1FAE5",color:"#065F46",fontSize:12,fontWeight:700 }}>{o}</span>)}
-                {attempted && <>
-                  <span style={{ fontSize:11,color:"#6B7280",marginLeft:8 }}>Your answer:</span>
-                  {ua.map(o=><span key={o} style={{ padding:"2px 10px",borderRadius:4,background:ok?"#D1FAE5":"#FEE2E2",color:ok?"#065F46":"#991B1B",fontSize:12,fontWeight:700 }}>{o}</span>)}
-                </>}
-                {!attempted && <span style={{ fontSize:11,color:"#9CA3AF" }}>Not attempted</span>}
-              </div>
-              {viewSolution && q.solutionImages?.length>0 && (
-                <div style={{ padding:"0 16px 12px",borderTop:"1px solid #F3F4F6",paddingTop:10 }}>
-                  <div style={{ fontSize:11,color:"#10B981",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.5px" }}>Solution</div>
-                  <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
-                    {q.solutionImages.map((src,i)=>(
-                      <img key={i} src={src} alt="" onClick={()=>setLightbox(src)} style={{ maxHeight:120,maxWidth:360,objectFit:"contain",borderRadius:4,border:"1px solid #D1FAE5",cursor:"pointer" }}/>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // ─── MAIN TEST INTERFACE ──────────────────────────────────────────────────────
 export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
   const subjects = normalizeTest(test);
   const totalQ = subjects.reduce((a,s)=>a+s.questions.length,0);
-  const examConfig = test.examConfig || {};
-  const examType = examConfig.examType || "other";
-  const isBonusSubject = (s) => String(s?.name || "").trim().toLowerCase() === "bonus";
+  const examConfig = test.examConfig || test.config || {};
+  const examType = String(examConfig.examType || test.examType || "other").trim().toLowerCase().replace(/\s+/g, "_");
+  const isBonusSubject = (s) => /\bbonus\b/i.test(String(s?.name || ""));
   const isSuprSubject = (s) => String(s?.name || "").toLowerCase().includes("supr");
   const isReapSubject = (s) => String(s?.name || "").toLowerCase().includes("reap");
   const bonusIndex = subjects.findIndex(isBonusSubject);
@@ -282,6 +168,7 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
   const [showSubmit, setShowSubmit]       = useState(false);
   const [showSecInfo, setShowSecInfo]     = useState(false);
   const [showResults, setShowResults]     = useState(false);
+  const [submitting, setSubmitting]       = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
   const [lightbox, setLightbox]           = useState(null);
   const [lazyImages, setLazyImages]       = useState({});
@@ -300,8 +187,8 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
   const activeQ       = activeSubject?.questions[qIdx];
   const activeQId     = activeQ?.id;
   const globalQNum    = subjects.slice(0,secIdx).reduce((a,s)=>a+s.questions.length,0) + qIdx + 1;
-  const timer         = useTimer((test.duration||180)*60, ()=>setShowResults(true), guardPaused || showInstructions || showResults);
-  const timingPaused  = guardPaused || showInstructions || showResults;
+  const timer         = useTimer((test.duration||180)*60, ()=>setShowResults(true), guardPaused || showInstructions || showResults || submitting);
+  const timingPaused  = guardPaused || showInstructions || showResults || submitting;
   const elapsedSecs   = (test.duration || 180) * 60 - timer.secs;
   const ugeeReapPhase = examType === "ugee" && elapsedSecs >= (examConfig.ugeeSuprMinutes || 60) * 60;
   const activeLazyImages = activeQId ? lazyImages[activeQId] : null;
@@ -653,6 +540,13 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
     if (showResults) saveAttemptOnce();
   }, [showResults, saveAttemptOnce]);
 
+  const submitAttempt = useCallback(async () => {
+    if (attemptSavedRef.current || submitting) return;
+    setShowSubmit(false);
+    setSubmitting(true);
+    await saveAttemptOnce();
+  }, [saveAttemptOnce, submitting]);
+
   function showTip(e, rows) {
     const rect = e.currentTarget.getBoundingClientRect();
     const width = 330;
@@ -905,8 +799,19 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
     );
   }
 
-  // ── RESULTS ────────────────────────────────────────────────────────────────
-  if (showResults) return <ResultsPage test={test} subjects={subjects} allResponses={responses} onClose={onExit}/>;
+  // ── SUBMITTING ─────────────────────────────────────────────────────────────
+  if (showResults || submitting) {
+    return (
+      <div style={{ height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#F7F7F7",fontFamily:"Roboto,Arial,Helvetica,sans-serif",color:"#333" }}>
+        <div style={{ background:"white",border:"1px solid #D1D5DB",borderRadius:8,padding:"28px 34px",boxShadow:"0 18px 60px rgba(0,0,0,0.14)",textAlign:"center" }}>
+          <div style={{ width:42,height:42,borderRadius:"50%",border:"4px solid #D7ECF8",borderTopColor:"#2389C2",margin:"0 auto 14px",animation:"spin .8s linear infinite" }}></div>
+          <div style={{ fontSize:18,fontWeight:700,marginBottom:6 }}>Saving your attempt</div>
+          <div style={{ fontSize:13,color:"#667085" }}>Opening analysis...</div>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        </div>
+      </div>
+    );
+  }
 
   // ── MAIN UI ────────────────────────────────────────────────────────────────
   return (
@@ -935,7 +840,7 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
         </div>
       )}
       <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>
-      {showSubmit && <SubmitModal counts={counts} onConfirm={()=>setShowResults(true)} onCancel={()=>setShowSubmit(false)}/>}
+      {showSubmit && <SubmitModal counts={counts} onConfirm={submitAttempt} onCancel={()=>setShowSubmit(false)}/>}
       {showSecInfo && <SectionInfoModal section={activeSubject} onClose={()=>setShowSecInfo(false)}/>}
 
       <div className="nta-top">

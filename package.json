@@ -1,37 +1,42 @@
 {
-    "name":  "rankbooster",
-    "version":  "1.0.0",
-    "private":  true,
-    "dependencies":  {
-                         "ajv":  "^8.12.0",
-                         "jszip":  "^3.10.1",
-                         "react":  "^18.2.0",
-                         "react-dom":  "^18.2.0",
-                         "react-scripts":  "5.0.1",
-                         "recharts":  "^2.12.7"
-                     },
-    "scripts":  {
-                    "start":  "react-scripts start",
-                    "build":  "react-scripts build"
-                },
-    "eslintConfig":  {
-                         "extends":  [
-                                         "react-app"
-                                     ]
-                     },
-    "browserslist":  {
-                         "production":  [
-                                            "\u003e0.2%",
-                                            "not dead",
-                                            "not op_mini all"
-                                        ],
-                         "development":  [
-                                             "last 1 chrome version",
-                                             "last 1 firefox version",
-                                             "last 1 safari version"
-                                         ]
-                     },
-    "resolutions":  {
-                        "ajv":  "^8.12.0"
-                    }
+  "name": "rankbooster",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "ajv": "^8.12.0",
+    "jszip": "^3.10.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "recharts": "^2.12.7"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "deploy": "npm run build && wrangler deploy",
+    "preview": "npm run build && wrangler dev"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "resolutions": {
+    "ajv": "^8.12.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.100.0"
+  }
 }

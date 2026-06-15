@@ -151,6 +151,12 @@ create table if not exists admin_events (
   created_at timestamptz not null default now()
 );
 
+create table if not exists app_settings (
+  key text primary key,
+  value_json jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists idx_attempts_user on attempts(user_id, submitted_at desc);
 create index if not exists idx_attempts_test on attempts(test_id);
 alter table tests add column if not exists source_url text;
@@ -179,3 +185,7 @@ on conflict (email) do update set
   role = excluded.role,
   avatar_initials = excluded.avatar_initials,
   updated_at = now();
+
+insert into app_settings (key, value_json) values
+('announcements', '{"banner":{"enabled":false,"text":"","variant":"info"},"homeAnnouncement":{"enabled":false,"title":"","body":""}}'::jsonb)
+on conflict (key) do nothing;

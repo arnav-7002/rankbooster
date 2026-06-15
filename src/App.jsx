@@ -21,7 +21,7 @@ button{touch-action:manipulation}
 .btn-primary,.btn-ghost,.btn-danger,.btn-success{min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:7px;border-radius:10px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;user-select:none;transition:transform 0.12s,opacity 0.15s,border-color 0.15s,background 0.15s,color 0.15s}
 .btn-primary{background:linear-gradient(135deg,#7C3AED,#6D28D9);color:white;border:none;padding:10px 22px;box-shadow:0 8px 18px rgba(124,58,237,0.18)}
 .btn-primary:hover{opacity:0.92;transform:translateY(-1px)}
-.btn-primary:active,.btn-ghost:active,.btn-danger:active,.btn-success:active{transform:translateY(0)}
+.btn-primary:active,.btn-ghost:active,.btn-danger:active,.btn-success:active,.report-tab:active,.subject-pill:active,.course-switch-card:active{transform:translateY(1px) scale(.985)}
 .btn-ghost{background:rgba(255,255,255,0.03);color:#CBD5E1;border:1px solid rgba(255,255,255,0.14);padding:9px 18px}
 .btn-ghost:hover{color:#F8FAFC;border-color:rgba(255,255,255,0.28);background:rgba(255,255,255,0.06)}
 .btn-danger{background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.28);padding:9px 18px}
@@ -102,6 +102,10 @@ button{touch-action:manipulation}
 .app-shell{display:flex;min-height:100vh;background:#080812}
 .app-main{flex:1;overflow-y:auto;padding:28px 32px;min-width:0}
 .app-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;gap:12px}
+.site-banner{display:flex;align-items:center;gap:9px;margin-bottom:16px;padding:11px 14px;border-radius:13px;font-size:13px;font-weight:700;animation:dropdownIn .22s cubic-bezier(.2,.8,.2,1)}
+.site-banner.banner-info{background:rgba(124,58,237,.14);border:1px solid rgba(167,139,250,.25);color:#C4B5FD}
+.site-banner.banner-success{background:rgba(16,185,129,.12);border:1px solid rgba(52,211,153,.24);color:#6EE7B7}
+.site-banner.banner-warning{background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.25);color:#FCD34D}
 .mobile-bottom-nav{display:none}
 .responsive-grid{display:grid;gap:16px}
 .course-card-grid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
@@ -113,8 +117,8 @@ button{touch-action:manipulation}
 .stat-up{background:rgba(16,185,129,0.15);color:#34D399}
 .stat-dn{background:rgba(239,68,68,0.15);color:#F87171}
 .tooltip-custom .recharts-tooltip-wrapper .recharts-default-tooltip{background:#1E1B4B!important;border:1px solid #4C1D95!important;border-radius:8px!important;font-size:12px!important}
-.admin-tabs{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:20px;background:rgba(255,255,255,0.04);padding:4px;border-radius:11px;width:min(100%,620px);overflow:hidden}
-.admin-tabs::before{content:"";position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - 20px)/4);border-radius:9px;background:rgba(124,58,237,0.25);transform:translateX(calc(var(--tab-index,0) * (100% + 4px)));transition:transform .24s cubic-bezier(.2,.8,.2,1),background .18s ease}
+.admin-tabs{position:relative;display:grid;grid-template-columns:repeat(var(--tab-count,4),1fr);gap:4px;margin-bottom:20px;background:rgba(255,255,255,0.04);padding:4px;border-radius:11px;width:min(100%,820px);overflow:hidden}
+.admin-tabs::before{content:"";position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - ((var(--tab-count,4) + 1) * 4px)) / var(--tab-count,4));border-radius:9px;background:rgba(124,58,237,0.25);transform:translateX(calc(var(--tab-index,0) * (100% + 4px)));transition:transform .24s cubic-bezier(.2,.8,.2,1),background .18s ease}
 .admin-tab{position:relative;z-index:1;padding:9px 14px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;transition:color 0.15s,transform .15s;border:none;font-family:'Outfit',sans-serif;background:transparent;color:#64748B;white-space:nowrap}
 .admin-tab.active{color:#A78BFA}
 .admin-tab:not(.active):hover{color:#CBD5E1;transform:translateY(-1px)}
@@ -181,7 +185,7 @@ button:disabled{cursor:not-allowed;opacity:.68}
 .pass-validity-pill{display:inline-flex;align-items:center;justify-content:center;height:24px;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);font-size:10px;font-weight:800;color:rgba(255,255,255,.86);white-space:nowrap}
 input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-text-fill-color:#E2E8F0!important;box-shadow:0 0 0 1000px #161622 inset!important;border:1px solid rgba(124,58,237,.34)!important;caret-color:#E2E8F0}
 @media (max-width:980px){.landing-wrap{padding:18px 18px 44px}.landing-main{grid-template-columns:1fr}.landing-auth-card{position:static!important}.landing-stat-grid{grid-template-columns:1fr!important}.landing-pass-stage{max-width:620px}.landing-pass-card{min-height:210px;border-radius:26px;padding:24px 28px}.landing-pass-card::after{right:-92px;top:28px;width:220px;height:220px}.pass-watermark{right:20px;bottom:24px;font-size:96px}.pass-brand-title{font-size:22px!important}.pass-title{font-size:20px!important}}
-@media (max-width:640px){.landing-wrap{padding:16px 14px 38px}.landing-pass-stage{width:100%;max-width:none;perspective:none}.landing-pass-card{min-height:0;border-radius:22px;padding:20px 18px;transform:none!important}.landing-pass-card::after{right:-94px;top:38px;width:190px;height:190px;box-shadow:inset 0 0 0 32px rgba(255,255,255,.045)}.landing-pass-card::before{background:radial-gradient(circle at 40% 12%,rgba(255,255,255,.2),transparent 34%)}.pass-content{min-height:178px!important}.pass-brand-row{gap:8px!important;margin-bottom:20px!important}.pass-brand-logo{width:32px!important;height:32px!important;border-radius:9px!important}.pass-brand-title{font-size:19px!important}.pass-brand-title span{font-size:11px!important;padding:2px 6px!important}.pass-title{font-size:18px!important}.pass-meta-row{align-items:flex-start!important;flex-direction:column;gap:14px!important;margin-top:28px!important}.pass-exam-row{padding-left:0!important}.pass-mini-chip{width:31px;height:31px;margin-left:-5px}.pass-mini-chip:hover{transform:translateY(-2px) scale(1.08)}.pass-validity{text-align:left!important}.pass-validity>div:last-child{justify-content:flex-start!important;max-width:100%!important}.pass-validity-pill{height:22px;padding:0 8px;font-size:9px}.landing-stat-grid{gap:10px!important}}
+@media (max-width:640px){.landing-wrap{padding:16px 14px 38px}.landing-pass-stage{width:100%;max-width:none;perspective:none}.landing-pass-card{min-height:0;border-radius:22px;padding:20px 18px;transform:none!important;transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s ease}.landing-pass-card:active{transform:scale(.985)!important;box-shadow:0 18px 48px rgba(49,46,129,.3),0 12px 28px rgba(0,0,0,.24)}.landing-hover-card:hover{transform:none}.landing-hover-card:active{transform:scale(.985);border-color:rgba(124,58,237,.3)}.landing-pass-card::after{right:-94px;top:38px;width:190px;height:190px;box-shadow:inset 0 0 0 32px rgba(255,255,255,.045)}.landing-pass-card::before{background:radial-gradient(circle at 40% 12%,rgba(255,255,255,.2),transparent 34%)}.pass-content{min-height:178px!important}.pass-brand-row{gap:8px!important;margin-bottom:20px!important}.pass-brand-logo{width:32px!important;height:32px!important;border-radius:9px!important}.pass-brand-title{font-size:19px!important}.pass-brand-title span{font-size:11px!important;padding:2px 6px!important}.pass-title{font-size:18px!important}.pass-meta-row{align-items:flex-start!important;flex-direction:column;gap:14px!important;margin-top:28px!important}.pass-exam-row{padding-left:0!important}.pass-mini-chip{width:31px;height:31px;margin-left:-5px}.pass-mini-chip:hover{transform:translateY(-2px) scale(1.08)}.pass-validity{text-align:left!important}.pass-validity>div:last-child{justify-content:flex-start!important;max-width:100%!important}.pass-validity-pill{height:22px;padding:0 8px;font-size:9px}.landing-stat-grid{gap:10px!important}.admin-tabs{width:100%;overflow-x:auto;grid-template-columns:repeat(var(--tab-count,4),minmax(138px,1fr))}.admin-tabs::before{display:none}.admin-tab.active{background:rgba(124,58,237,.24)}.site-banner{font-size:12px;line-height:1.45;margin-bottom:12px}.solution-layout{grid-template-columns:1fr;padding:14px}.solution-palette{position:static;max-height:none}.solution-grid{display:flex;overflow-x:auto;gap:8px;padding-bottom:3px}.solution-qbtn{min-width:40px}.report-top{padding:13px 14px;align-items:flex-start}.report-top>div:last-child{flex-wrap:wrap;justify-content:flex-end}.subject-strip{top:65px;padding:9px 14px}.notebook-card{width:145px;height:205px;padding:18px 14px}.modal{min-width:0;width:94vw;padding:20px;border-radius:16px}.responsive-two-col,.tests-layout{grid-template-columns:1fr!important;display:grid}.tests-course-rail{width:100%}.card{border-radius:13px}.btn-primary,.btn-ghost,.btn-danger,.btn-success{min-height:42px}}
 @media (max-width:390px){.landing-pass-card{padding:18px 15px;border-radius:20px}.pass-content{min-height:176px!important}.pass-brand-title{font-size:17px!important}.pass-title{font-size:17px!important}.pass-mini-chip{width:29px;height:29px;margin-left:-4px}.pass-validity-pill{height:21px;padding:0 7px}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
 @keyframes dropdownIn{from{opacity:0;transform:translateY(-6px) scale(.995)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -342,6 +346,11 @@ const PASS_PLANS = [
   { id: "six_month", name: "6 Month Pass", durationDays: 180, price: 999, originalPrice: 1499, label: "6 months", badge: "Value", note: "For full syllabus preparation." },
   { id: "yearly", name: "Yearly Pass", durationDays: 365, price: 1499, originalPrice: 2499, label: "1 year", badge: "Max", note: "For long-term test access." },
 ];
+
+const DEFAULT_SETTINGS = {
+  banner: { enabled: false, text: "", variant: "info" },
+  homeAnnouncement: { enabled: false, title: "", body: "" },
+};
 
 function passStatus(pass) {
   if (!pass?.expiresAt) return { active: false, label: "No active pass", daysLeft: 0 };
@@ -715,12 +724,13 @@ function LandingPassCard({ courses, totalTests }) {
   );
 }
 
-function PassPlanCards({ compact = false, activePass, onSelect }) {
+function PassPlanCards({ compact = false, activePass, onSelect, plans = PASS_PLANS }) {
   const status = passStatus(activePass);
   const canActivate = typeof onSelect === "function";
+  const visiblePlans = (plans && plans.length ? plans : PASS_PLANS).filter(p => p.isActive !== false);
   return (
     <div className="pass-plan-grid" style={{ gridTemplateColumns: compact ? "repeat(auto-fit,minmax(180px,1fr))" : "repeat(auto-fit,minmax(210px,1fr))" }}>
-      {PASS_PLANS.map(plan => {
+      {visiblePlans.map(plan => {
         const isActive = status.active && activePass?.planId === plan.id;
         const disabled = isActive || !canActivate;
         return (
@@ -750,7 +760,7 @@ function PassPlanCards({ compact = false, activePass, onSelect }) {
 }
 
 // ─── LOGIN PAGE ──────────────────────────────────────────────────────────────
-function LoginPage({ onLogin }) {
+function LoginPage({ onLogin, passPlans = PASS_PLANS }) {
   const [tab, setTab] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -916,7 +926,7 @@ function LoginPage({ onLogin }) {
             </div>
             <button className="btn-ghost" onClick={() => scrollToAuth("signup")}><Icon n="check-circle" s={14} />Create account</button>
           </div>
-          <PassPlanCards />
+          <PassPlanCards plans={passPlans} />
         </section>
 
         <section id="landing-courses" style={{ marginTop: 52 }}>
@@ -1182,7 +1192,7 @@ function Sidebar({ user, page, setPage, courses, userCourseIds, collapsed, setCo
 }
 
 // ─── COURSES PAGE ─────────────────────────────────────────────────────────────
-function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, onUserUpdate }) {
+function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, onUserUpdate, passPlans = PASS_PLANS }) {
   const myCourses = courses.filter(c => userCourseIds.includes(c.id));
   const available = courses.filter(c => !userCourseIds.includes(c.id));
   const [savedAttempts, setSavedAttempts] = useState([]);
@@ -1273,7 +1283,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
         </div>
         {!currentPassStatus.active && (
           <div style={{ opacity: passBusy ? 0.65 : 1, pointerEvents: passBusy ? "none" : "auto" }}>
-            <PassPlanCards compact activePass={currentPass} onSelect={activatePlan} />
+            <PassPlanCards compact activePass={currentPass} onSelect={activatePlan} plans={passPlans} />
           </div>
         )}
       </div>
@@ -2014,12 +2024,12 @@ function NotebookPage({ user }) {
 }
 
 // ─── ADMIN PAGE ───────────────────────────────────────────────────────────────
-function AdminPage({ allCourses, setAllCourses }) {
+function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSettings, setAppSettings }) {
   const [tab, setTab] = useState("courses");
   const [dbStatus, setDbStatus] = useState({ state: "checking", label: "Checking Supabase", detail: "Pinging database..." });
   const [adminUsers, setAdminUsers] = useState([]);
   const allUC = {};
-  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["import", "Folder Sync"], ["users", "Users"]];
+  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["announcements", "Announcements"], ["users", "Users"]];
   const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
 
   const checkDatabase = useCallback(async () => {
@@ -2093,7 +2103,7 @@ function AdminPage({ allCourses, setAllCourses }) {
       </div>
 
       {/* Tabs */}
-      <div className="admin-tabs" style={{ "--tab-index": tabIndex }}>
+      <div className="admin-tabs" style={{ "--tab-index": tabIndex, "--tab-count": adminTabs.length }}>
         {adminTabs.map(([k, v]) => (
           <button key={k} className={`admin-tab ${tab === k ? "active" : ""}`} onClick={() => setTab(k)}>{v}</button>
         ))}
@@ -2102,7 +2112,8 @@ function AdminPage({ allCourses, setAllCourses }) {
       <div key={tab} className="tab-panel">
         {tab === "courses" && <AdminCourses allCourses={allCourses} setAllCourses={setAllCourses} />}
         {tab === "tests" && <AdminTests allCourses={allCourses} setAllCourses={setAllCourses} />}
-        {tab === "import" && <ImportPanel allCourses={allCourses} setAllCourses={setAllCourses} />}
+        {tab === "plans" && <AdminPlans passPlans={passPlans} setPassPlans={setPassPlans} />}
+        {tab === "announcements" && <AdminAnnouncements appSettings={appSettings} setAppSettings={setAppSettings} />}
         {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} onRefresh={loadAdminUsers} />}
       </div>
     </div>
@@ -2142,8 +2153,6 @@ function AdminCourses({ allCourses, setAllCourses }) {
   async function saveEdit(course) {
     const original = allCourses.find(c => c.id === course.id);
     const cleaned = normalizeCourseForm(course);
-    const optimistic = allCourses.map(c => c.id === course.id ? { ...c, ...cleaned } : c);
-    setAllCourses(optimistic);
     try {
       const res = await fetch(`${IMPORTER_API}/courses`, {
         method: "POST",
@@ -2155,27 +2164,32 @@ function AdminCourses({ allCourses, setAllCourses }) {
         }),
       });
       const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Course could not be saved.");
       const saved = data.course ? { ...cleaned, ...data.course, testFolders: cleaned.testFolders || original?.testFolders || [] } : cleaned;
       const updated = allCourses.map(c => c.id === course.id ? saved : c);
       await refreshCoursesFromDisk(updated);
-    } catch {
-      setAllCourses(optimistic);
+      setEditModal(null);
+    } catch (err) {
+      alert(err.message || "Course save failed. Check Supabase connection.");
     }
-    setEditModal(null);
   }
 
   async function deleteCourse(id) {
     const course = allCourses.find(c => c.id === id);
-    const updated = allCourses.filter(c => c.id !== id);
-    setAllCourses(updated);
     if (course?.title) {
       try {
-        await fetch(`${IMPORTER_API}/courses`, {
+        const res = await fetch(`${IMPORTER_API}/courses`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ courseTitle: course.title }),
+          body: JSON.stringify({ courseId: course.id, courseTitle: course.title }),
         });
-      } catch {}
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.error) throw new Error(data?.error || "Course could not be deleted.");
+        await refreshCoursesFromDisk(allCourses.filter(c => c.id !== id));
+      } catch (err) {
+        alert(err.message || "Course delete failed. Check Supabase connection.");
+        return;
+      }
     }
     setDeleteConfirm(null);
   }
@@ -2201,16 +2215,20 @@ function AdminCourses({ allCourses, setAllCourses }) {
         tests: [],
       }))
     };
-    const updated = [...allCourses, nc];
-    setAllCourses(updated);
     try {
-      await fetch(`${IMPORTER_API}/courses`, {
+      const res = await fetch(`${IMPORTER_API}/courses`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(nc),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Course could not be created.");
+      const updated = [...allCourses.filter(c => c.id !== (data.course?.id || nc.id)), data.course || nc];
       await refreshCoursesFromDisk(updated);
-    } catch {}
+    } catch (err) {
+      alert(err.message || "Course create failed. Check Supabase connection.");
+      return;
+    }
     setAddModal(false);
     setForm({ title: "", subtitle: "", price: "", originalPrice: "", badge: "New", color: "#7C3AED", textColor: "#A78BFA", description: "", subjects: "Physics,Chemistry,Mathematics" });
     setFolderChoices({ full: true, part: true, chapter: false });
@@ -2374,30 +2392,37 @@ function AdminTests({ allCourses, setAllCourses }) {
   async function addFolder() {
     if (!newFolderName.trim()) return;
     const folderName = newFolderName.trim();
-    const updated = allCourses.map(c => c.id === selectedCourse
-      ? { ...c, testFolders: [...c.testFolders, { id: "f" + Date.now(), name: folderName, icon: newFolderIcon, tests: [] }] } : c);
-    saveAll(updated);
     try {
-      await fetch(`${IMPORTER_API}/folders`, {
+      const res = await fetch(`${IMPORTER_API}/folders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ courseTitle: course?.title, folderName }),
+        body: JSON.stringify({ courseId: course?.id, courseTitle: course?.title, folderName, icon: newFolderIcon }),
       });
-    } catch {}
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Folder could not be created.");
+      await refreshLibrary();
+    } catch (err) {
+      alert(err.message || "Folder create failed. Check Supabase connection.");
+      return;
+    }
     setAddFolderModal(false); setNewFolderName("");
   }
 
   async function deleteFolder(fid) {
     const folder = course?.testFolders?.find(f => f.id === fid);
-    saveAll(allCourses.map(c => c.id === selectedCourse ? { ...c, testFolders: c.testFolders.filter(f => f.id !== fid) } : c));
     if (course?.title && folder?.name) {
       try {
-        await fetch(`${IMPORTER_API}/folders`, {
+        const res = await fetch(`${IMPORTER_API}/folders`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ courseTitle: course.title, folderName: folder.name }),
+          body: JSON.stringify({ courseId: course.id, courseTitle: course.title, folderName: folder.name }),
         });
-      } catch {}
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.error) throw new Error(data?.error || "Folder could not be deleted.");
+        await refreshLibrary();
+      } catch (err) {
+        alert(err.message || "Folder delete failed. Check Supabase connection.");
+      }
     }
   }
 
@@ -2405,10 +2430,9 @@ function AdminTests({ allCourses, setAllCourses }) {
     if (!newTest.name.trim()) return;
     const sourceUrl = normalizeExternalTestUrl(newTest.sourceUrl);
     const t = { id: "t" + Date.now(), ...newTest, sourceUrl, configured: !!sourceUrl, duration: Number(newTest.duration), maxMarks: Number(newTest.maxMarks), attempted: false };
-    saveAll(allCourses.map(c => c.id === selectedCourse ? { ...c, testFolders: c.testFolders.map(f => f.id === fid ? { ...f, tests: [...f.tests, t] } : f) } : c));
     const folder = course?.testFolders?.find(f => f.id === fid);
     try {
-      await fetch(`${IMPORTER_API}/tests`, {
+      const res = await fetch(`${IMPORTER_API}/tests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2419,8 +2443,13 @@ function AdminTests({ allCourses, setAllCourses }) {
           examConfig: { examType: "other" },
         }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Test could not be added.");
       await refreshLibrary();
-    } catch {}
+    } catch (err) {
+      alert(err.message || "Test add failed. Check Supabase connection.");
+      return;
+    }
     setAddTestModal(null); setNewTest({ name: "", sourceUrl: "", duration: 180, maxMarks: 300, date: "", scheduledAt: "", scheduledUntil: "" });
   }
 
@@ -2481,7 +2510,7 @@ function AdminTests({ allCourses, setAllCourses }) {
     setConfigBusy(true);
     try {
       if (configModal.sourceUrl) {
-        await fetch(`${IMPORTER_API}/tests`, {
+        const res = await fetch(`${IMPORTER_API}/tests`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -2503,6 +2532,8 @@ function AdminTests({ allCourses, setAllCourses }) {
             scheduledUntil: configModal.scheduledUntil || "",
           }),
         });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.error) throw new Error(data?.error || "Test configuration could not be saved.");
       } else {
         await fetch(`${IMPORTER_API}/test-config`, {
           method: "POST",
@@ -2521,6 +2552,8 @@ function AdminTests({ allCourses, setAllCourses }) {
       }
       await refreshLibrary();
       setConfigModal(null);
+    } catch (err) {
+      alert(err.message || "Test configuration failed. Check Supabase connection.");
     } finally {
       setConfigBusy(false);
     }
@@ -2531,17 +2564,9 @@ function AdminTests({ allCourses, setAllCourses }) {
     const scheduledAt = clear ? "" : scheduleModal.scheduledAt || "";
     const scheduledUntil = clear ? "" : scheduleModal.scheduledUntil || "";
     setScheduleBusy(true);
-    const updated = allCourses.map(c => c.id === selectedCourse ? {
-      ...c,
-      testFolders: c.testFolders.map(f => f.id === scheduleModal.folderId ? {
-        ...f,
-        tests: f.tests.map(t => t.id === scheduleModal.testId ? { ...t, scheduledAt, scheduledUntil } : t),
-      } : f),
-    } : c);
-    saveAll(updated);
     try {
       if (scheduleModal.sourceUrl) {
-        await fetch(`${IMPORTER_API}/tests`, {
+        const res = await fetch(`${IMPORTER_API}/tests`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -2563,6 +2588,8 @@ function AdminTests({ allCourses, setAllCourses }) {
             scheduledUntil,
           }),
         });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.error) throw new Error(data?.error || "Schedule could not be saved.");
         await refreshLibrary();
       } else if (scheduleModal.sourceZip) {
         await fetch(`${IMPORTER_API}/test-config`, {
@@ -2582,6 +2609,8 @@ function AdminTests({ allCourses, setAllCourses }) {
         await refreshLibrary();
       }
       setScheduleModal(null);
+    } catch (err) {
+      alert(err.message || "Schedule save failed. Check Supabase connection.");
     } finally {
       setScheduleBusy(false);
     }
@@ -2592,16 +2621,19 @@ function AdminTests({ allCourses, setAllCourses }) {
     const test = folder?.tests?.find(t => t.id === tid);
     if (!folder || !test) return;
     setDeleteBusy(true);
-    saveAll(allCourses.map(c => c.id === selectedCourse ? { ...c, testFolders: c.testFolders.map(f => f.id === fid ? { ...f, tests: f.tests.filter(t => t.id !== tid) } : f) } : c));
     if (test?.sourceUrl) {
       try {
-        await fetch(`${IMPORTER_API}/tests`, {
+        const res = await fetch(`${IMPORTER_API}/tests`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ testId: test.id }),
         });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.error) throw new Error(data?.error || "Test could not be deleted.");
         await refreshLibraryAfterDelete();
-      } catch {}
+      } catch (err) {
+        alert(err.message || "Test delete failed. Check Supabase connection.");
+      }
     } else if (course?.title && folder?.name && test?.sourceZip) {
       try {
         await fetch(`${IMPORTER_API}/tests`, {
@@ -2828,6 +2860,20 @@ function AdminTests({ allCourses, setAllCourses }) {
             </div>
             <div style={{ display: "grid", gap: 12 }}>
               <div>
+                <label style={{ fontSize: 11, color: "#64748B", marginBottom: 5, display: "block" }}>Test Name</label>
+                <input className="input-field" value={configModal.testName} onChange={e => setConfigModal(p => ({ ...p, testName: e.target.value }))} placeholder="Display name shown to students" />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: "#64748B", marginBottom: 5, display: "block" }}>Duration (min)</label>
+                  <input className="input-field" type="number" value={configModal.duration} onChange={e => setConfigModal(p => ({ ...p, duration: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: "#64748B", marginBottom: 5, display: "block" }}>Max Marks</label>
+                  <input className="input-field" type="number" value={configModal.maxMarks} onChange={e => setConfigModal(p => ({ ...p, maxMarks: e.target.value }))} />
+                </div>
+              </div>
+              <div>
                 <label style={{ fontSize: 11, color: "#64748B", marginBottom: 5, display: "block" }}>Exam Type</label>
                 <select className="select-field" style={{ width: "100%", minHeight: 42 }} value={configModal.examType} onChange={e => setConfigModal(p => ({ ...p, examType: e.target.value }))}>
                   <option value="bitsat">BITSAT</option>
@@ -2866,6 +2912,162 @@ function AdminTests({ allCourses, setAllCourses }) {
           </div>
         )}
       </Modal>
+    </div>
+  );
+}
+
+function AdminPlans({ passPlans, setPassPlans }) {
+  const [plans, setPlans] = useState(passPlans?.length ? passPlans : PASS_PLANS);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { setPlans(passPlans?.length ? passPlans : PASS_PLANS); }, [passPlans]);
+
+  function updatePlan(id, patch) {
+    setPlans(prev => prev.map(p => p.id === id ? { ...p, ...patch } : p));
+  }
+
+  function addPlan() {
+    const id = `plan_${Date.now()}`;
+    setPlans(prev => [...prev, { id, name: "New Pass", durationDays: 30, price: 0, originalPrice: 0, label: "30 days", badge: "New", note: "Describe this pass.", isActive: true, sortOrder: prev.length + 1 }]);
+  }
+
+  async function savePlans() {
+    setSaving(true);
+    try {
+      const normalized = plans.map((p, idx) => ({
+        ...p,
+        durationDays: Number(p.durationDays || 1),
+        price: Number(p.price || 0),
+        originalPrice: Number(p.originalPrice || p.price || 0),
+        label: p.label || `${p.durationDays || 1} days`,
+        sortOrder: idx + 1,
+      }));
+      const res = await fetch(`${IMPORTER_API}/pass-plans`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plans: normalized }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Plans could not be saved.");
+      setPassPlans(data.plans?.length ? data.plans : normalized);
+      setPlans(data.plans?.length ? data.plans : normalized);
+    } catch (err) {
+      alert(err.message || "Pass pricing save failed.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fade-in">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14 }}>
+        <div>
+          <div style={{ color: "#E2E8F0", fontSize: 15, fontWeight: 800 }}>Pass Pricing</div>
+          <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>These cards control the landing page and student pass purchase options.</div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn-ghost" onClick={addPlan}><Icon n="plus" s={13} />Add Plan</button>
+          <button className="btn-primary" disabled={saving} onClick={savePlans}>{saving ? "Saving..." : "Save Pricing"}</button>
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 12 }}>
+        {plans.map((plan, idx) => (
+          <div key={plan.id} className="card landing-hover-card" style={{ display: "grid", gap: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+              <span className="tag tag-purple">#{idx + 1}</span>
+              <label style={{ display: "flex", alignItems: "center", gap: 7, color: "#94A3B8", fontSize: 12 }}>
+                <input type="checkbox" checked={plan.isActive !== false} onChange={e => updatePlan(plan.id, { isActive: e.target.checked })} />
+                Active
+              </label>
+            </div>
+            <input className="input-field" value={plan.name} onChange={e => updatePlan(plan.id, { name: e.target.value })} placeholder="Plan name" />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <input className="input-field" type="number" value={plan.price} onChange={e => updatePlan(plan.id, { price: e.target.value })} placeholder="Price" />
+              <input className="input-field" type="number" value={plan.originalPrice} onChange={e => updatePlan(plan.id, { originalPrice: e.target.value })} placeholder="Original" />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <input className="input-field" type="number" value={plan.durationDays} onChange={e => updatePlan(plan.id, { durationDays: e.target.value, label: `${e.target.value} days` })} placeholder="Days" />
+              <input className="input-field" value={plan.badge || ""} onChange={e => updatePlan(plan.id, { badge: e.target.value })} placeholder="Badge" />
+            </div>
+            <textarea className="input-field" value={plan.note || ""} onChange={e => updatePlan(plan.id, { note: e.target.value })} placeholder="Short description" rows={3} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AdminAnnouncements({ appSettings, setAppSettings }) {
+  const [draft, setDraft] = useState({ ...DEFAULT_SETTINGS, ...(appSettings || {}) });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { setDraft({ ...DEFAULT_SETTINGS, ...(appSettings || {}) }); }, [appSettings]);
+
+  function patch(section, value) {
+    setDraft(prev => ({ ...prev, [section]: { ...prev[section], ...value } }));
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      const res = await fetch(`${IMPORTER_API}/settings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings: draft }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Announcements could not be saved.");
+      setAppSettings({ ...DEFAULT_SETTINGS, ...(data.settings || draft) });
+    } catch (err) {
+      alert(err.message || "Announcement save failed.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fade-in">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14 }}>
+        <div>
+          <div style={{ color: "#E2E8F0", fontSize: 15, fontWeight: 800 }}>Announcements</div>
+          <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>One banner appears site-wide. One card appears on the logged-in home.</div>
+        </div>
+        <button className="btn-primary" disabled={saving} onClick={save}>{saving ? "Saving..." : "Save Announcements"}</button>
+      </div>
+      <div className="responsive-two-col">
+        <div className="card landing-hover-card">
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
+            <div>
+              <div style={{ color: "#F1F5F9", fontSize: 14, fontWeight: 800 }}>Top Website Banner</div>
+              <div style={{ color: "#64748B", fontSize: 12 }}>Shows above every logged-in page.</div>
+            </div>
+            <label className="tag tag-purple" style={{ cursor: "pointer" }}>
+              <input type="checkbox" checked={!!draft.banner?.enabled} onChange={e => patch("banner", { enabled: e.target.checked })} style={{ marginRight: 6 }} />
+              Enabled
+            </label>
+          </div>
+          <textarea className="input-field" rows={4} value={draft.banner?.text || ""} onChange={e => patch("banner", { text: e.target.value })} placeholder="Example: New BITSAT mock opens tonight at 8 PM." />
+          <select className="select-field" style={{ width: "100%", marginTop: 10 }} value={draft.banner?.variant || "info"} onChange={e => patch("banner", { variant: e.target.value })}>
+            <option value="info">Info purple</option>
+            <option value="success">Success green</option>
+            <option value="warning">Warning amber</option>
+          </select>
+        </div>
+        <div className="card landing-hover-card">
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
+            <div>
+              <div style={{ color: "#F1F5F9", fontSize: 14, fontWeight: 800 }}>Home Announcement</div>
+              <div style={{ color: "#64748B", fontSize: 12 }}>Shows as a card on dashboard/home.</div>
+            </div>
+            <label className="tag tag-purple" style={{ cursor: "pointer" }}>
+              <input type="checkbox" checked={!!draft.homeAnnouncement?.enabled} onChange={e => patch("homeAnnouncement", { enabled: e.target.checked })} style={{ marginRight: 6 }} />
+              Enabled
+            </label>
+          </div>
+          <input className="input-field" value={draft.homeAnnouncement?.title || ""} onChange={e => patch("homeAnnouncement", { title: e.target.value })} placeholder="Title" style={{ marginBottom: 10 }} />
+          <textarea className="input-field" rows={5} value={draft.homeAnnouncement?.body || ""} onChange={e => patch("homeAnnouncement", { body: e.target.value })} placeholder="Longer announcement for students..." />
+        </div>
+      </div>
     </div>
   );
 }
@@ -3003,165 +3205,8 @@ function SettingsPage({ user, onLogout, onUserUpdate }) {
   );
 }
 
-// ─── AUTO IMPORT PANEL ─────────────────────────────────────────────────────────
-function ImportPanel({ allCourses, setAllCourses }) {
-  const [loading, setLoading] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState(null);
-  const [err, setErr] = useState("");
-  const [deletingTest, setDeletingTest] = useState(null);
-
-  const syncLibrary = useCallback(async () => {
-    setLoading(true); setErr("");
-    try {
-      const res = await fetch(`${IMPORTER_API}/library`).catch(() => null);
-      if (!res?.ok) {
-        setErr("Folder sync needs start-importer.bat running.");
-        return;
-      }
-      const data = await res.json();
-      setAllCourses(data.courses || []);
-      setLastRefresh(new Date());
-    } catch {
-      setErr("Could not sync folder library.");
-    } finally {
-      setLoading(false);
-    }
-  }, [setAllCourses]);
-
-  useEffect(() => { syncLibrary(); }, [syncLibrary]);
-
-  async function deleteSyncedTest(course, folder, test) {
-    if (!test?.sourceZip) return;
-    if (!window.confirm(`Delete "${test.name}" from ${folder.name}?`)) return;
-    setDeletingTest(test.id);
-    setErr("");
-    try {
-      const res = await fetch(`${IMPORTER_API}/tests`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          courseTitle: course.folderName || course.title,
-          folderName: folder.name,
-          zipName: test.sourceZip,
-        }),
-      }).catch(() => null);
-      if (!res?.ok) {
-        setErr("Could not delete test. Start importer and try again.");
-        return;
-      }
-      await syncLibrary();
-    } finally {
-      setDeletingTest(null);
-    }
-  }
-
-  const folderCourses = allCourses.filter(c => c.folderLibrary);
-  const totalTests = folderCourses.reduce((a, c) => a + (c.testFolders || []).reduce((b, f) => b + (f.tests || []).length, 0), 0);
-
-  return (
-    <div>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <div>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: "#F1F5F9", margin: 0 }}>Folder Sync</h3>
-          <p style={{ fontSize: 12, color: "#475569", margin: "4px 0 0" }}>Drop ZIPs or converted test files into course folders. No pending queue, no manual import.</p>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {lastRefresh && <span style={{ fontSize: 11, color: "#475569" }}>Checked {lastRefresh.toLocaleTimeString()}</span>}
-          <button className="btn-ghost" onClick={syncLibrary} disabled={loading} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Icon n="repeat" s={13} />{loading ? "Syncing..." : "Sync Now"}
-          </button>
-        </div>
-      </div>
-
-      {err && (
-        <div style={{ marginBottom: 16, padding: "10px 14px", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 9, fontSize: 12, color: "#F87171", display: "flex", alignItems: "center", gap: 8 }}>
-          <Icon n="alert-tri" s={15} />{err}
-        </div>
-      )}
-
-      {/* Info card */}
-      <div style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", gap: 14, alignItems: "flex-start" }}>
-        <Icon n="info" s={18} c="#A78BFA" style={{ marginTop: 2, flexShrink: 0 }} />
-        <div style={{ fontSize: 13, color: "#94A3B8", lineHeight: 1.7 }}>
-          <strong style={{ color: "#A78BFA" }}>Folder structure:</strong><br />
-          <code style={{ color: "#34D399", fontSize: 12 }}>tests-import/courses/Course Name/course.json</code><br />
-          <code style={{ color: "#34D399", fontSize: 12 }}>tests-import/courses/Course Name/Full Tests/MOCK 1.rbtest.summary.json</code><br />
-          <code style={{ color: "#34D399", fontSize: 12 }}>tests-import/courses/Course Name/Full Tests/MOCK 1.rbtest.images/</code><br />
-          Create courses and folders from the website, then put ZIPs or converted files inside those folders. The web app reads them directly.
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 18 }}>
-        {[
-          ["Folder Courses", folderCourses.length, "courses"],
-          ["Synced Tests", totalTests, "tests"],
-          ["Local Path", "tests-import/courses", "folder"],
-        ].map(([label, value, icon]) => (
-          <div key={label} className="card" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Icon n={icon} s={18} c="#A78BFA" />
-            <div>
-              <div style={{ fontSize: 16, color: "#F1F5F9", fontWeight: 700 }}>{value}</div>
-              <div style={{ fontSize: 11, color: "#64748B" }}>{label}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {folderCourses.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "48px 20px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12 }}>
-          <Icon n="folder" s={40} c="#334155" style={{ margin: "0 auto 12px", display: "block" }} />
-          <div style={{ fontSize: 14, color: "#64748B", marginBottom: 6 }}>No folder courses synced yet</div>
-          <div style={{ fontSize: 12, color: "#334155" }}>Create a course or run <code style={{ color: "#475569" }}>start-importer.bat</code> and click Sync Now</div>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {folderCourses.map(course => (
-            <div key={course.id || course.title} className="card">
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                <Icon n="courses" s={18} c={course.textColor || "#A78BFA"} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ color: "#F1F5F9", fontSize: 14, fontWeight: 700 }}>{course.title}</div>
-                  <div style={{ color: "#475569", fontSize: 11 }}>tests-import/courses/{course.folderName || course.title}</div>
-                </div>
-                <span className="tag tag-purple">{(course.testFolders || []).reduce((a, f) => a + (f.tests || []).length, 0)} tests</span>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 8 }}>
-                {(course.testFolders || []).map(folder => (
-                  <div key={folder.id || folder.name} style={{ padding: 10, borderRadius: 8, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#CBD5E1", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
-                      <Icon n="folder" s={13} c="#64748B" />{folder.name}
-                    </div>
-                    <div style={{ color: "#64748B", fontSize: 11 }}>{(folder.tests || []).length} synced test(s)</div>
-                    {(folder.tests || []).length > 0 && (
-                      <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                        {(folder.tests || []).map(test => (
-                          <div key={test.id || test.sourceZip || test.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: 8, background: "rgba(8,8,18,0.45)", border: "1px solid rgba(255,255,255,0.045)" }}>
-                            <Icon n="clipboard" s={12} c="#64748B" />
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div title={test.name} style={{ color: "#CBD5E1", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{test.name}</div>
-                              <div style={{ color: "#334155", fontSize: 10 }}>{test.sourceZip || "manual"}</div>
-                            </div>
-                            <button className="btn-danger" disabled={deletingTest === test.id} style={{ padding: "6px 9px", minHeight: 28, fontSize: 10 }} onClick={() => deleteSyncedTest(course, folder, test)}>
-                              <Icon n="trash" s={10} />{deletingTest === test.id ? "..." : "Delete"}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── DASHBOARD (user home) ────────────────────────────────────────────────────
-function DashboardPage({ user, courses, userCourseIds, wrongQuestions, setPage }) {
+function DashboardPage({ user, courses, userCourseIds, wrongQuestions, setPage, announcement }) {
   const myCourses = courses.filter(c => userCourseIds.includes(c.id));
   const [savedAttempts, setSavedAttempts] = useState([]);
   const [notebooks, setNotebooks] = useState([]);
@@ -3209,6 +3254,19 @@ function DashboardPage({ user, courses, userCourseIds, wrongQuestions, setPage }
 
   return (
     <div className="fade-in">
+      {announcement?.enabled && (announcement.title || announcement.body) && (
+        <div className="card landing-hover-card" style={{ marginBottom: 16, borderColor: "rgba(167,139,250,0.22)", background: "linear-gradient(135deg,rgba(124,58,237,0.14),rgba(255,255,255,0.035))" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(124,58,237,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon n="zap" s={17} c="#A78BFA" />
+            </div>
+            <div>
+              <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 800 }}>{announcement.title || "Announcement"}</div>
+              <div style={{ color: "#94A3B8", fontSize: 13, lineHeight: 1.55, marginTop: 4 }}>{announcement.body}</div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="card responsive-two-col" style={{ padding: 24, marginBottom: 16, alignItems: "center", overflow: "hidden" }}>
         <div>
           <h2 style={{ fontSize: 24, fontWeight: 750, color: "#F1F5F9", letterSpacing: "-0.3px", marginBottom: 4 }}>Hi, {user.name.split(" ")[0]}!</h2>
@@ -3764,6 +3822,8 @@ export default function App() {
   const [wrongQuestions, setWrongQuestions] = useState({});
   const [activeTest, setActiveTest] = useState(null);
   const [activeReport, setActiveReport] = useState(null);
+  const [passPlans, setPassPlans] = useState(PASS_PLANS);
+  const [appSettings, setAppSettings] = useState(DEFAULT_SETTINGS);
 
   const syncFolderLibrary = useCallback(async () => {
     const res = await fetch(`${IMPORTER_API}/library`).catch(() => null);
@@ -3772,11 +3832,23 @@ export default function App() {
     setCourses(data.courses || []);
   }, []);
 
+  const syncAdminConfig = useCallback(async () => {
+    const [planRes, settingsRes] = await Promise.all([
+      fetch(`${IMPORTER_API}/pass-plans`, { cache: "no-store" }).catch(() => null),
+      fetch(`${IMPORTER_API}/settings`, { cache: "no-store" }).catch(() => null),
+    ]);
+    const planData = planRes?.ok ? await planRes.json().catch(() => null) : null;
+    const settingsData = settingsRes?.ok ? await settingsRes.json().catch(() => null) : null;
+    if (planData?.plans?.length) setPassPlans(planData.plans);
+    if (settingsData?.settings) setAppSettings({ ...DEFAULT_SETTINGS, ...settingsData.settings });
+  }, []);
+
   useEffect(() => {
     initStore();
     setWrongQuestions({});
     syncFolderLibrary();
-  }, [syncFolderLibrary]);
+    syncAdminConfig();
+  }, [syncFolderLibrary, syncAdminConfig]);
 
   useEffect(() => {
     let cancelled = false;
@@ -3854,7 +3926,7 @@ export default function App() {
   if (!user) return (
     <>
       <style>{GS}</style>
-      <LoginPage onLogin={handleLogin} />
+      <LoginPage onLogin={handleLogin} passPlans={passPlans} />
     </>
   );
 
@@ -3878,12 +3950,12 @@ export default function App() {
   const renderPage = () => {
     if (activeReport) return <TestAttemptReport report={activeReport} user={user} onBack={() => setActiveReport(null)} />;
     switch (page) {
-      case "dashboard": return <DashboardPage user={user} courses={courses} userCourseIds={userCourseIds} wrongQuestions={wrongQuestions} setPage={setPage} />;
-      case "courses": return <CoursesPage courses={courses} userCourseIds={userCourseIds} setUserCourseIds={setUserCourseIds} userId={user.id} user={user} onUserUpdate={setUser} />;
+      case "dashboard": return <DashboardPage user={user} courses={courses} userCourseIds={userCourseIds} wrongQuestions={wrongQuestions} setPage={setPage} announcement={appSettings.homeAnnouncement} />;
+      case "courses": return <CoursesPage courses={courses} userCourseIds={userCourseIds} setUserCourseIds={setUserCourseIds} userId={user.id} user={user} onUserUpdate={setUser} passPlans={passPlans} />;
       case "tests": return <TestsPage courses={courses} setCoursesView={setCourses} userCourseIds={userCourseIds} onStartTest={setActiveTest} onSetPage={setPage} onViewAnalysis={setActiveReport} user={user} />;
       case "analysis": return <AnalysisPage courses={courses} userCourseIds={userCourseIds} user={user} />;
       case "notebook": return <NotebookPage user={user} />;
-      case "admin": return user.role === "admin" ? <AdminPage allCourses={courses} setAllCourses={setCourses} /> : null;
+      case "admin": return user.role === "admin" ? <AdminPage allCourses={courses} setAllCourses={setCourses} passPlans={passPlans} setPassPlans={setPassPlans} appSettings={appSettings} setAppSettings={setAppSettings} /> : null;
       case "settings": return <SettingsPage user={user} onUserUpdate={setUser} onLogout={handleLogout} />;
       default: return null;
     }
@@ -3895,6 +3967,12 @@ export default function App() {
       <div className="app-shell">
         {!activeReport && <Sidebar user={user} page={page} setPage={setPage} courses={courses} userCourseIds={userCourseIds} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} onLogout={handleLogout} />}
         <div className="app-main" style={activeReport ? { padding: 0 } : undefined}>
+          {!activeReport && appSettings.banner?.enabled && appSettings.banner?.text && (
+            <div className={`site-banner banner-${appSettings.banner.variant || "info"}`}>
+              <Icon n={appSettings.banner.variant === "success" ? "check-circle" : appSettings.banner.variant === "warning" ? "alert-tri" : "zap"} s={15} />
+              <span>{appSettings.banner.text}</span>
+            </div>
+          )}
           {/* Top bar */}
           {!activeReport && <div className="app-topbar">
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>

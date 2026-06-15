@@ -13,6 +13,8 @@ async function saveProfile(env, userId, profile) {
 async function upsertCourse(env, course) {
   const id = cleanId(course.id || slugify(course.title || course.folderName));
   const title = String(course.title || course.folderName || id);
+  const existing = await supabaseRequest(env, `courses?select=id&id=${eq(id)}&limit=1`).catch(() => []);
+  if (existing?.[0]?.id) return id;
   await upsertRows(env, "courses", {
     id, slug: slugify(title), title, subtitle: course.subtitle || "", description: course.description || "",
     badge: course.badge || "", price_inr: Number(course.price || 0), original_price_inr: Number(course.originalPrice || course.price || 0),

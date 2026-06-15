@@ -2014,22 +2014,22 @@ function NotebookPage({ user }) {
 // ─── ADMIN PAGE ───────────────────────────────────────────────────────────────
 function AdminPage({ allCourses, setAllCourses }) {
   const [tab, setTab] = useState("courses");
-  const [dbStatus, setDbStatus] = useState({ state: "checking", label: "Checking Turso DB", detail: "Pinging database..." });
+  const [dbStatus, setDbStatus] = useState({ state: "checking", label: "Checking Supabase", detail: "Pinging database..." });
   const allUsers = LS.get("users") || [];
   const allUC = LS.get("userCourses") || {};
   const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["import", "Folder Sync"], ["users", "Users"]];
   const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
 
   const checkDatabase = useCallback(async () => {
-    setDbStatus({ state: "checking", label: "Checking Turso DB", detail: "Pinging database..." });
+    setDbStatus({ state: "checking", label: "Checking Supabase", detail: "Pinging database..." });
     const started = Date.now();
     const res = await fetch(`${IMPORTER_API}/health`, { cache: "no-store" }).catch(() => null);
     const data = res ? await res.json().catch(() => null) : null;
     if (res?.ok && data?.ok) {
-      setDbStatus({ state: "connected", label: "Turso DB Connected", detail: `Live in ${data.latencyMs ?? Date.now() - started} ms` });
+      setDbStatus({ state: "connected", label: "Supabase Connected", detail: `Live in ${data.latencyMs ?? Date.now() - started} ms` });
       return;
     }
-    setDbStatus({ state: "error", label: "Turso DB Not Connected", detail: data?.message || "Health check endpoint failed" });
+    setDbStatus({ state: "error", label: "Supabase Not Connected", detail: data?.message || "Health check endpoint failed" });
   }, []);
 
   useEffect(() => { checkDatabase(); }, [checkDatabase]);

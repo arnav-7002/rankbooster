@@ -1,11 +1,9 @@
-﻿import { client, json, cleanId } from "./_shared.js";
+import { json, userIdFrom, cleanId, supabaseRequest, eq } from "./_shared.js";
 export async function onRequestOptions() { return json({ ok: true }); }
 export async function onRequestGet({ request, env }) {
-  const db = client(env);
   const url = new URL(request.url);
-  const userId = cleanId(url.searchParams.get("offlineId"));
+  const userId = userIdFrom({ offlineId: url.searchParams.get("offlineId"), email: url.searchParams.get("email") });
   const attemptId = cleanId(url.searchParams.get("attemptId"));
-  const row = await db.execute({ sql: "SELECT detail_json FROM attempts WHERE user_id=? AND id=?", args: [userId, attemptId] });
-  const attempt = row.rows[0] ? JSON.parse(row.rows[0].detail_json || "{}") : null;
-  return json({ attempt });
+  const rows = userId && attemptId ? await supabaseRequest(env, `attempts?select=detail_json&user_id=${eq(userId)}&id=${eq(attemptId)}&limit=1`).catch(() => []) : [];
+  return json({ attempt: rows[0]?.detail_json || null });
 }

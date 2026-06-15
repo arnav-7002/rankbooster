@@ -20,7 +20,7 @@ export async function onRequestGet({ request, env }) {
         price: row.price_inr || 0,
         originalPrice: row.original_price_inr || row.price_inr || 0,
         badge: row.badge || "New",
-        color: row.color || "#7C3AED",
+        color: row.accent_color || "#7C3AED",
         textColor: row.text_color || "#A78BFA",
         subjects: row.subjects_json || [],
         testFolders: (row.folders_json || []).map(f => ({ id: f.id || f.name, name: f.name, icon: f.icon || "folder", tests: [] })),

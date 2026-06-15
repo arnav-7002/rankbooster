@@ -2195,7 +2195,7 @@ function AdminCourses({ allCourses, setAllCourses }) {
   }
 
   async function addCourse() {
-    if (!form.title || !form.price) return;
+    if (!form.title.trim()) return;
     const selectedFolders = [
       folderChoices.full && "Full Tests",
       folderChoices.part && "Part Tests",
@@ -2204,7 +2204,7 @@ function AdminCourses({ allCourses, setAllCourses }) {
     ].filter(Boolean);
     const uniqueFolders = [...new Set(selectedFolders)];
     const nc = {
-      id: Date.now(), title: form.title, subtitle: form.subtitle, price: Number(form.price), originalPrice: Number(form.originalPrice) || Number(form.price),
+      id: Date.now(), title: form.title.trim(), subtitle: form.subtitle, price: Number(form.price || 0), originalPrice: Number(form.originalPrice || form.price || 0),
       badge: form.badge, color: form.color, textColor: form.textColor, description: form.description,
       subjects: form.subjects.split(",").map(s => s.trim()).filter(Boolean),
       enrolledCount: 0, rating: 4.5,
@@ -2255,7 +2255,7 @@ function AdminCourses({ allCourses, setAllCourses }) {
               </div>
               <div style={{ fontSize: 12, color: "#64748B", marginBottom: 6 }}>{course.subtitle}</div>
               <div style={{ display: "flex", gap: 16, fontSize: 12, color: "#475569" }}>
-                <span style={{display:"flex",alignItems:"center",gap:4}}><Icon n="price-tag" s={12} c="#64748B" /> ₹{course.price.toLocaleString()} <span style={{ textDecoration: "line-through", opacity: 0.5 }}>₹{course.originalPrice?.toLocaleString()}</span></span>
+                <span style={{display:"flex",alignItems:"center",gap:4}}><Icon n="price-tag" s={12} c="#64748B" /> Included in pass</span>
                 <span style={{display:"flex",alignItems:"center",gap:4}}><Icon n="clipboard" s={12} c="#64748B" />{course.testFolders.reduce((a, f) => a + f.tests.length, 0)} tests</span>
                 <span style={{display:"flex",alignItems:"center",gap:4}}><Icon n="users" s={12} c="#64748B" /> {course.enrolledCount || 0} enrolled</span>
                 <span style={{display:"flex",alignItems:"center",gap:4}}><Icon n="star" s={12} c="#F59E0B" /> {course.rating || 4.5}</span>
@@ -2334,8 +2334,8 @@ function CourseForm({ form, setForm, onSave, saveLabel = "Save Changes", childre
           <input className="input-field" value={form.badge || ""} onChange={e => F("badge", e.target.value)} placeholder="Bestseller" />
         </div>
         <div>
-          <label style={{ fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" }}>Price (₹) *</label>
-          <input className="input-field" type="number" value={form.price || ""} onChange={e => F("price", e.target.value)} placeholder="1999" />
+          <label style={{ fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" }}>Course Price (optional)</label>
+          <input className="input-field" type="number" value={form.price || ""} onChange={e => F("price", e.target.value)} placeholder="Leave empty for pass-only access" />
         </div>
         <div>
           <label style={{ fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" }}>Original Price (₹)</label>

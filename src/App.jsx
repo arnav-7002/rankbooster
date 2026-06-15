@@ -3756,6 +3756,7 @@ function TestAttemptReport({ report, user, onBack }) {
 // ─── ROOT APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [page, setPage] = useState("courses");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [courses, setCourses] = useState([]);
@@ -3776,6 +3777,25 @@ export default function App() {
     setWrongQuestions({});
     syncFolderLibrary();
   }, [syncFolderLibrary]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${IMPORTER_API}/auth`, { cache: "no-store" })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (cancelled) return;
+        if (data?.user) {
+          const syncedCourseIds = (data.coursesOpted || []).map(c => c.id).filter(Boolean);
+          setUser(ensureOfflineUser({ ...data.user, syncedCourseIds, pass: data.pass || data.user.pass }));
+          setUserCourseIds(syncedCourseIds);
+          const hashPage = (window.location.hash || "#dashboard").replace("#", "") || "dashboard";
+          setPage(VALID_PAGES.includes(hashPage) ? hashPage : "dashboard");
+        }
+      })
+      .catch(() => null)
+      .finally(() => { if (!cancelled) setAuthChecked(true); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const id = setInterval(syncFolderLibrary, 60000);
@@ -3816,12 +3836,20 @@ export default function App() {
     }
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    await fetch(`${IMPORTER_API}/auth`, { method: "DELETE" }).catch(() => null);
     setUser(null);
     setUserCourseIds([]);
     setPage("courses");
     window.location.hash = "";
   }
+
+  if (!authChecked) return (
+    <>
+      <style>{GS}</style>
+      <div className="landing-shell" style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: "#94A3B8" }}>Checking session...</div>
+    </>
+  );
 
   if (!user) return (
     <>

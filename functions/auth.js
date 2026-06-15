@@ -1,4 +1,4 @@
-import { json, readJson, saveUser, userIdFrom, supabaseRequest, eq } from "./_shared.js";
+import { json, readJson, saveUser, userIdFrom, supabaseRequest, eq, patchRows } from "./_shared.js";
 
 export async function onRequestOptions() { return json({ ok: true }); }
 
@@ -82,8 +82,22 @@ export async function onRequestPost({ request, env }) {
   if (!email || !password) return json({ success: false, error: "Email and password required." }, 400);
 
   if (action === "signup") {
-    const existing = await supabaseRequest(env, `users?select=id&email=${eq(email)}&limit=1`);
-    if (existing?.length) return json({ success: false, error: "Email already registered." }, 409);
+    const existing = await supabaseRequest(env, `users?select=*&email=${eq(email)}&limit=1`);
+    if (existing?.length) {
+      const existingRow = existing[0];
+      if (String(existingRow.password_hash || "") !== "local-only") return json({ success: false, error: "Email already registered." }, 409);
+      const displayName = name || existingRow.display_name || email.split("@")[0];
+      await patchRows(env, "users", `id=${eq(existingRow.id)}`, {
+        password_hash: password,
+        display_name: displayName,
+        avatar_initials: (displayName || email).split(/\s+|@/).filter(Boolean).map(part => part[0]).join("").toUpperCase().slice(0, 2),
+        updated_at: new Date().toISOString(),
+      });
+      const repaired = await supabaseRequest(env, `users?select=*&id=${eq(existingRow.id)}&limit=1`);
+      const row = repaired?.[0] || existingRow;
+      const profile = await loadProfile(env, row.id);
+      return withCookie({ success: true, user: publicUser(row, profile), coursesOpted: profile.coursesOpted || [], pass: profile.pass || null }, row.id);
+    }
     const user = await saveUser(env, {
       email,
       password,
@@ -100,6 +114,11 @@ export async function onRequestPost({ request, env }) {
     const admin = await ensureAdmin(env);
     const repaired = await supabaseRequest(env, `users?select=*&id=${eq(admin.id)}&limit=1`);
     row = repaired?.[0];
+  }
+  if (row && String(row.password_hash || "") === "local-only") {
+    await patchRows(env, "users", `id=${eq(row.id)}`, { password_hash: password, updated_at: new Date().toISOString() });
+    const repaired = await supabaseRequest(env, `users?select=*&id=${eq(row.id)}&limit=1`);
+    row = repaired?.[0] || { ...row, password_hash: password };
   }
   if (!row || String(row.password_hash || "") !== password) {
     return json({ success: false, error: "Invalid email or password." }, 401);

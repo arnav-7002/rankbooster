@@ -70,12 +70,18 @@ function useTimer(totalSeconds, onEnd, paused = false) {
 }
 
 // ─── LIGHTBOX ─────────────────────────────────────────────────────────────────
-function Lightbox({ src, onClose }) {
+function Lightbox({ src, onClose, watermarkEmail = "" }) {
   if (!src) return null;
+  const watermarkTiles = Array.from({ length: 36 });
   return (
     <div onClick={onClose} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}>
-      <div style={{ position:"relative" }} onClick={e=>e.stopPropagation()}>
+      <div className="test-lightbox-image-wrap" style={{ position:"relative" }} onClick={e=>e.stopPropagation()}>
         <img src={src} alt="" style={{ maxWidth:"92vw",maxHeight:"88vh",objectFit:"contain",borderRadius:8,border:"1px solid rgba(255,255,255,0.1)",display:"block" }} />
+        {watermarkEmail && (
+          <div className="test-watermark-layer" aria-hidden="true">
+            {watermarkTiles.map((_, wi) => <span key={wi}>{watermarkEmail}</span>)}
+          </div>
+        )}
         <button onClick={onClose} style={{ position:"absolute",top:-14,right:-14,width:28,height:28,borderRadius:"50%",background:"#1e1e2e",border:"1px solid rgba(255,255,255,0.2)",color:"#94A3B8",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>
           <I n="x" s={14}/>
         </button>
@@ -193,6 +199,8 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
   const ugeeReapPhase = examType === "ugee" && elapsedSecs >= (examConfig.ugeeSuprMinutes || 60) * 60;
   const activeLazyImages = activeQId ? lazyImages[activeQId] : null;
   const currentImages = activeQ?.images?.length ? activeQ.images : (activeLazyImages || []);
+  const watermarkEmail = String(user?.email || "").trim();
+  const watermarkTiles = Array.from({ length: 28 });
 
   const flushQuestionTiming = useCallback(() => {
     const now = Date.now();
@@ -600,8 +608,11 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
     .instruction-box.collapsed h3{font-size:18px;margin-bottom:0;line-height:1.35}
     .rule-toggle{float:right;border:none;background:transparent;font-size:20px;line-height:1;cursor:pointer;color:#222}
     .question-area{flex:1;overflow-y:auto;background:#F7F7F7;padding:0 28px 95px}
-    .question-image-wrap{width:100%;max-width:980px;background:white;margin:0 0 22px;overflow:hidden}
-    .question-image{width:100%;max-width:980px;max-height:430px;object-fit:contain;object-position:left top;border:none;border-radius:0;display:block;cursor:pointer;background:white}
+    .question-image-wrap{position:relative;width:100%;max-width:980px;background:white;margin:0 0 22px;overflow:hidden}
+    .question-image{position:relative;z-index:1;width:100%;max-width:980px;max-height:430px;object-fit:contain;object-position:left top;border:none;border-radius:0;display:block;cursor:pointer;background:white}
+    .test-lightbox-image-wrap{overflow:hidden;border-radius:8px;background:white}
+    .test-watermark-layer{position:absolute;z-index:2;inset:-22px;display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));grid-auto-rows:82px;pointer-events:none;overflow:hidden;mix-blend-mode:multiply}
+    .test-watermark-layer span{align-self:center;justify-self:center;color:rgba(71,85,105,0.30);font-size:13px;font-weight:650;line-height:1;white-space:nowrap;transform:rotate(-48deg);user-select:none;text-shadow:0 0 1px rgba(255,255,255,0.25);font-family:Roboto,Arial,Helvetica,sans-serif}
     .opt-btn{width:100%;padding:11px 4px;border:none;background:transparent;color:#333;cursor:pointer;font-family:Roboto,Arial,Helvetica,sans-serif;font-size:20px;text-align:left;display:flex;align-items:center;gap:12px}
     .opt-radio{width:18px;height:18px;border:1px solid #777;border-radius:50%;background:white;display:inline-flex;align-items:center;justify-content:center}
     .opt-radio.sel:after{content:'';width:9px;height:9px;border-radius:50%;background:#1E86C1;display:block}
@@ -839,7 +850,7 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
           ))}
         </div>
       )}
-      <Lightbox src={lightbox} onClose={()=>setLightbox(null)}/>
+      <Lightbox src={lightbox} onClose={()=>setLightbox(null)} watermarkEmail={watermarkEmail}/>
       {showSubmit && <SubmitModal counts={counts} onConfirm={submitAttempt} onCancel={()=>setShowSubmit(false)}/>}
       {showSecInfo && <SectionInfoModal section={activeSubject} onClose={()=>setShowSecInfo(false)}/>}
 
@@ -946,6 +957,11 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
                     {currentImages.map((src,i)=>(
                       <div key={i} className="question-image-wrap">
                         <img src={src} alt="" className="question-image" onClick={()=>setLightbox(src)}/>
+                        {watermarkEmail && (
+                          <div className="test-watermark-layer" aria-hidden="true">
+                            {watermarkTiles.map((_, wi) => <span key={wi}>{watermarkEmail}</span>)}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -781,7 +781,7 @@ function PassPlanCards({ compact = false, activePass, onSelect, plans = PASS_PLA
             <div style={{ color: "#64748B", fontSize: 11, lineHeight: 1.5, minHeight: compact ? 0 : 34 }}>{plan.note}</div>
             <div className="pass-plan-action">
               <button type="button" className={isActive || !canActivate ? "btn-ghost" : "btn-primary"} onClick={() => canActivate && onSelect(plan)} disabled={disabled}>
-                {isActive ? `${status.daysLeft} days left` : canActivate ? "Activate mock pass" : "Log in to activate"}
+                {isActive ? `${status.daysLeft} days left` : canActivate ? "Activate pass" : "Log in to activate"}
               </button>
             </div>
           </div>
@@ -1315,7 +1315,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
           <div>
             <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 800 }}>{currentPassStatus.active ? currentPassStatus.label : "Choose a pass to unlock courses"}</div>
             <div style={{ color: "#64748B", fontSize: 12, marginTop: 3 }}>
-              {currentPassStatus.active ? `${currentPassStatus.daysLeft} days left · expires ${formatDateTime(currentPassStatus.expiresAt)}` : "Mock checkout now, Razorpay later."}
+              {currentPassStatus.active ? `${currentPassStatus.daysLeft} days left · expires ${formatDateTime(currentPassStatus.expiresAt)}` : "Choose a pass duration to continue."}
             </div>
           </div>
           {currentPassStatus.active && <span className="tag tag-green">Pass Active</span>}
@@ -2075,22 +2075,22 @@ function NotebookPage({ user }) {
 // ─── ADMIN PAGE ───────────────────────────────────────────────────────────────
 function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSettings, setAppSettings }) {
   const [tab, setTab] = useState("courses");
-  const [dbStatus, setDbStatus] = useState({ state: "checking", label: "Checking Supabase", detail: "Pinging database..." });
+  const [dbStatus, setDbStatus] = useState({ state: "checking", label: "Checking Database", detail: "Pinging database..." });
   const [adminUsers, setAdminUsers] = useState([]);
   const allUC = {};
   const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["announcements", "Announcements"], ["users", "Users"]];
   const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
 
   const checkDatabase = useCallback(async () => {
-    setDbStatus({ state: "checking", label: "Checking Supabase", detail: "Pinging database..." });
+    setDbStatus({ state: "checking", label: "Checking Database", detail: "Pinging database..." });
     const started = Date.now();
     const res = await fetch(`${IMPORTER_API}/health`, { cache: "no-store" }).catch(() => null);
     const data = res ? await res.json().catch(() => null) : null;
     if (res?.ok && data?.ok) {
-      setDbStatus({ state: "connected", label: "Supabase Connected", detail: `Live in ${data.latencyMs ?? Date.now() - started} ms` });
+      setDbStatus({ state: "connected", label: "Database Connected", detail: `Live in ${data.latencyMs ?? Date.now() - started} ms` });
       return;
     }
-    setDbStatus({ state: "error", label: "Supabase Not Connected", detail: data?.message || "Health check endpoint failed" });
+    setDbStatus({ state: "error", label: "Database Not Connected", detail: data?.message || "Health check endpoint failed" });
   }, []);
 
   useEffect(() => { checkDatabase(); }, [checkDatabase]);
@@ -2219,7 +2219,7 @@ function AdminCourses({ allCourses, setAllCourses }) {
       await refreshCoursesFromDisk(updated);
       setEditModal(null);
     } catch (err) {
-      alert(err.message || "Course save failed. Check Supabase connection.");
+      alert(err.message || "Course save failed. Check database connection.");
     }
   }
 
@@ -2236,7 +2236,7 @@ function AdminCourses({ allCourses, setAllCourses }) {
         if (!res.ok || data?.error) throw new Error(data?.error || "Course could not be deleted.");
         await refreshCoursesFromDisk(allCourses.filter(c => c.id !== id));
       } catch (err) {
-        alert(err.message || "Course delete failed. Check Supabase connection.");
+        alert(err.message || "Course delete failed. Check database connection.");
         return;
       }
     }
@@ -2275,7 +2275,7 @@ function AdminCourses({ allCourses, setAllCourses }) {
       const updated = [...allCourses.filter(c => c.id !== (data.course?.id || nc.id)), data.course || nc];
       await refreshCoursesFromDisk(updated);
     } catch (err) {
-      alert(err.message || "Course create failed. Check Supabase connection.");
+      alert(err.message || "Course create failed. Check database connection.");
       return;
     }
     setAddModal(false);
@@ -2451,7 +2451,7 @@ function AdminTests({ allCourses, setAllCourses }) {
       if (!res.ok || data?.error) throw new Error(data?.error || "Folder could not be created.");
       await refreshLibrary();
     } catch (err) {
-      alert(err.message || "Folder create failed. Check Supabase connection.");
+      alert(err.message || "Folder create failed. Check database connection.");
       return;
     }
     setAddFolderModal(false); setNewFolderName("");
@@ -2470,7 +2470,7 @@ function AdminTests({ allCourses, setAllCourses }) {
         if (!res.ok || data?.error) throw new Error(data?.error || "Folder could not be deleted.");
         await refreshLibrary();
       } catch (err) {
-        alert(err.message || "Folder delete failed. Check Supabase connection.");
+        alert(err.message || "Folder delete failed. Check database connection.");
       }
     }
   }
@@ -2496,7 +2496,7 @@ function AdminTests({ allCourses, setAllCourses }) {
       if (!res.ok || data?.error) throw new Error(data?.error || "Test could not be added.");
       await refreshLibrary();
     } catch (err) {
-      alert(err.message || "Test add failed. Check Supabase connection.");
+      alert(err.message || "Test add failed. Check database connection.");
       return;
     }
     setAddTestModal(null); setNewTest({ name: "", sourceUrl: "", duration: 180, maxMarks: 300, date: "", scheduledAt: "", scheduledUntil: "" });
@@ -2602,7 +2602,7 @@ function AdminTests({ allCourses, setAllCourses }) {
       await refreshLibrary();
       setConfigModal(null);
     } catch (err) {
-      alert(err.message || "Test configuration failed. Check Supabase connection.");
+      alert(err.message || "Test configuration failed. Check database connection.");
     } finally {
       setConfigBusy(false);
     }
@@ -2659,7 +2659,7 @@ function AdminTests({ allCourses, setAllCourses }) {
       }
       setScheduleModal(null);
     } catch (err) {
-      alert(err.message || "Schedule save failed. Check Supabase connection.");
+      alert(err.message || "Schedule save failed. Check database connection.");
     } finally {
       setScheduleBusy(false);
     }
@@ -2681,7 +2681,7 @@ function AdminTests({ allCourses, setAllCourses }) {
         if (!res.ok || data?.error) throw new Error(data?.error || "Test could not be deleted.");
         await refreshLibraryAfterDelete();
       } catch (err) {
-        alert(err.message || "Test delete failed. Check Supabase connection.");
+        alert(err.message || "Test delete failed. Check database connection.");
       }
     } else if (course?.title && folder?.name && test?.sourceZip) {
       try {
@@ -3160,8 +3160,8 @@ function AdminUsers({ allUsers, allUC, allCourses, onRefresh }) {
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#E2E8F0" }}>Supabase Users ({users.length})</div>
-          <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>Pass, enrolled courses, attempts, and role are loaded from Supabase.</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#E2E8F0" }}>Users ({users.length})</div>
+          <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>Pass, enrolled courses, attempts, and role are loaded from the database.</div>
         </div>
         <button className="btn-ghost" style={{ minHeight: 34, padding: "7px 13px", fontSize: 12 }} onClick={onRefresh}>
           <Icon n="repeat" s={13} />Refresh
@@ -3204,7 +3204,7 @@ function AdminUsers({ allUsers, allUC, allCourses, onRefresh }) {
             })}
             {users.length === 0 && (
               <tr className="table-row">
-                <td colSpan={8} style={{ textAlign: "center", color: "#475569", padding: 28 }}>No Supabase users yet.</td>
+                <td colSpan={8} style={{ textAlign: "center", color: "#475569", padding: 28 }}>No users yet.</td>
               </tr>
             )}
           </tbody>

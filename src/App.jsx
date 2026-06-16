@@ -169,6 +169,15 @@ button{touch-action:manipulation}
 .pass-plan-card{display:flex;flex-direction:column;min-height:222px;overflow:visible}
 .pass-plan-action{margin-top:auto;padding-top:12px;min-height:50px;display:flex;align-items:flex-end}
 .pass-plan-action .btn-primary,.pass-plan-action .btn-ghost{width:100%;min-height:40px;font-size:12px;display:inline-flex!important;visibility:visible!important}
+.skeleton-line{position:relative;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.06)}
+.skeleton-line::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);animation:skeletonSweep 1.1s infinite}
+.leaderboard-row{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.leaderboard-row:last-child{border-bottom:0}
+.leaderboard-row.me{margin:0 -8px;padding:10px 8px;border-radius:12px;background:rgba(124,58,237,.13);border-bottom-color:transparent}
+.leaderboard-rank{width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(124,58,237,.18);color:#A78BFA;font-size:12px;font-weight:850}
+.leaderboard-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;font-size:11px;font-weight:850;flex-shrink:0}
+.leaderboard-name{color:#E2E8F0;font-size:12px;font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.leaderboard-meta{color:#64748B;font-size:10px;margin-top:2px}
 button:disabled{cursor:not-allowed;opacity:.68}
 .landing-course-card{position:relative}
 .landing-course-card::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(120deg,transparent 0%,rgba(255,255,255,.05) 45%,transparent 60%);opacity:0;transform:translateX(-35%);transition:opacity .2s ease,transform .35s ease}
@@ -197,6 +206,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 @keyframes modalPop{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes popoverUp{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes progressGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes skeletonSweep{to{transform:translateX(100%)}}
 @keyframes sidebarTilePop{0%{transform:scale(.84);opacity:.75}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
 @keyframes sidebarIconPop{0%{transform:scale(.72) rotate(-8deg)}70%{transform:scale(1.16) rotate(3deg)}100%{transform:scale(1) rotate(0)}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
@@ -3441,6 +3451,7 @@ function TestAttemptReport({ report, user, onBack }) {
   const [notebookModal, setNotebookModal] = useState(false);
   const [notebookName, setNotebookName] = useState("");
   const [reportNotebooks, setReportNotebooks] = useState([]);
+  const [leaderboard, setLeaderboard] = useState({ loading: true, entries: [], myRank: null, total: 0 });
 
   const { course, folder, test, attempt } = report || {};
   const attemptHasDetails = !!(
@@ -3467,6 +3478,7 @@ function TestAttemptReport({ report, user, onBack }) {
     subjects: attempt?.subjects || [],
     attemptedQuestions: attempt?.attemptedQuestions || [],
   };
+  const reportTestId = test?.id || attempt?.testId || attempt?.source?.testId || summary.source?.testId;
 
   useEffect(() => {
     let cancelled = false;
@@ -3545,6 +3557,46 @@ function TestAttemptReport({ report, user, onBack }) {
     timeSpentSec ? `Average time per attempted question: ${avgTimePerAttempt}s.` : "Timing data starts from new attempts after this update.",
     Number(summary.wrong || 0) > Number(summary.correct || 0) * 0.35 ? "Negative marking risk is high. Mark fewer guesses for review." : "Wrong-answer pressure is under control.",
   ];
+  const leaderboardLabel = leaderboard.loading ? "..." : leaderboard.myRank ? `#${leaderboard.myRank}/${leaderboard.total || leaderboard.myRank}` : "New";
+  const formatLeaderboardTime = sec => {
+    const n = Number(sec || 0);
+    if (!n) return "time not recorded";
+    const min = Math.floor(n / 60);
+    const rem = n % 60;
+    return min ? `${min}m ${rem}s` : `${rem}s`;
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const testId = reportTestId;
+    if (!testId) {
+      setLeaderboard({ loading: false, entries: [], myRank: null, total: 0 });
+      return undefined;
+    }
+    setLeaderboard(prev => ({ ...prev, loading: true }));
+    const qs = new URLSearchParams({
+      testId,
+      offlineId: user?.offlineId || user?.id || "",
+      limit: "8",
+    });
+    fetch(`${IMPORTER_API}/leaderboard?${qs.toString()}`, { cache: "no-store" })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!cancelled) {
+          setLeaderboard({
+            loading: false,
+            entries: data?.entries || [],
+            myRank: data?.myRank || null,
+            mine: data?.mine || null,
+            total: data?.total || 0,
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLeaderboard({ loading: false, entries: [], myRank: null, total: 0 });
+      });
+    return () => { cancelled = true; };
+  }, [reportTestId, user?.id, user?.offlineId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -3795,7 +3847,7 @@ function TestAttemptReport({ report, user, onBack }) {
           {[
             ["Score", `${summary.score}/${summary.maxMarks}`, "#A78BFA", "target"],
             ["Percentage", `${summary.percentage}%`, "#38BDF8", "percent"],
-            ["Leaderboard", "Soon", "#F59E0B", "award"],
+            ["Leaderboard", leaderboardLabel, "#F59E0B", "award"],
             ["Accuracy", `${accuracy}%`, "#34D399", "check-circle"],
             ["Attempt Rate", `${attemptRate}%`, "#FCD34D", "zap"],
             ["Paper Time", timeSpentSec ? `${timeSpentMin} min` : "—", "#94A3B8", "clock"],
@@ -3847,6 +3899,69 @@ function TestAttemptReport({ report, user, onBack }) {
               ))}
             </div>
           </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+            <div>
+              <div className="report-section-title">Leaderboard</div>
+              <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>
+                Best attempt per student for this test.
+              </div>
+            </div>
+            <span className="tag tag-amber">{leaderboard.myRank ? `Your Rank #${leaderboard.myRank}` : leaderboard.loading ? "Loading" : "No rank yet"}</span>
+          </div>
+          {leaderboard.loading ? (
+            <div style={{ display: "grid", gap: 10 }}>
+              {[0, 1, 2].map(i => (
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "36px 1fr 80px", gap: 10, alignItems: "center" }}>
+                  <div className="skeleton-line" style={{ width: 30, height: 30, borderRadius: 10 }} />
+                  <div>
+                    <div className="skeleton-line" style={{ width: "42%", height: 12, marginBottom: 7 }} />
+                    <div className="skeleton-line" style={{ width: "28%", height: 9 }} />
+                  </div>
+                  <div className="skeleton-line" style={{ width: 70, height: 14 }} />
+                </div>
+              ))}
+            </div>
+          ) : leaderboard.entries.length ? (
+            <div>
+              {leaderboard.entries.map(entry => (
+                <div key={`${entry.userId}_${entry.attemptId}`} className={`leaderboard-row ${entry.isMe ? "me" : ""}`}>
+                  <div className="leaderboard-rank">#{entry.rank}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                    <div className="leaderboard-avatar">{entry.avatar || "ST"}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="leaderboard-name">{entry.name}{entry.isMe ? " · You" : ""}</div>
+                      <div className="leaderboard-meta">{entry.correct} correct · {entry.wrong} wrong · {formatLeaderboardTime(entry.timeSpentSec)}</div>
+                    </div>
+                  </div>
+                  <div style={{ color: "#F8FAFC", fontWeight: 850, textAlign: "right" }}>
+                    {entry.score}<span style={{ color: "#64748B", fontSize: 11, fontWeight: 700 }}>/{entry.maxMarks}</span>
+                  </div>
+                </div>
+              ))}
+              {!leaderboard.entries.some(e => e.isMe) && leaderboard.mine && (
+                <div className="leaderboard-row me" style={{ marginTop: 8 }}>
+                  <div className="leaderboard-rank">#{leaderboard.mine.rank}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                    <div className="leaderboard-avatar">{leaderboard.mine.avatar || "ME"}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="leaderboard-name">{leaderboard.mine.name || "You"} · You</div>
+                      <div className="leaderboard-meta">{leaderboard.mine.correct} correct · {leaderboard.mine.wrong} wrong · {formatLeaderboardTime(leaderboard.mine.timeSpentSec)}</div>
+                    </div>
+                  </div>
+                  <div style={{ color: "#F8FAFC", fontWeight: 850, textAlign: "right" }}>
+                    {leaderboard.mine.score}<span style={{ color: "#64748B", fontSize: 11, fontWeight: 700 }}>/{leaderboard.mine.maxMarks}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ padding: 18, borderRadius: 12, background: "rgba(255,255,255,0.035)", color: "#64748B", textAlign: "center" }}>
+              Your score will appear here as soon as this attempt syncs.
+            </div>
+          )}
         </div>
 
         <div className="responsive-two-col" style={{ marginBottom: 18 }}>

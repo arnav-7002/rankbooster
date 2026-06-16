@@ -6,7 +6,6 @@ const VALID_PAGES = ["dashboard", "courses", "tests", "analysis", "notebook", "a
 
 // ─── GLOBAL STYLES ───────────────────────────────────────────────────────────
 const GS = `
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Outfit',sans-serif;background:#080812;color:#E2E8F0}
 html,body,#root{min-height:100%}
@@ -758,8 +757,11 @@ function PassPlanCards({ compact = false, activePass, onSelect, plans = PASS_PLA
   const status = passStatus(activePass);
   const canActivate = typeof onSelect === "function";
   const visiblePlans = (plans && plans.length ? plans : PASS_PLANS).filter(p => p.isActive !== false);
+  const gridStyle = compact
+    ? { gridTemplateColumns: "repeat(auto-fill,minmax(180px,240px))", justifyContent: "start" }
+    : { gridTemplateColumns: "repeat(auto-fill,minmax(230px,300px))", justifyContent: "start" };
   return (
-    <div className="pass-plan-grid" style={{ gridTemplateColumns: compact ? "repeat(auto-fit,minmax(180px,1fr))" : "repeat(auto-fit,minmax(210px,1fr))" }}>
+    <div className="pass-plan-grid" style={gridStyle}>
       {visiblePlans.map(plan => {
         const isActive = status.active && activePass?.planId === plan.id;
         const disabled = isActive || !canActivate;
@@ -904,7 +906,7 @@ function LoginPage({ onLogin, passPlans = PASS_PLANS }) {
               {[
                 ["Courses", publicCourses.length, "courses"],
                 ["Tests", totalTests, "tests"],
-                ["Mode", "Local", "admin control"],
+                ["Access", "Online", "student portal"],
               ].map(([label, value, sub], idx) => (
                 <div key={label} className="card landing-hover-card" style={{ padding: 16 }}>
                   <Icon n={idx === 0 ? "courses" : idx === 1 ? "tests" : "admin"} s={17} c="#A78BFA" />
@@ -952,9 +954,6 @@ function LoginPage({ onLogin, passPlans = PASS_PLANS }) {
                 {tab === "login" ? <><LoginNudgeIcon s={14} />Log In</> : <><Icon n="plus" s={14} />Create Account</>}
               </button>
             </div>
-            <div style={{ marginTop: 10, fontSize: 11, color: "#475569", lineHeight: 1.5 }}>
-              Admin login is preconfigured. New students can sign up here directly.
-            </div>
           </aside>
         </main>
 
@@ -962,7 +961,7 @@ function LoginPage({ onLogin, passPlans = PASS_PLANS }) {
           <div style={{ display: "flex", alignItems: "end", justifyContent: "space-between", gap: 16, marginBottom: 16 }}>
             <div>
               <h2 style={{ fontSize: 22, fontWeight: 800, color: "#F1F5F9", marginBottom: 4 }}>Choose your pass</h2>
-              <p style={{ fontSize: 13, color: "#64748B" }}>Payment is mocked for now. Razorpay can replace the activation step later.</p>
+              <p style={{ fontSize: 13, color: "#64748B" }}>Choose access duration and unlock every available course.</p>
             </div>
             <button className="btn-ghost" onClick={() => scrollToAuth("signup")}><Icon n="check-circle" s={14} />Create account</button>
           </div>

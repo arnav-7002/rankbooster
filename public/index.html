@@ -6,9 +6,73 @@
     <meta name="theme-color" content="#080812" />
     <meta name="description" content="RankBooster - JEE Test Series Platform" />
     <title>RankBooster</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
     <style>
-      body { margin: 0; background: #080812; }
-      #root { min-height: 100vh; }
+      * { box-sizing: border-box; }
+      html, body, #root { min-height: 100%; }
+      body {
+        margin: 0;
+        background: #080812;
+        color: #f1f5f9;
+        font-family: 'Outfit', Arial, sans-serif;
+      }
+      button, input, textarea, select { font: inherit; }
+      button { border: 0; }
+      .landing-shell, .app-shell {
+        min-height: 100vh;
+        background: #080812;
+        color: #f1f5f9;
+      }
+      .landing-wrap {
+        max-width: 1520px;
+        margin: 0 auto;
+        padding: 22px 38px 64px;
+      }
+      .card {
+        background: rgba(255,255,255,.04);
+        border: 1px solid rgba(255,255,255,.07);
+        border-radius: 14px;
+      }
+      .btn-primary, .btn-ghost {
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg,#7C3AED,#6D28D9);
+        color: #fff;
+        padding: 10px 22px;
+      }
+      .btn-ghost {
+        background: rgba(255,255,255,.03);
+        color: #cbd5e1;
+        border: 1px solid rgba(255,255,255,.14);
+        padding: 9px 18px;
+      }
+      .input-field {
+        width: 100%;
+        min-height: 44px;
+        border-radius: 10px;
+        background: rgba(255,255,255,.055);
+        border: 1px solid rgba(255,255,255,.12);
+        color: #f8fafc;
+        padding: 10px 12px;
+      }
+      .tag {
+        border-radius: 999px;
+        padding: 4px 9px;
+        background: rgba(124,58,237,.22);
+        color: #a78bfa;
+        font-size: 11px;
+        font-weight: 800;
+      }
     </style>
   </head>
   <body>

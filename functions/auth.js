@@ -1,4 +1,4 @@
-import { json, readJson, saveUser, userIdFrom, supabaseRequest, eq, patchRows } from "./_shared.js";
+import { json, readJson, saveUser, userIdFrom, supabaseRequest, eq, patchRows, upsertRows, cleanId } from "./_shared.js";
 
 export async function onRequestOptions() { return json({ ok: true }); }
 
@@ -60,6 +60,18 @@ async function ensureAdmin(env) {
   });
 }
 
+async function logEvent(env, type, message, actor = {}, metadata = {}) {
+  await upsertRows(env, "admin_events", {
+    id: cleanId(`evt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`),
+    actor_user_id: actor.id || "",
+    event_type: type,
+    entity_type: "user",
+    entity_id: actor.id || "",
+    payload_json: { message, actor_email: actor.email || "", metadata },
+    created_at: new Date().toISOString(),
+  }).catch(() => null);
+}
+
 export async function onRequestGet({ request, env }) {
   const userId = cookieValue(request, "rb_user");
   const loaded = await userById(env, userId);
@@ -96,6 +108,7 @@ export async function onRequestPost({ request, env }) {
       const repaired = await supabaseRequest(env, `users?select=*&id=${eq(existingRow.id)}&limit=1`);
       const row = repaired?.[0] || existingRow;
       const profile = await loadProfile(env, row.id);
+      await logEvent(env, "user.signup", `${displayName} signed up`, { id: row.id, email: row.email }, { repaired: true });
       return withCookie({ success: true, user: publicUser(row, profile), coursesOpted: profile.coursesOpted || [], pass: profile.pass || null }, row.id);
     }
     const user = await saveUser(env, {
@@ -105,6 +118,7 @@ export async function onRequestPost({ request, env }) {
       role: "user",
       avatar: (name || email).split(/\s+|@/).filter(Boolean).map(part => part[0]).join("").toUpperCase().slice(0, 2),
     });
+    await logEvent(env, "user.signup", `${user.name || user.email} signed up`, user, {});
     return withCookie({ success: true, user }, user.id);
   }
 

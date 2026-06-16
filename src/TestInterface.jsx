@@ -660,6 +660,11 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
     .instruction-card{background:white;border:1px solid #D1D5DB;border-radius:8px;padding:20px 24px;margin-bottom:20px}
     .instruction-card h3{font-size:15px;font-weight:700;color:#111827;margin-bottom:16px}
     .instruction-card ul{padding-left:20px;font-size:13px;color:#374151;line-height:2.2}
+    .preflight-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:4px}
+    .preflight-tile{border:1px solid #E5E7EB;border-radius:8px;padding:11px 12px;background:#F9FAFB}
+    .preflight-value{font-size:16px;font-weight:800;color:#111827}
+    .preflight-label{font-size:11px;color:#6B7280;margin-top:2px}
+    .preflight-warning{margin-top:12px;border:1px solid #FCD34D;background:#FFFBEB;color:#92400E;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.55}
     .instruction-legend{display:flex;gap:24px;flex-wrap:wrap}
     .instruction-start{padding:12px 40px;background:#2563EB;border:none;border-radius:6px;color:white;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif}
     @media (max-width: 2100px){
@@ -735,6 +740,7 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
       .instruction-content{margin:18px auto;padding:0 12px 22px}
       .instruction-card{padding:15px 14px;border-radius:7px;margin-bottom:12px}
       .instruction-card ul{font-size:12px;line-height:1.8;padding-left:18px}
+      .preflight-grid{grid-template-columns:repeat(2,1fr)}
       .instruction-legend{display:grid!important;grid-template-columns:1fr;gap:11px!important}
       .instruction-start{width:100%;padding:13px 16px}
     }
@@ -765,6 +771,18 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
           <span className="instruction-meta">Duration: <strong>{test.duration||180} min</strong> · Total Questions: <strong>{totalQ}</strong> · Max Marks: <strong>{test.maxMarks||subjects.reduce((a,s)=>a+s.questions.reduce((b,q)=>b+(q.marks?.cm||0),0),0)}</strong></span>
         </div>
         <div className="instruction-content">
+          <div className="instruction-card">
+            <h3>Test Start Check</h3>
+            <div className="preflight-grid">
+              <div className="preflight-tile"><div className="preflight-value">{test.name}</div><div className="preflight-label">Paper</div></div>
+              <div className="preflight-tile"><div className="preflight-value">{test.duration || 180} min</div><div className="preflight-label">Duration</div></div>
+              <div className="preflight-tile"><div className="preflight-value">{subjects.length}</div><div className="preflight-label">Sections</div></div>
+              <div className="preflight-tile"><div className="preflight-value">{totalQ}</div><div className="preflight-label">Questions</div></div>
+            </div>
+            <div className="preflight-warning">
+              The test will request fullscreen after you start. Switching tabs, leaving fullscreen, or moving away from the window pauses the test and shows a resume warning.
+            </div>
+          </div>
           {/* Instructions white box */}
           <div className="instruction-card">
             <h3>General Instructions</h3>

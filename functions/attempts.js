@@ -63,6 +63,15 @@ export async function onRequestPost({ request, env }) {
     attempted_questions: Number((detail.attemptedQuestions || []).length || 0), correct_questions: Number(detail.correct || 0), wrong_questions: Number(detail.wrong || 0), paper_time_seconds: Number(detail.timeSpentSec || 0),
     answers_json: detail.attemptedQuestions || [], question_times_json: detail.questionTimes || {}, subject_analysis_json: detail.subjects || [], analysis_json: detail, detail_json: detail, submitted_at: detail.submittedAt,
   });
+  await upsertRows(env, "admin_events", {
+    id: cleanId(`evt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`),
+    actor_user_id: user.id,
+    event_type: "attempt.submitted",
+    entity_type: "attempt",
+    entity_id: attemptId,
+    payload_json: { message: `${user.name || user.email} submitted ${detail.source.testName || detail.testName || "a test"}`, actor_email: user.email, metadata: { attemptId, courseId: refs.courseId, testId: refs.testId, score: Number(detail.score || 0), maxMarks: Number(detail.maxMarks || 0) } },
+    created_at: new Date().toISOString(),
+  }).catch(() => null);
   return json({ success: true, user, attempt: detail });
 }
 

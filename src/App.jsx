@@ -109,6 +109,14 @@ button{touch-action:manipulation}
 .site-banner.banner-success{background:rgba(16,185,129,.12);border:1px solid rgba(52,211,153,.24);color:#6EE7B7}
 .site-banner.banner-warning{background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.25);color:#FCD34D}
 .mobile-bottom-nav{display:none}
+.toast-stack{position:fixed;right:18px;bottom:18px;z-index:2500;display:grid;gap:10px;width:min(360px,calc(100vw - 28px));pointer-events:none}
+.toast-card{pointer-events:auto;display:flex;align-items:flex-start;gap:10px;padding:12px 13px;border-radius:14px;background:#11111D;border:1px solid rgba(255,255,255,.1);box-shadow:0 18px 45px rgba(0,0,0,.32);animation:toastIn .22s cubic-bezier(.2,.8,.2,1);font-size:13px;color:#CBD5E1}
+.toast-card.success{border-color:rgba(16,185,129,.3);background:linear-gradient(135deg,rgba(16,185,129,.12),#11111D)}
+.toast-card.error{border-color:rgba(239,68,68,.32);background:linear-gradient(135deg,rgba(239,68,68,.12),#11111D)}
+.toast-card.info{border-color:rgba(124,58,237,.28);background:linear-gradient(135deg,rgba(124,58,237,.14),#11111D)}
+.toast-close{margin-left:auto;border:0;background:transparent;color:#64748B;cursor:pointer;padding:0;display:flex}
+.skeleton-card{position:relative;overflow:hidden;min-height:110px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);padding:18px}
+.skeleton-card::after{content:"";position:absolute;inset:0;transform:translateX(-110%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.055),transparent);animation:skeletonSweep 1.1s infinite}
 .responsive-grid{display:grid;gap:16px}
 .course-card-grid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
 .responsive-two-col{display:grid;grid-template-columns:minmax(0,0.95fr) minmax(0,1.05fr);gap:16px}
@@ -205,6 +213,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 @keyframes authFormSwitch{from{opacity:.35;transform:translateY(8px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes modalPop{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes popoverUp{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes progressGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @keyframes skeletonSweep{to{transform:translateX(100%)}}
 @keyframes sidebarTilePop{0%{transform:scale(.84);opacity:.75}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
@@ -2083,13 +2092,15 @@ function NotebookPage({ user }) {
 }
 
 // ─── ADMIN PAGE ───────────────────────────────────────────────────────────────
-function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSettings, setAppSettings }) {
+function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSettings, setAppSettings, user, notify }) {
   const [tab, setTab] = useState("courses");
   const [dbStatus, setDbStatus] = useState({ state: "checking", label: "Checking Database", detail: "Pinging database..." });
   const [adminUsers, setAdminUsers] = useState([]);
+  const [adminEvents, setAdminEvents] = useState([]);
   const allUC = {};
-  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["announcements", "Announcements"], ["users", "Users"]];
+  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["announcements", "Announcements"], ["users", "Users"], ["activity", "Activity"], ["checklist", "Publish Checklist"]];
   const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
+  const toast = useCallback((message, type = "info") => notify?.(message, type), [notify]);
 
   const checkDatabase = useCallback(async () => {
     setDbStatus({ state: "checking", label: "Checking Database", detail: "Pinging database..." });
@@ -2113,6 +2124,23 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
 
   useEffect(() => { loadAdminUsers(); }, [loadAdminUsers]);
   useEffect(() => { if (tab === "users") loadAdminUsers(); }, [tab, loadAdminUsers]);
+
+  const loadAdminEvents = useCallback(async () => {
+    const res = await fetch(`${IMPORTER_API}/admin-events`, { cache: "no-store" }).catch(() => null);
+    const data = res?.ok ? await res.json().catch(() => null) : null;
+    if (data?.events) setAdminEvents(data.events);
+  }, []);
+
+  const recordAdminEvent = useCallback(async (type, message, metadata = {}) => {
+    setAdminEvents(prev => [{ id: `local_${Date.now()}`, event_type: type, payload_json: { message, actor_email: user?.email, metadata }, created_at: new Date().toISOString() }, ...prev].slice(0, 80));
+    await fetch(`${IMPORTER_API}/admin-events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, message, metadata, actor: { id: user?.id || user?.offlineId, email: user?.email, name: user?.name } }),
+    }).catch(() => null);
+  }, [user]);
+
+  useEffect(() => { if (tab === "activity") loadAdminEvents(); }, [tab, loadAdminEvents]);
 
   const totalEnrollments = adminUsers.reduce((sum, u) => sum + (u.enrollments || u.coursesOpted || []).length, 0);
   return (
@@ -2169,17 +2197,87 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
       </div>
 
       <div key={tab} className="tab-panel">
-        {tab === "courses" && <AdminCourses allCourses={allCourses} setAllCourses={setAllCourses} />}
-        {tab === "tests" && <AdminTests allCourses={allCourses} setAllCourses={setAllCourses} />}
-        {tab === "plans" && <AdminPlans passPlans={passPlans} setPassPlans={setPassPlans} />}
-        {tab === "announcements" && <AdminAnnouncements appSettings={appSettings} setAppSettings={setAppSettings} />}
+        {tab === "courses" && <AdminCourses allCourses={allCourses} setAllCourses={setAllCourses} notify={toast} recordAdminEvent={recordAdminEvent} />}
+        {tab === "tests" && <AdminTests allCourses={allCourses} setAllCourses={setAllCourses} notify={toast} recordAdminEvent={recordAdminEvent} />}
+        {tab === "plans" && <AdminPlans passPlans={passPlans} setPassPlans={setPassPlans} notify={toast} recordAdminEvent={recordAdminEvent} />}
+        {tab === "announcements" && <AdminAnnouncements appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} />}
         {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} onRefresh={loadAdminUsers} />}
+        {tab === "activity" && <AdminActivity events={adminEvents} onRefresh={loadAdminEvents} />}
+        {tab === "checklist" && <AdminPublishChecklist dbStatus={dbStatus} allCourses={allCourses} passPlans={passPlans} appSettings={appSettings} adminUsers={adminUsers} />}
       </div>
     </div>
   );
 }
 
-function AdminCourses({ allCourses, setAllCourses }) {
+function AdminActivity({ events, onRefresh }) {
+  return (
+    <div className="fade-in">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14 }}>
+        <div>
+          <div style={{ color: "#E2E8F0", fontSize: 15, fontWeight: 800 }}>Admin Activity</div>
+          <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>Recent course, test, plan, user, and attempt events saved in the database.</div>
+        </div>
+        <button className="btn-ghost" onClick={onRefresh}><Icon n="repeat" s={13} />Refresh</button>
+      </div>
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        {(events || []).length === 0 ? (
+          <div style={{ padding: 36, textAlign: "center", color: "#64748B" }}>
+            <Icon n="clipboard" s={28} c="#334155" />
+            <div style={{ marginTop: 10 }}>No activity recorded yet.</div>
+          </div>
+        ) : events.map(evt => (
+          <div key={evt.id} style={{ display: "grid", gridTemplateColumns: "34px minmax(0,1fr) auto", gap: 12, alignItems: "center", padding: "13px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(124,58,237,0.14)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon n={String(evt.event_type || "").includes("delete") ? "trash" : String(evt.event_type || "").includes("attempt") ? "analysis" : "zap"} s={15} c="#A78BFA" />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ color: "#E2E8F0", fontSize: 13, fontWeight: 750 }}>{evt.payload_json?.message || evt.event_type}</div>
+              <div style={{ color: "#64748B", fontSize: 11, marginTop: 2 }}>{evt.payload_json?.actor_email || "System"} · {evt.event_type || "event"}</div>
+            </div>
+            <div style={{ color: "#475569", fontSize: 11, whiteSpace: "nowrap" }}>{evt.created_at ? new Date(evt.created_at).toLocaleString() : ""}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AdminPublishChecklist({ dbStatus, allCourses, passPlans, appSettings, adminUsers }) {
+  const tests = allCourses.flatMap(c => (c.testFolders || []).flatMap(f => (f.tests || []).map(t => ({ ...t, courseTitle: c.title }))));
+  const configured = tests.filter(t => t.isConfigured !== false && (t.sourceUrl || t.githubUrl || t.sourceZip));
+  const activePlans = (passPlans || []).filter(p => p.isActive !== false);
+  const items = [
+    { label: "Database connection", ok: dbStatus.state === "connected", detail: dbStatus.detail },
+    { label: "Courses published", ok: allCourses.length > 0, detail: `${allCourses.length} course${allCourses.length === 1 ? "" : "s"}` },
+    { label: "Tests configured", ok: configured.length > 0 && configured.length === tests.length, detail: `${configured.length}/${tests.length} configured` },
+    { label: "Pass plans active", ok: activePlans.length > 0, detail: `${activePlans.length} active plan${activePlans.length === 1 ? "" : "s"}` },
+    { label: "Announcements reviewed", ok: !!(appSettings.banner?.enabled || appSettings.homeAnnouncement?.enabled), detail: appSettings.banner?.enabled ? "Top banner enabled" : appSettings.homeAnnouncement?.enabled ? "Home announcement enabled" : "No announcement active" },
+    { label: "User table reachable", ok: Array.isArray(adminUsers), detail: `${adminUsers.length} account${adminUsers.length === 1 ? "" : "s"} loaded` },
+  ];
+  return (
+    <div className="fade-in">
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ color: "#E2E8F0", fontSize: 15, fontWeight: 800 }}>Publish Checklist</div>
+        <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>Quick pre-launch scan before sharing the website.</div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 12 }}>
+        {items.map(item => (
+          <div key={item.label} className="card tap-card" style={{ display: "flex", alignItems: "center", gap: 12, borderColor: item.ok ? "rgba(16,185,129,0.22)" : "rgba(251,191,36,0.22)" }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: item.ok ? "rgba(16,185,129,0.14)" : "rgba(251,191,36,0.13)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon n={item.ok ? "check-circle" : "alert-tri"} s={18} c={item.ok ? "#34D399" : "#FCD34D"} />
+            </div>
+            <div>
+              <div style={{ color: "#F1F5F9", fontSize: 13, fontWeight: 800 }}>{item.label}</div>
+              <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>{item.detail}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AdminCourses({ allCourses, setAllCourses, notify, recordAdminEvent }) {
   const [editModal, setEditModal] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [addModal, setAddModal] = useState(false);
@@ -2227,9 +2325,11 @@ function AdminCourses({ allCourses, setAllCourses }) {
       const saved = data.course ? { ...cleaned, ...data.course, testFolders: cleaned.testFolders || original?.testFolders || [] } : cleaned;
       const updated = allCourses.map(c => c.id === course.id ? saved : c);
       await refreshCoursesFromDisk(updated);
+      notify?.("Course saved.", "success");
+      recordAdminEvent?.("course.updated", `Updated course ${saved.title || course.title}`, { courseId: saved.id });
       setEditModal(null);
     } catch (err) {
-      alert(err.message || "Course save failed. Check database connection.");
+      notify?.(err.message || "Course save failed. Check database connection.", "error");
     }
   }
 
@@ -2245,8 +2345,10 @@ function AdminCourses({ allCourses, setAllCourses }) {
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data?.error) throw new Error(data?.error || "Course could not be deleted.");
         await refreshCoursesFromDisk(allCourses.filter(c => c.id !== id));
+        notify?.("Course deleted.", "success");
+        recordAdminEvent?.("course.deleted", `Deleted course ${course.title}`, { courseId: course.id });
       } catch (err) {
-        alert(err.message || "Course delete failed. Check database connection.");
+        notify?.(err.message || "Course delete failed. Check database connection.", "error");
         return;
       }
     }
@@ -2284,8 +2386,10 @@ function AdminCourses({ allCourses, setAllCourses }) {
       if (!res.ok || data?.error) throw new Error(data?.error || "Course could not be created.");
       const updated = [...allCourses.filter(c => c.id !== (data.course?.id || nc.id)), data.course || nc];
       await refreshCoursesFromDisk(updated);
+      notify?.("Course created.", "success");
+      recordAdminEvent?.("course.created", `Created course ${data.course?.title || nc.title}`, { courseId: data.course?.id || nc.id });
     } catch (err) {
-      alert(err.message || "Course create failed. Check database connection.");
+      notify?.(err.message || "Course create failed. Check database connection.", "error");
       return;
     }
     setAddModal(false);
@@ -2429,7 +2533,7 @@ function CourseForm({ form, setForm, onSave, saveLabel = "Save Changes", childre
   );
 }
 
-function AdminTests({ allCourses, setAllCourses }) {
+function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
   const [selectedCourse, setSelectedCourse] = useState(allCourses[0]?.id || null);
   const [addFolderModal, setAddFolderModal] = useState(false);
   const [addTestModal, setAddTestModal] = useState(null);   // folderId for manual add
@@ -2460,8 +2564,10 @@ function AdminTests({ allCourses, setAllCourses }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data?.error) throw new Error(data?.error || "Folder could not be created.");
       await refreshLibrary();
+      notify?.("Folder created.", "success");
+      recordAdminEvent?.("folder.created", `Created folder ${folderName}`, { courseId: course?.id, folderName });
     } catch (err) {
-      alert(err.message || "Folder create failed. Check database connection.");
+      notify?.(err.message || "Folder create failed. Check database connection.", "error");
       return;
     }
     setAddFolderModal(false); setNewFolderName("");
@@ -2479,8 +2585,10 @@ function AdminTests({ allCourses, setAllCourses }) {
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data?.error) throw new Error(data?.error || "Folder could not be deleted.");
         await refreshLibrary();
+        notify?.("Folder deleted.", "success");
+        recordAdminEvent?.("folder.deleted", `Deleted folder ${folder.name}`, { courseId: course.id, folderName: folder.name });
       } catch (err) {
-        alert(err.message || "Folder delete failed. Check database connection.");
+        notify?.(err.message || "Folder delete failed. Check database connection.", "error");
       }
     }
   }
@@ -2505,8 +2613,10 @@ function AdminTests({ allCourses, setAllCourses }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data?.error) throw new Error(data?.error || "Test could not be added.");
       await refreshLibrary();
+      notify?.("Test added.", "success");
+      recordAdminEvent?.("test.created", `Added test ${t.name}`, { courseId: course?.id, testId: t.id });
     } catch (err) {
-      alert(err.message || "Test add failed. Check database connection.");
+      notify?.(err.message || "Test add failed. Check database connection.", "error");
       return;
     }
     setAddTestModal(null); setNewTest({ name: "", sourceUrl: "", duration: 180, maxMarks: 300, date: "", scheduledAt: "", scheduledUntil: "" });
@@ -2611,8 +2721,10 @@ function AdminTests({ allCourses, setAllCourses }) {
       }
       await refreshLibrary();
       setConfigModal(null);
+      notify?.("Test configuration saved.", "success");
+      recordAdminEvent?.("test.configured", `Configured test ${configModal.testName}`, { courseId: course.id, testId: configModal.testId, examType: configModal.examType });
     } catch (err) {
-      alert(err.message || "Test configuration failed. Check database connection.");
+      notify?.(err.message || "Test configuration failed. Check database connection.", "error");
     } finally {
       setConfigBusy(false);
     }
@@ -2668,8 +2780,10 @@ function AdminTests({ allCourses, setAllCourses }) {
         await refreshLibrary();
       }
       setScheduleModal(null);
+      notify?.(clear ? "Schedule cleared." : "Schedule saved.", "success");
+      recordAdminEvent?.("test.scheduled", `${clear ? "Cleared schedule for" : "Scheduled"} ${scheduleModal.testName}`, { courseId: course.id, testId: scheduleModal.testId, scheduledAt, scheduledUntil });
     } catch (err) {
-      alert(err.message || "Schedule save failed. Check database connection.");
+      notify?.(err.message || "Schedule save failed. Check database connection.", "error");
     } finally {
       setScheduleBusy(false);
     }
@@ -2690,8 +2804,10 @@ function AdminTests({ allCourses, setAllCourses }) {
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data?.error) throw new Error(data?.error || "Test could not be deleted.");
         await refreshLibraryAfterDelete();
+        notify?.("Test deleted.", "success");
+        recordAdminEvent?.("test.deleted", `Deleted test ${test.name}`, { courseId: course.id, testId: test.id });
       } catch (err) {
-        alert(err.message || "Test delete failed. Check database connection.");
+        notify?.(err.message || "Test delete failed. Check database connection.", "error");
       }
     } else if (course?.title && folder?.name && test?.sourceZip) {
       try {
@@ -2701,6 +2817,8 @@ function AdminTests({ allCourses, setAllCourses }) {
           body: JSON.stringify({ courseTitle: course.title, folderName: folder.name, zipName: test.sourceZip }),
         });
         await refreshLibraryAfterDelete();
+        notify?.("Test deleted.", "success");
+        recordAdminEvent?.("test.deleted", `Deleted test ${test.name}`, { courseId: course.id, testId: test.id });
       } catch {}
     }
     setDeleteBusy(false);
@@ -2975,7 +3093,7 @@ function AdminTests({ allCourses, setAllCourses }) {
   );
 }
 
-function AdminPlans({ passPlans, setPassPlans }) {
+function AdminPlans({ passPlans, setPassPlans, notify, recordAdminEvent }) {
   const [plans, setPlans] = useState(passPlans?.length ? passPlans : PASS_PLANS);
   const [saving, setSaving] = useState(false);
   const [deletingPlanId, setDeletingPlanId] = useState(null);
@@ -3010,8 +3128,10 @@ function AdminPlans({ passPlans, setPassPlans }) {
       const next = plans.filter(p => p.id !== plan.id).map((p, idx) => ({ ...p, sortOrder: idx + 1 }));
       setPlans(next);
       setPassPlans(next);
+      notify?.("Pass plan deleted.", "success");
+      recordAdminEvent?.("plan.deleted", `Deleted pass plan ${plan.name}`, { planId: plan.id });
     } catch (err) {
-      alert(err.message || "Pass delete failed.");
+      notify?.(err.message || "Pass delete failed.", "error");
     } finally {
       setDeletingPlanId(null);
     }
@@ -3037,8 +3157,10 @@ function AdminPlans({ passPlans, setPassPlans }) {
       if (!res.ok || data?.error) throw new Error(data?.error || "Plans could not be saved.");
       setPassPlans(data.plans?.length ? data.plans : normalized);
       setPlans(data.plans?.length ? data.plans : normalized);
+      notify?.("Pass pricing saved.", "success");
+      recordAdminEvent?.("plans.updated", "Updated pass pricing", { count: normalized.length });
     } catch (err) {
-      alert(err.message || "Pass pricing save failed.");
+      notify?.(err.message || "Pass pricing save failed.", "error");
     } finally {
       setSaving(false);
     }
@@ -3088,7 +3210,7 @@ function AdminPlans({ passPlans, setPassPlans }) {
   );
 }
 
-function AdminAnnouncements({ appSettings, setAppSettings }) {
+function AdminAnnouncements({ appSettings, setAppSettings, notify, recordAdminEvent }) {
   const [draft, setDraft] = useState({ ...DEFAULT_SETTINGS, ...(appSettings || {}) });
   const [saving, setSaving] = useState(false);
 
@@ -3109,8 +3231,10 @@ function AdminAnnouncements({ appSettings, setAppSettings }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data?.error) throw new Error(data?.error || "Announcements could not be saved.");
       setAppSettings({ ...DEFAULT_SETTINGS, ...(data.settings || draft) });
+      notify?.("Announcements saved.", "success");
+      recordAdminEvent?.("announcements.updated", "Updated announcements", { banner: !!draft.banner?.enabled, home: !!draft.homeAnnouncement?.enabled });
     } catch (err) {
-      alert(err.message || "Announcement save failed.");
+      notify?.(err.message || "Announcement save failed.", "error");
     } finally {
       setSaving(false);
     }
@@ -3225,15 +3349,32 @@ function AdminUsers({ allUsers, allUC, allCourses, onRefresh }) {
 }
 
 // ─── SETTINGS PAGE ────────────────────────────────────────────────────────────
-function SettingsPage({ user, onLogout, onUserUpdate }) {
+function SettingsPage({ user, onLogout, onUserUpdate, courses = [], userCourseIds = [] }) {
   const [name, setName] = useState(user.name || "");
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
+  const [attempts, setAttempts] = useState([]);
+  const [notebooks, setNotebooks] = useState([]);
 
   useEffect(() => {
     setName(user.name || "");
     setStatus("");
   }, [user.name]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (user?.offlineId) {
+      fetch(`${IMPORTER_API}/attempts?offlineId=${encodeURIComponent(user.offlineId)}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (!cancelled) setAttempts(data?.attempts || []); })
+        .catch(() => { if (!cancelled) setAttempts([]); });
+    }
+    loadNotebookStore(user).then(data => { if (!cancelled) setNotebooks(data || []); });
+    return () => { cancelled = true; };
+  }, [user]);
+
+  const enrolledCourses = courses.filter(c => userCourseIds.includes(c.id));
+  const pass = passStatus(user?.pass);
 
   async function saveProfile() {
     const nextName = name.trim();
@@ -3264,8 +3405,9 @@ function SettingsPage({ user, onLogout, onUserUpdate }) {
 
   return (
     <div className="fade-in">
-      <h2 style={{ fontSize: 20, fontWeight: 700, color: "#F1F5F9", marginBottom: 20 }}>Settings</h2>
-      <div className="card" style={{ maxWidth: 480 }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700, color: "#F1F5F9", marginBottom: 20 }}>Account</h2>
+      <div className="responsive-two-col" style={{ alignItems: "start" }}>
+      <div className="card">
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20, paddingBottom: 20, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           <div style={{ width: 52, height: 52, borderRadius: "50%", background: "linear-gradient(135deg,#7C3AED,#4F46E5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700 }}>{user.avatar}</div>
           <div>
@@ -3291,6 +3433,77 @@ function SettingsPage({ user, onLogout, onUserUpdate }) {
             <LogoutNudgeIcon s={14} />Sign Out
           </button>
         </div>
+      </div>
+      <div style={{ display: "grid", gap: 12 }}>
+        <div className="card landing-hover-card">
+          <div style={{ color: "#F1F5F9", fontWeight: 800, fontSize: 14, marginBottom: 12 }}>Learning Snapshot</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+            {[
+              ["Pass", pass.active ? "Active" : "Inactive", pass.active ? "#34D399" : "#F87171"],
+              ["Courses", enrolledCourses.length, "#A78BFA"],
+              ["Attempts", attempts.length, "#38BDF8"],
+              ["Notebooks", notebooks.reduce((sum, n) => sum + (n.questions || []).length, 0), "#FCD34D"],
+              ["Expiry", pass.active && pass.expiresAt ? new Date(pass.expiresAt).toLocaleDateString("en-IN") : "-", "#CBD5E1"],
+              ["Role", user.role || "user", "#CBD5E1"],
+            ].map(([label, value, color]) => (
+              <div key={label} style={{ padding: 12, borderRadius: 12, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ color, fontSize: 17, fontWeight: 850 }}>{value}</div>
+                <div style={{ color: "#64748B", fontSize: 11, marginTop: 3 }}>{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="card">
+          <div style={{ color: "#F1F5F9", fontWeight: 800, fontSize: 14, marginBottom: 10 }}>Enrolled Courses</div>
+          {enrolledCourses.length ? enrolledCourses.map(course => (
+            <div key={course.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+              <span style={{ color: "#CBD5E1", fontSize: 13, fontWeight: 700 }}>{course.title}</span>
+              <span style={{ color: "#64748B", fontSize: 12 }}>{configuredTestCount(course)} tests</span>
+            </div>
+          )) : <div style={{ color: "#64748B", fontSize: 13 }}>No courses enrolled yet.</div>}
+        </div>
+      </div>
+      </div>
+    </div>
+  );
+}
+
+function ToastStack({ toasts, onDismiss }) {
+  if (!toasts?.length) return null;
+  return (
+    <div className="toast-stack">
+      {toasts.map(t => (
+        <div key={t.id} className={`toast-card ${t.type || "info"}`}>
+          <Icon n={t.type === "success" ? "check-circle" : t.type === "error" ? "alert-tri" : "zap"} s={16} c={t.type === "success" ? "#34D399" : t.type === "error" ? "#F87171" : "#A78BFA"} />
+          <div style={{ lineHeight: 1.45, fontWeight: 650 }}>{t.message}</div>
+          <button className="toast-close" onClick={() => onDismiss(t.id)} aria-label="Dismiss notification">
+            <Icon n="x" s={14} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AppLoadingSkeleton() {
+  return (
+    <div className="landing-shell" style={{ minHeight: "100vh", padding: 28 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 46 }}>
+        <div className="skeleton-line" style={{ width: 42, height: 42, borderRadius: 12 }} />
+        <div>
+          <div className="skeleton-line" style={{ width: 150, height: 16, marginBottom: 8 }} />
+          <div className="skeleton-line" style={{ width: 210, height: 10 }} />
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(320px,0.45fr)", gap: 24 }}>
+        <div>
+          <div className="skeleton-line" style={{ width: "56%", height: 54, borderRadius: 14, marginBottom: 18 }} />
+          <div className="skeleton-line" style={{ width: "42%", height: 16, marginBottom: 34 }} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+            {[1,2,3].map(i => <div key={i} className="skeleton-card" />)}
+          </div>
+        </div>
+        <div className="skeleton-card" style={{ minHeight: 360 }} />
       </div>
     </div>
   );
@@ -4029,6 +4242,17 @@ export default function App() {
   const [activeReport, setActiveReport] = useState(null);
   const [passPlans, setPassPlans] = useState(PASS_PLANS);
   const [appSettings, setAppSettings] = useState(DEFAULT_SETTINGS);
+  const [toasts, setToasts] = useState([]);
+
+  const notify = useCallback((message, type = "info") => {
+    const id = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    setToasts(prev => [...prev, { id, message, type }].slice(-4));
+    window.setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3400);
+  }, []);
+
+  const dismissToast = useCallback((id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
 
   const syncFolderLibrary = useCallback(async () => {
     const res = await fetch(`${IMPORTER_API}/library`).catch(() => null);
@@ -4124,7 +4348,7 @@ export default function App() {
   if (!authChecked) return (
     <>
       <style>{GS}</style>
-      <div className="landing-shell" style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: "#94A3B8" }}>Checking session...</div>
+      <AppLoadingSkeleton />
     </>
   );
 
@@ -4132,6 +4356,7 @@ export default function App() {
     <>
       <style>{GS}</style>
       <LoginPage onLogin={handleLogin} passPlans={passPlans} />
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </>
   );
 
@@ -4160,8 +4385,8 @@ export default function App() {
       case "tests": return <TestsPage courses={courses} setCoursesView={setCourses} userCourseIds={userCourseIds} onStartTest={setActiveTest} onSetPage={setPage} onViewAnalysis={setActiveReport} user={user} />;
       case "analysis": return <AnalysisPage courses={courses} userCourseIds={userCourseIds} user={user} />;
       case "notebook": return <NotebookPage user={user} />;
-      case "admin": return user.role === "admin" ? <AdminPage allCourses={courses} setAllCourses={setCourses} passPlans={passPlans} setPassPlans={setPassPlans} appSettings={appSettings} setAppSettings={setAppSettings} /> : null;
-      case "settings": return <SettingsPage user={user} onUserUpdate={setUser} onLogout={handleLogout} />;
+      case "admin": return user.role === "admin" ? <AdminPage allCourses={courses} setAllCourses={setCourses} passPlans={passPlans} setPassPlans={setPassPlans} appSettings={appSettings} setAppSettings={setAppSettings} user={user} notify={notify} /> : null;
+      case "settings": return <SettingsPage user={user} courses={courses} userCourseIds={userCourseIds} onUserUpdate={setUser} onLogout={handleLogout} />;
       default: return null;
     }
   };
@@ -4195,6 +4420,7 @@ export default function App() {
           {renderPage()}
         </div>
       </div>
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </>
   );
 }

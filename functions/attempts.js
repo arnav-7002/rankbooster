@@ -77,9 +77,45 @@ export async function onRequestPost({ request, env }) {
 
 export async function onRequestDelete({ request, env }) {
   const body = await readJson(request);
-  const userId = userIdFrom(body.user || body.offlineId);
+  const actor = body.actor || {};
+  const userId = userIdFrom(body.user || body.offlineId || body.userId);
   const attemptId = cleanId(body.attemptId);
-  if (!userId || !attemptId) return json({ error: "offlineId and attemptId required" }, 400);
-  await supabaseRequest(env, `attempts?user_id=${eq(userId)}&id=${eq(attemptId)}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
-  return json({ success: true, deleted: true });
+  const testIds = Array.isArray(body.testIds) ? body.testIds.map(cleanId).filter(Boolean) : [];
+  const testId = cleanId(body.testId);
+
+  if (attemptId) {
+    const filter = userId ? `user_id=${eq(userId)}&id=${eq(attemptId)}` : `id=${eq(attemptId)}`;
+    await supabaseRequest(env, `attempts?${filter}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+    await logDelete(env, actor, "attempt.deleted", "Deleted one attempt", { attemptId, userId });
+    return json({ success: true, deleted: true, mode: "attempt" });
+  }
+
+  if (userId && body.allForUser) {
+    await supabaseRequest(env, `attempts?user_id=${eq(userId)}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+    await logDelete(env, actor, "attempts.user_deleted", "Deleted all attempts for a user", { userId });
+    return json({ success: true, deleted: true, mode: "user" });
+  }
+
+  const ids = testIds.length ? testIds : (testId ? [testId] : []);
+  if (ids.length) {
+    for (const id of ids) {
+      await supabaseRequest(env, `attempts?test_id=${eq(id)}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+    }
+    await logDelete(env, actor, "attempts.test_deleted", `Deleted attempts for ${ids.length} test${ids.length === 1 ? "" : "s"}`, { testIds: ids });
+    return json({ success: true, deleted: true, mode: "tests", testIds: ids });
+  }
+
+  return json({ error: "attemptId, allForUser, testId, or testIds required" }, 400);
+}
+
+async function logDelete(env, actor, type, message, metadata = {}) {
+  await upsertRows(env, "admin_events", {
+    id: cleanId(`evt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`),
+    actor_user_id: cleanId(actor.id || actor.offlineId || ""),
+    event_type: type,
+    entity_type: "attempt",
+    entity_id: cleanId(metadata.attemptId || metadata.userId || metadata.testIds?.[0] || ""),
+    payload_json: { message, actor_email: String(actor.email || "").toLowerCase(), metadata },
+    created_at: new Date().toISOString(),
+  }).catch(() => null);
 }

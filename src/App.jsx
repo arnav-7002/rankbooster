@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import TestInterface from "./TestInterface";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -546,7 +546,12 @@ async function loadExternalTestJson(sourceUrl) {
 }
 
 function isConfiguredTest(test) {
-  return test?.configured === true || (!test?.sourceZip && !test?.sourceUrl);
+  return test?.configured === true || (!!test?.sourceUrl && test?.configured !== false) || (!test?.sourceZip && !test?.sourceUrl);
+}
+
+function cleanAttemptTestId(test) {
+  const raw = String(test?.id || test?.testId || test?.sourceZip || test?.name || "");
+  return raw.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
 }
 
 function configuredTests(folder) {
@@ -2201,7 +2206,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
         {tab === "tests" && <AdminTests allCourses={allCourses} setAllCourses={setAllCourses} notify={toast} recordAdminEvent={recordAdminEvent} />}
         {tab === "plans" && <AdminPlans passPlans={passPlans} setPassPlans={setPassPlans} notify={toast} recordAdminEvent={recordAdminEvent} />}
         {tab === "announcements" && <AdminAnnouncements appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} />}
-        {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} onRefresh={loadAdminUsers} />}
+        {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} onRefresh={loadAdminUsers} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "activity" && <AdminActivity events={adminEvents} onRefresh={loadAdminEvents} />}
         {tab === "checklist" && <AdminPublishChecklist dbStatus={dbStatus} allCourses={allCourses} passPlans={passPlans} appSettings={appSettings} adminUsers={adminUsers} />}
       </div>
@@ -2260,7 +2265,7 @@ function AdminPublishChecklist({ dbStatus, allCourses, passPlans, appSettings, a
         <div style={{ color: "#E2E8F0", fontSize: 15, fontWeight: 800 }}>Publish Checklist</div>
         <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>Quick pre-launch scan before sharing the website.</div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,420px))", gap: 12, alignItems: "start" }}>
         {items.map(item => (
           <div key={item.label} className="card tap-card" style={{ display: "flex", alignItems: "center", gap: 12, borderColor: item.ok ? "rgba(16,185,129,0.22)" : "rgba(251,191,36,0.22)" }}>
             <div style={{ width: 38, height: 38, borderRadius: 10, background: item.ok ? "rgba(16,185,129,0.14)" : "rgba(251,191,36,0.13)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -3287,8 +3292,126 @@ function AdminAnnouncements({ appSettings, setAppSettings, notify, recordAdminEv
   );
 }
 
-function AdminUsers({ allUsers, allUC, allCourses, onRefresh }) {
-  const users = allUsers || [];
+function AdminUsers({ allUsers, allUC, allCourses, onRefresh, notify, recordAdminEvent, currentAdmin }) {
+  const users = useMemo(() => allUsers || [], [allUsers]);
+  const [query, setQuery] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState(users.find(u => u.role !== "admin")?.id || users[0]?.id || "");
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState("");
+  const [selectedTestIds, setSelectedTestIds] = useState([]);
+
+  useEffect(() => {
+    if (!selectedUserId && users.length) setSelectedUserId(users.find(u => u.role !== "admin")?.id || users[0]?.id || "");
+  }, [users, selectedUserId]);
+
+  const visibleUsers = users.filter(u => {
+    const hay = `${u.name || ""} ${u.email || ""} ${u.role || ""}`.toLowerCase();
+    return hay.includes(query.trim().toLowerCase());
+  });
+  const selectedUser = users.find(u => u.id === selectedUserId) || visibleUsers[0] || null;
+  const testOptions = allCourses.flatMap(course => (course.testFolders || []).flatMap(folder => (folder.tests || []).map(test => ({
+    id: cleanAttemptTestId(test),
+    name: test.name,
+    folder: folder.name,
+    course: course.title,
+  })))).filter(t => t.id);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadHistory() {
+      if (!selectedUser?.id) {
+        setHistory([]);
+        return;
+      }
+      setHistoryLoading(true);
+      const res = await fetch(`${IMPORTER_API}/attempts?offlineId=${encodeURIComponent(selectedUser.id)}`, { cache: "no-store" }).catch(() => null);
+      const data = res?.ok ? await res.json().catch(() => null) : null;
+      if (!cancelled) {
+        setHistory(data?.attempts || []);
+        setHistoryLoading(false);
+      }
+    }
+    loadHistory();
+    return () => { cancelled = true; };
+  }, [selectedUser?.id]);
+
+  async function refreshSelectedHistory() {
+    if (!selectedUser?.id) return;
+    setHistoryLoading(true);
+    const res = await fetch(`${IMPORTER_API}/attempts?offlineId=${encodeURIComponent(selectedUser.id)}`, { cache: "no-store" }).catch(() => null);
+    const data = res?.ok ? await res.json().catch(() => null) : null;
+    setHistory(data?.attempts || []);
+    setHistoryLoading(false);
+    onRefresh?.();
+  }
+
+  async function deleteAttempt(attempt) {
+    if (!attempt?.attemptId) return;
+    if (!window.confirm(`Delete this attempt for ${selectedUser?.email}?`)) return;
+    setDeleteBusy(attempt.attemptId);
+    try {
+      const res = await fetch(`${IMPORTER_API}/attempts`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attemptId: attempt.attemptId, userId: selectedUser.id, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Attempt delete failed.");
+      notify?.("Attempt deleted.", "success");
+      recordAdminEvent?.("attempt.deleted", `Deleted attempt for ${selectedUser.email}`, { attemptId: attempt.attemptId, userId: selectedUser.id });
+      await refreshSelectedHistory();
+    } catch (err) {
+      notify?.(err.message || "Attempt delete failed.", "error");
+    } finally {
+      setDeleteBusy("");
+    }
+  }
+
+  async function deleteAllForUser() {
+    if (!selectedUser?.id) return;
+    if (!window.confirm(`Delete ALL attempts for ${selectedUser.email}? This cannot be undone.`)) return;
+    setDeleteBusy("user");
+    try {
+      const res = await fetch(`${IMPORTER_API}/attempts`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: selectedUser.id, allForUser: true, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "User attempts delete failed.");
+      notify?.("All attempts for user deleted.", "success");
+      recordAdminEvent?.("attempts.user_deleted", `Deleted all attempts for ${selectedUser.email}`, { userId: selectedUser.id });
+      await refreshSelectedHistory();
+    } catch (err) {
+      notify?.(err.message || "User attempts delete failed.", "error");
+    } finally {
+      setDeleteBusy("");
+    }
+  }
+
+  async function deleteSelectedTestAttempts() {
+    if (!selectedTestIds.length) return;
+    if (!window.confirm(`Delete attempts of ${selectedTestIds.length} selected test(s) for ALL users?`)) return;
+    setDeleteBusy("tests");
+    try {
+      const res = await fetch(`${IMPORTER_API}/attempts`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ testIds: selectedTestIds, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Bulk test attempt delete failed.");
+      notify?.("Selected test attempts deleted.", "success");
+      recordAdminEvent?.("attempts.test_deleted", `Deleted attempts for ${selectedTestIds.length} tests`, { testIds: selectedTestIds });
+      setSelectedTestIds([]);
+      await refreshSelectedHistory();
+    } catch (err) {
+      notify?.(err.message || "Bulk test attempt delete failed.", "error");
+    } finally {
+      setDeleteBusy("");
+    }
+  }
 
   return (
     <div>
@@ -3301,17 +3424,100 @@ function AdminUsers({ allUsers, allUC, allCourses, onRefresh }) {
           <Icon n="repeat" s={13} />Refresh
         </button>
       </div>
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="responsive-two-col" style={{ alignItems: "start" }}>
+          <div>
+            <label style={{ display: "block", color: "#64748B", fontSize: 11, marginBottom: 6 }}>Find user by email or name</label>
+            <input className="input-field" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search user..." />
+          </div>
+          <div>
+            <label style={{ display: "block", color: "#64748B", fontSize: 11, marginBottom: 6 }}>Open full history</label>
+            <select className="select-field" style={{ width: "100%", minHeight: 42 }} value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)}>
+              {visibleUsers.map(u => <option key={u.id} value={u.id}>{u.email} · {u.name}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+      {selectedUser && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 42, height: 42, borderRadius: "50%", background: "linear-gradient(135deg,#7C3AED,#4F46E5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 850 }}>{selectedUser.avatar}</div>
+              <div>
+                <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 850 }}>{selectedUser.name}</div>
+                <div style={{ color: "#64748B", fontSize: 12 }}>{selectedUser.email}</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="btn-ghost" onClick={refreshSelectedHistory} disabled={historyLoading}><Icon n="repeat" s={13} />Refresh History</button>
+              <button className="btn-danger" onClick={deleteAllForUser} disabled={deleteBusy === "user" || history.length === 0}><Icon n="trash" s={13} />{deleteBusy === "user" ? "Deleting..." : "Delete User Attempts"}</button>
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10, marginBottom: 14 }}>
+            {[
+              ["Attempts", history.length, "#A78BFA"],
+              ["Best Score", history.reduce((best, a) => Math.max(best, Number(a.score || 0)), 0), "#34D399"],
+              ["Courses", (selectedUser.enrollments || selectedUser.coursesOpted || []).length, "#38BDF8"],
+              ["Pass", passStatus(selectedUser.pass).active ? `${passStatus(selectedUser.pass).daysLeft}d left` : "Inactive", passStatus(selectedUser.pass).active ? "#FCD34D" : "#F87171"],
+            ].map(([label, value, color]) => (
+              <div key={label} style={{ padding: 12, borderRadius: 12, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ color, fontSize: 18, fontWeight: 850 }}>{value}</div>
+                <div style={{ color: "#64748B", fontSize: 11 }}>{label}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {historyLoading ? [1,2,3].map(i => <div key={i} className="skeleton-card" style={{ minHeight: 58 }} />) : history.length ? history.map(attempt => (
+              <div key={attempt.attemptId} className="tap-card" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: 12, alignItems: "center", padding: 12, borderRadius: 13, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.035)" }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ color: "#E2E8F0", fontSize: 13, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{attempt.testName || attempt.source?.testName || "Attempt"}</div>
+                  <div style={{ color: "#64748B", fontSize: 11, marginTop: 2 }}>{attempt.courseTitle || attempt.source?.courseTitle || "Course"} · {attempt.folderName || attempt.source?.folderName || "Folder"} · {attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleString() : ""}</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ color: "#A78BFA", fontWeight: 850 }}>{Number(attempt.score || 0)}/{Number(attempt.maxMarks || 0)}</div>
+                  <div style={{ color: "#64748B", fontSize: 11 }}>{Number(attempt.correct || 0)} correct · {Number(attempt.wrong || 0)} wrong</div>
+                </div>
+                <button className="btn-danger" style={{ minHeight: 34, padding: "7px 11px", fontSize: 12 }} disabled={deleteBusy === attempt.attemptId} onClick={() => deleteAttempt(attempt)}>
+                  <Icon n="trash" s={12} />{deleteBusy === attempt.attemptId ? "Deleting" : "Delete"}
+                </button>
+              </div>
+            )) : <div style={{ color: "#64748B", fontSize: 13, padding: 16, textAlign: "center" }}>No attempts for this user.</div>}
+          </div>
+        </div>
+      )}
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+          <div>
+            <div style={{ color: "#F1F5F9", fontWeight: 850, fontSize: 14 }}>Bulk Attempt Cleanup</div>
+            <div style={{ color: "#64748B", fontSize: 12 }}>Delete all users' attempts for specific tests. The test itself remains available.</div>
+          </div>
+          <button className="btn-danger" disabled={!selectedTestIds.length || deleteBusy === "tests"} onClick={deleteSelectedTestAttempts}>
+            <Icon n="trash" s={13} />{deleteBusy === "tests" ? "Deleting..." : `Delete ${selectedTestIds.length || ""} Test Attempts`}
+          </button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 8, maxHeight: 230, overflow: "auto", paddingRight: 4 }}>
+          {testOptions.length ? testOptions.map(test => (
+            <label key={`${test.course}_${test.folder}_${test.id}`} className="tap-card" style={{ display: "flex", alignItems: "center", gap: 9, padding: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", background: selectedTestIds.includes(test.id) ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.03)", cursor: "pointer" }}>
+              <input type="checkbox" checked={selectedTestIds.includes(test.id)} onChange={e => setSelectedTestIds(prev => e.target.checked ? [...new Set([...prev, test.id])] : prev.filter(id => id !== test.id))} />
+              <span style={{ minWidth: 0 }}>
+                <div style={{ color: "#E2E8F0", fontSize: 12, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{test.name}</div>
+                <div style={{ color: "#64748B", fontSize: 10 }}>{test.course} · {test.folder}</div>
+              </span>
+            </label>
+          )) : <div style={{ color: "#64748B", fontSize: 13 }}>No tests found.</div>}
+        </div>
+      </div>
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead><tr className="table-head">
             {["User", "Email", "Role", "Joined", "Pass", "Courses", "Attempts", "Best"].map(h => <th key={h}>{h}</th>)}
           </tr></thead>
           <tbody>
-            {users.map(u => {
+            {visibleUsers.map(u => {
               const enrolled = (u.enrollments || u.coursesOpted || (allUC[u.id] || []).map(cid => ({ title: allCourses.find(c => c.id === cid)?.title || cid }))).map(c => c.title || c.id).filter(Boolean);
               const userPass = passStatus(u.pass);
               return (
-                <tr key={u.id} className="table-row">
+                <tr key={u.id} className="table-row" onClick={() => setSelectedUserId(u.id)} style={{ cursor: "pointer", background: selectedUserId === u.id ? "rgba(124,58,237,0.08)" : undefined }}>
                   <td>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(124,58,237,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#A78BFA" }}>{u.avatar}</div>
@@ -3336,7 +3542,7 @@ function AdminUsers({ allUsers, allUC, allCourses, onRefresh }) {
                 </tr>
               );
             })}
-            {users.length === 0 && (
+            {visibleUsers.length === 0 && (
               <tr className="table-row">
                 <td colSpan={8} style={{ textAlign: "center", color: "#475569", padding: 28 }}>No users yet.</td>
               </tr>

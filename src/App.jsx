@@ -384,6 +384,7 @@ const PASS_PLANS = [
 const DEFAULT_SETTINGS = {
   banner: { enabled: false, text: "", variant: "info" },
   homeAnnouncement: { enabled: false, title: "", body: "" },
+  payments: { enabled: false, upiId: "", payeeName: "RankBooster", note: "Pay using UPI, then submit the UTR/reference ID for manual approval." },
 };
 
 function passStatus(pass) {
@@ -396,7 +397,7 @@ function passStatus(pass) {
   return { active: true, label: `${pass.planName || "Pass"} active`, daysLeft, expiresAt: pass.expiresAt };
 }
 
-function createPass(plan) {
+function createPass(plan, payment = {}) {
   const now = new Date();
   const expires = new Date(now.getTime() + Number(plan.durationDays || 1) * 86400000);
   return {
@@ -406,9 +407,25 @@ function createPass(plan) {
     price: plan.price,
     activatedAt: now.toISOString(),
     expiresAt: expires.toISOString(),
-    paymentMode: "mock",
+    paymentMode: payment.mode || "mock",
     paymentStatus: "paid",
+    paymentRef: payment.ref || "",
+    orderId: payment.orderId || "",
   };
+}
+
+function upiPaymentUrl({ upiId, payeeName, amount, note, orderId }) {
+  const params = new URLSearchParams();
+  params.set("pa", upiId || "");
+  params.set("pn", payeeName || "RankBooster");
+  params.set("am", String(Number(amount || 0)));
+  params.set("cu", "INR");
+  params.set("tn", `${note || "RankBooster Pass"} ${orderId || ""}`.trim());
+  return `upi://pay?${params.toString()}`;
+}
+
+function qrImageUrl(data, size = 220) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=10&data=${encodeURIComponent(data || "")}`;
 }
 
 function formatDateTime(value) {
@@ -1255,13 +1272,17 @@ function Sidebar({ user, page, setPage, courses, userCourseIds, collapsed, setCo
 }
 
 // ─── COURSES PAGE ─────────────────────────────────────────────────────────────
-function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, onUserUpdate, passPlans = PASS_PLANS }) {
+function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, onUserUpdate, passPlans = PASS_PLANS, appSettings = DEFAULT_SETTINGS, notify }) {
   const myCourses = courses.filter(c => userCourseIds.includes(c.id));
   const available = courses.filter(c => !userCourseIds.includes(c.id));
   const [savedAttempts, setSavedAttempts] = useState([]);
   const [passBusy, setPassBusy] = useState("");
+  const [paymentModal, setPaymentModal] = useState(null);
+  const [utr, setUtr] = useState("");
+  const [pendingOrders, setPendingOrders] = useState([]);
   const currentPass = user?.pass;
   const currentPassStatus = passStatus(currentPass);
+  const paymentSettings = { ...DEFAULT_SETTINGS.payments, ...(appSettings.payments || {}) };
 
   useEffect(() => {
     let cancelled = false;
@@ -1276,7 +1297,22 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
     return () => { cancelled = true; };
   }, [user?.id, user?.offlineId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!user?.offlineId) return undefined;
+    fetch(`${IMPORTER_API}/payments?offlineId=${encodeURIComponent(user.offlineId)}&status=pending`, { cache: "no-store" })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (!cancelled) setPendingOrders(data?.orders || []); })
+      .catch(() => null);
+    return () => { cancelled = true; };
+  }, [user?.offlineId, passBusy]);
+
   async function activatePlan(plan) {
+    if (paymentSettings.enabled) {
+      setPaymentModal(plan);
+      setUtr("");
+      return;
+    }
     setPassBusy(plan.id);
     const updatedUser = { ...user, pass: createPass(plan) };
     onUserUpdate?.(updatedUser);
@@ -1288,6 +1324,36 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
     const data = res?.ok ? await res.json().catch(() => null) : null;
     if (data?.user) onUserUpdate?.({ ...updatedUser, ...data.user, pass: data.pass || data.user.pass || updatedUser.pass });
     setPassBusy("");
+  }
+
+  async function submitPaymentOrder() {
+    if (!paymentModal) return;
+    if (!paymentSettings.upiId) {
+      notify?.("Payment UPI is not configured yet.", "error");
+      return;
+    }
+    if (!utr.trim() || utr.trim().length < 6) {
+      notify?.("Enter a valid UTR/reference ID.", "error");
+      return;
+    }
+    setPassBusy(paymentModal.id);
+    try {
+      const res = await fetch(`${IMPORTER_API}/payments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user, plan: paymentModal, utr: utr.trim(), note: "Student submitted UPI payment" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Payment submission failed.");
+      notify?.("Payment submitted. Your pass will activate after admin approval.", "success");
+      setPendingOrders(prev => [data.order, ...prev.filter(o => o.id !== data.order?.id)].filter(Boolean));
+      setPaymentModal(null);
+      setUtr("");
+    } catch (err) {
+      notify?.(err.message || "Payment submission failed.", "error");
+    } finally {
+      setPassBusy("");
+    }
   }
 
   async function enroll(courseId) {
@@ -1349,6 +1415,11 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
             <PassPlanCards compact activePass={currentPass} onSelect={activatePlan} plans={passPlans} />
           </div>
         )}
+        {!currentPassStatus.active && pendingOrders.length > 0 && (
+          <div style={{ marginTop: 12, padding: 12, borderRadius: 12, background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.22)", color: "#FCD34D", fontSize: 12, fontWeight: 750 }}>
+            {pendingOrders.length} payment request{pendingOrders.length === 1 ? "" : "s"} pending admin approval.
+          </div>
+        )}
       </div>
 
       {myCourses.length === 0 && (
@@ -1375,6 +1446,34 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
             {available.map(c => <CourseCard key={c.id} course={c} passActive={currentPassStatus.active} onEnroll={() => enroll(c.id)} />)}
           </div>
         </>
+      )}
+      {paymentModal && (
+        <Modal onClose={() => setPaymentModal(null)} title="Complete UPI Payment">
+          <div style={{ display: "grid", gap: 14 }}>
+            <div className="card" style={{ padding: 14, display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 850 }}>{paymentModal.name}</div>
+                <div style={{ color: "#64748B", fontSize: 12 }}>{paymentModal.label || `${paymentModal.durationDays} days`} access</div>
+              </div>
+              <div style={{ color: "#A78BFA", fontSize: 22, fontWeight: 900 }}>₹{Number(paymentModal.price || 0)}</div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "220px minmax(0,1fr)", gap: 14, alignItems: "center" }}>
+              <div style={{ padding: 12, background: "white", borderRadius: 14, display: "grid", placeItems: "center" }}>
+                <img alt="UPI QR code" style={{ width: 196, height: 196, display: "block" }} src={qrImageUrl(upiPaymentUrl({ upiId: paymentSettings.upiId, payeeName: paymentSettings.payeeName, amount: paymentModal.price, note: "RankBooster Pass", orderId: paymentModal.id }))} />
+              </div>
+              <div>
+                <div style={{ color: "#CBD5E1", fontSize: 13, lineHeight: 1.6, marginBottom: 10 }}>{paymentSettings.note}</div>
+                <div style={{ color: "#64748B", fontSize: 12, marginBottom: 5 }}>Pay to</div>
+                <div style={{ color: "#F1F5F9", fontWeight: 850, marginBottom: 12 }}>{paymentSettings.upiId}</div>
+                <label style={{ color: "#64748B", fontSize: 11, display: "block", marginBottom: 5 }}>UTR / Reference ID</label>
+                <input className="input-field" value={utr} onChange={e => setUtr(e.target.value)} placeholder="Enter UTR after payment" />
+              </div>
+            </div>
+            <button className="btn-primary" disabled={passBusy === paymentModal.id} onClick={submitPaymentOrder}>
+              <Icon n="check" s={14} />{passBusy === paymentModal.id ? "Submitting..." : "Submit Payment for Approval"}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );
@@ -2103,7 +2202,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminEvents, setAdminEvents] = useState([]);
   const allUC = {};
-  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["announcements", "Announcements"], ["users", "Users"], ["activity", "Activity"], ["checklist", "Publish Checklist"]];
+  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["payments", "Payments"], ["announcements", "Announcements"], ["users", "Users"], ["activity", "Activity"], ["checklist", "Publish Checklist"]];
   const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
   const toast = useCallback((message, type = "info") => notify?.(message, type), [notify]);
 
@@ -2205,6 +2304,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
         {tab === "courses" && <AdminCourses allCourses={allCourses} setAllCourses={setAllCourses} notify={toast} recordAdminEvent={recordAdminEvent} />}
         {tab === "tests" && <AdminTests allCourses={allCourses} setAllCourses={setAllCourses} notify={toast} recordAdminEvent={recordAdminEvent} />}
         {tab === "plans" && <AdminPlans passPlans={passPlans} setPassPlans={setPassPlans} notify={toast} recordAdminEvent={recordAdminEvent} />}
+        {tab === "payments" && <AdminPayments appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "announcements" && <AdminAnnouncements appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} />}
         {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} onRefresh={loadAdminUsers} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "activity" && <AdminActivity events={adminEvents} onRefresh={loadAdminEvents} />}
@@ -3210,6 +3310,156 @@ function AdminPlans({ passPlans, setPassPlans, notify, recordAdminEvent }) {
             <textarea className="input-field" value={plan.note || ""} onChange={e => updatePlan(plan.id, { note: e.target.value })} placeholder="Short description" rows={3} />
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function AdminPayments({ appSettings, setAppSettings, notify, recordAdminEvent, currentAdmin }) {
+  const [draft, setDraft] = useState({ ...DEFAULT_SETTINGS.payments, ...(appSettings.payments || {}) });
+  const [orders, setOrders] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("pending");
+  const [saving, setSaving] = useState(false);
+  const [busyOrder, setBusyOrder] = useState("");
+
+  useEffect(() => { setDraft({ ...DEFAULT_SETTINGS.payments, ...(appSettings.payments || {}) }); }, [appSettings.payments]);
+
+  const loadOrders = useCallback(async () => {
+    const res = await fetch(`${IMPORTER_API}/payments?status=${encodeURIComponent(statusFilter)}`, { cache: "no-store" }).catch(() => null);
+    const data = res?.ok ? await res.json().catch(() => null) : null;
+    setOrders(data?.orders || []);
+  }, [statusFilter]);
+
+  useEffect(() => { loadOrders(); }, [loadOrders]);
+
+  async function savePaymentSettings() {
+    setSaving(true);
+    try {
+      const settings = { ...DEFAULT_SETTINGS, ...appSettings, payments: draft };
+      const res = await fetch(`${IMPORTER_API}/settings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Payment settings could not be saved.");
+      setAppSettings({ ...DEFAULT_SETTINGS, ...(data.settings || settings) });
+      notify?.(draft.enabled ? "Manual UPI payments enabled." : "Manual payments turned off.", "success");
+      recordAdminEvent?.("payments.settings_updated", "Updated payment settings", { enabled: !!draft.enabled, upiId: draft.upiId });
+    } catch (err) {
+      notify?.(err.message || "Payment settings save failed.", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function reviewOrder(order, action) {
+    if (!order?.id) return;
+    if (!window.confirm(`${action === "approve" ? "Approve" : "Decline"} payment from ${order.userEmail}?`)) return;
+    setBusyOrder(`${action}_${order.id}`);
+    try {
+      const res = await fetch(`${IMPORTER_API}/payments`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: order.id, action, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Payment review failed.");
+      notify?.(action === "approve" ? "Payment approved and pass activated." : "Payment declined.", action === "approve" ? "success" : "info");
+      recordAdminEvent?.(`payment.${action}d`, `${action === "approve" ? "Approved" : "Declined"} payment ${order.utr}`, { orderId: order.id, userId: order.userId, amount: order.amount });
+      await loadOrders();
+    } catch (err) {
+      notify?.(err.message || "Payment review failed.", "error");
+    } finally {
+      setBusyOrder("");
+    }
+  }
+
+  const pendingCount = orders.filter(o => o.status === "pending").length;
+  return (
+    <div className="fade-in">
+      <div className="responsive-two-col" style={{ alignItems: "start", marginBottom: 16 }}>
+        <div className="card landing-hover-card">
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 14 }}>
+            <div>
+              <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 850 }}>Manual UPI Payments</div>
+              <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>When enabled, students submit UTR and wait for approval.</div>
+            </div>
+            <label className="tag tag-purple" style={{ cursor: "pointer", padding: "7px 10px" }}>
+              <input type="checkbox" checked={!!draft.enabled} onChange={e => setDraft(p => ({ ...p, enabled: e.target.checked }))} style={{ marginRight: 7 }} />
+              {draft.enabled ? "Enabled" : "Off"}
+            </label>
+          </div>
+          <div style={{ display: "grid", gap: 10 }}>
+            <div>
+              <label style={{ color: "#64748B", fontSize: 11, display: "block", marginBottom: 5 }}>UPI ID</label>
+              <input className="input-field" value={draft.upiId || ""} onChange={e => setDraft(p => ({ ...p, upiId: e.target.value }))} placeholder="yourupi@bank" />
+            </div>
+            <div>
+              <label style={{ color: "#64748B", fontSize: 11, display: "block", marginBottom: 5 }}>Payee Name</label>
+              <input className="input-field" value={draft.payeeName || ""} onChange={e => setDraft(p => ({ ...p, payeeName: e.target.value }))} placeholder="RankBooster" />
+            </div>
+            <div>
+              <label style={{ color: "#64748B", fontSize: 11, display: "block", marginBottom: 5 }}>Student Instructions</label>
+              <textarea className="input-field" rows={3} value={draft.note || ""} onChange={e => setDraft(p => ({ ...p, note: e.target.value }))} />
+            </div>
+            <button className="btn-primary" disabled={saving} onClick={savePaymentSettings}>{saving ? "Saving..." : "Save Payment Settings"}</button>
+          </div>
+        </div>
+        <div className="card">
+          <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 850, marginBottom: 12 }}>Payment Status</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
+            {[
+              ["Mode", draft.enabled ? "Manual" : "Free", draft.enabled ? "#FCD34D" : "#34D399"],
+              ["UPI", draft.upiId || "Not set", "#A78BFA"],
+              ["Visible Orders", orders.length, "#38BDF8"],
+            ].map(([label, value, color]) => (
+              <div key={label} style={{ padding: 12, borderRadius: 12, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ color, fontWeight: 850, fontSize: 16, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</div>
+                <div style={{ color: "#64748B", fontSize: 11, marginTop: 3 }}>{label}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 12, padding: 12, borderRadius: 12, background: pendingCount ? "rgba(251,191,36,0.10)" : "rgba(16,185,129,0.08)", border: `1px solid ${pendingCount ? "rgba(251,191,36,0.22)" : "rgba(16,185,129,0.18)"}`, color: pendingCount ? "#FCD34D" : "#6EE7B7", fontSize: 12, fontWeight: 750 }}>
+            {pendingCount ? `${pendingCount} pending payment${pendingCount === 1 ? "" : "s"} need review.` : "No pending payments in this view."}
+          </div>
+        </div>
+      </div>
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ padding: 16, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div>
+            <div style={{ color: "#F1F5F9", fontWeight: 850, fontSize: 14 }}>Payment Orders</div>
+            <div style={{ color: "#64748B", fontSize: 12 }}>Review UTR, email, amount, and approve only after checking your bank.</div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <select className="select-field" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="declined">Declined</option>
+              <option value="all">All</option>
+            </select>
+            <button className="btn-ghost" onClick={loadOrders}><Icon n="repeat" s={13} />Refresh</button>
+          </div>
+        </div>
+        <div style={{ display: "grid" }}>
+          {orders.length ? orders.map(order => (
+            <div key={order.id} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: 12, alignItems: "center", padding: 14, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ color: "#E2E8F0", fontSize: 13, fontWeight: 850 }}>{order.userEmail} · ₹{order.amount}</div>
+                <div style={{ color: "#64748B", fontSize: 11, marginTop: 3 }}>{order.planName} · UTR: <span style={{ color: "#CBD5E1" }}>{order.utr}</span> · {order.createdAt ? new Date(order.createdAt).toLocaleString() : ""}</div>
+              </div>
+              <span className={`tag ${order.status === "approved" ? "tag-green" : order.status === "declined" ? "tag-red" : "tag-amber"}`}>{order.status}</span>
+              {order.status === "pending" ? (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="btn-success" style={{ minHeight: 34, padding: "7px 11px", fontSize: 12 }} disabled={busyOrder === `approve_${order.id}`} onClick={() => reviewOrder(order, "approve")}><Icon n="check" s={12} />Approve</button>
+                  <button className="btn-danger" style={{ minHeight: 34, padding: "7px 11px", fontSize: 12 }} disabled={busyOrder === `decline_${order.id}`} onClick={() => reviewOrder(order, "decline")}><Icon n="x" s={12} />Decline</button>
+                </div>
+              ) : <div style={{ color: "#475569", fontSize: 11 }}>{order.reviewedAt ? new Date(order.reviewedAt).toLocaleString() : ""}</div>}
+            </div>
+          )) : (
+            <div style={{ padding: 34, textAlign: "center", color: "#64748B" }}>No payment orders in this view.</div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -4587,7 +4837,7 @@ export default function App() {
     if (activeReport) return <TestAttemptReport report={activeReport} user={user} onBack={() => setActiveReport(null)} />;
     switch (page) {
       case "dashboard": return <DashboardPage user={user} courses={courses} userCourseIds={userCourseIds} wrongQuestions={wrongQuestions} setPage={setPage} announcement={appSettings.homeAnnouncement} />;
-      case "courses": return <CoursesPage courses={courses} userCourseIds={userCourseIds} setUserCourseIds={setUserCourseIds} userId={user.id} user={user} onUserUpdate={setUser} passPlans={passPlans} />;
+      case "courses": return <CoursesPage courses={courses} userCourseIds={userCourseIds} setUserCourseIds={setUserCourseIds} userId={user.id} user={user} onUserUpdate={setUser} passPlans={passPlans} appSettings={appSettings} notify={notify} />;
       case "tests": return <TestsPage courses={courses} setCoursesView={setCourses} userCourseIds={userCourseIds} onStartTest={setActiveTest} onSetPage={setPage} onViewAnalysis={setActiveReport} user={user} />;
       case "analysis": return <AnalysisPage courses={courses} userCourseIds={userCourseIds} user={user} />;
       case "notebook": return <NotebookPage user={user} />;

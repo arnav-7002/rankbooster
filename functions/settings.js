@@ -5,6 +5,7 @@ export async function onRequestOptions() { return json({ ok: true }); }
 const DEFAULT_SETTINGS = {
   banner: { enabled: false, text: "", variant: "info" },
   homeAnnouncement: { enabled: false, title: "", body: "" },
+  payments: { enabled: false, upiId: "", payeeName: "RankBooster", note: "Pay using UPI, then submit the UTR/reference ID for manual approval." },
 };
 
 export async function onRequestGet({ env }) {

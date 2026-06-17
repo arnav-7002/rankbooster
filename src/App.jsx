@@ -1471,8 +1471,9 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
               </div>
               <div>
                 <div style={{ color: "#CBD5E1", fontSize: 13, lineHeight: 1.6, marginBottom: 10 }}>{paymentSettings.note}</div>
-                <div style={{ color: "#64748B", fontSize: 12, marginBottom: 5 }}>Pay to</div>
-                <div style={{ color: "#F1F5F9", fontWeight: 850, marginBottom: 12 }}>{paymentSettings.upiId}</div>
+                <div style={{ padding: 12, borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.18)", color: "#6EE7B7", fontSize: 12, lineHeight: 1.55, marginBottom: 12 }}>
+                  UPI details are embedded in the QR. Scan and pay the exact amount shown here.
+                </div>
                 {paymentStep === "utr" ? (
                   <>
                     <label style={{ color: "#64748B", fontSize: 11, display: "block", marginBottom: 5 }}>UTR / Reference ID</label>
@@ -4942,6 +4943,17 @@ export default function App() {
     if (settingsData?.settings) setAppSettings({ ...DEFAULT_SETTINGS, ...settingsData.settings });
   }, []);
 
+  const refreshCurrentUser = useCallback(async () => {
+    const res = await fetch(`${IMPORTER_API}/auth`, { cache: "no-store" }).catch(() => null);
+    const data = res?.ok ? await res.json().catch(() => null) : null;
+    if (!data?.user) return null;
+    const syncedCourseIds = (data.coursesOpted || []).map(c => c.id).filter(Boolean);
+    const nextUser = ensureOfflineUser({ ...data.user, syncedCourseIds, pass: data.pass || data.user.pass });
+    setUser(nextUser);
+    setUserCourseIds(syncedCourseIds);
+    return nextUser;
+  }, []);
+
   useEffect(() => {
     initStore();
     setWrongQuestions({});
@@ -4974,6 +4986,27 @@ export default function App() {
   }, [syncFolderLibrary]);
 
   useEffect(() => {
+    if (!user) return undefined;
+    const refreshAndLock = async () => {
+      const latest = await refreshCurrentUser();
+      if (latest && !passStatus(latest.pass).active) {
+        setActiveTest(null);
+        setActiveReport(null);
+        if (page === "tests") setPage("courses");
+      }
+    };
+    const onFocus = () => refreshAndLock();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    const id = setInterval(refreshAndLock, 30000);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+      clearInterval(id);
+    };
+  }, [user, page, refreshCurrentUser]);
+
+  useEffect(() => {
     if (!user || !page) return;
     if (window.location.hash !== `#${page}`) window.location.hash = page;
   }, [user, page]);
@@ -4990,6 +5023,10 @@ export default function App() {
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, [user]);
+
+  useEffect(() => {
+    if (user && activeTest && !passStatus(user.pass).active) setActiveTest(null);
+  }, [user, activeTest]);
 
   async function handleLogin(u) {
     const offlineUser = ensureOfflineUser(u);
@@ -5030,7 +5067,10 @@ export default function App() {
     </>
   );
 
-  if (activeTest) return (
+  const userPassStatus = passStatus(user.pass);
+  const accessibleCourseIds = userPassStatus.active ? userCourseIds : [];
+
+  if (activeTest && userPassStatus.active) return (
     <TestInterface
       test={activeTest}
       user={user}
@@ -5050,13 +5090,13 @@ export default function App() {
   const renderPage = () => {
     if (activeReport) return <TestAttemptReport report={activeReport} user={user} onBack={() => setActiveReport(null)} />;
     switch (page) {
-      case "dashboard": return <DashboardPage user={user} courses={courses} userCourseIds={userCourseIds} wrongQuestions={wrongQuestions} setPage={setPage} announcement={appSettings.homeAnnouncement} />;
+      case "dashboard": return <DashboardPage user={user} courses={courses} userCourseIds={accessibleCourseIds} wrongQuestions={wrongQuestions} setPage={setPage} announcement={appSettings.homeAnnouncement} />;
       case "courses": return <CoursesPage courses={courses} userCourseIds={userCourseIds} setUserCourseIds={setUserCourseIds} userId={user.id} user={user} onUserUpdate={setUser} passPlans={passPlans} appSettings={appSettings} notify={notify} />;
-      case "tests": return <TestsPage courses={courses} setCoursesView={setCourses} userCourseIds={userCourseIds} onStartTest={setActiveTest} onSetPage={setPage} onViewAnalysis={setActiveReport} user={user} />;
-      case "analysis": return <AnalysisPage courses={courses} userCourseIds={userCourseIds} user={user} />;
+      case "tests": return <TestsPage courses={courses} setCoursesView={setCourses} userCourseIds={accessibleCourseIds} onStartTest={setActiveTest} onSetPage={setPage} onViewAnalysis={setActiveReport} user={user} />;
+      case "analysis": return <AnalysisPage courses={courses} userCourseIds={accessibleCourseIds} user={user} />;
       case "notebook": return <NotebookPage user={user} />;
       case "admin": return user.role === "admin" ? <AdminPage allCourses={courses} setAllCourses={setCourses} passPlans={passPlans} setPassPlans={setPassPlans} appSettings={appSettings} setAppSettings={setAppSettings} user={user} notify={notify} /> : null;
-      case "settings": return <SettingsPage user={user} courses={courses} userCourseIds={userCourseIds} onUserUpdate={setUser} onLogout={handleLogout} />;
+      case "settings": return <SettingsPage user={user} courses={courses} userCourseIds={accessibleCourseIds} onUserUpdate={setUser} onLogout={handleLogout} />;
       default: return null;
     }
   };
@@ -5065,7 +5105,7 @@ export default function App() {
     <>
       <style>{GS}</style>
       <div className="app-shell">
-        {!activeReport && <Sidebar user={user} page={page} setPage={setPage} courses={courses} userCourseIds={userCourseIds} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} onLogout={handleLogout} />}
+        {!activeReport && <Sidebar user={user} page={page} setPage={setPage} courses={courses} userCourseIds={accessibleCourseIds} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} onLogout={handleLogout} />}
         <div className="app-main" style={activeReport ? { padding: 0 } : undefined}>
           {!activeReport && appSettings.banner?.enabled && appSettings.banner?.text && (
             <div className={`site-banner banner-${appSettings.banner.variant || "info"}`}>

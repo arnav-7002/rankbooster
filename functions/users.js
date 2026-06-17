@@ -46,6 +46,18 @@ async function saveSubscription(env, userId, pass) {
   });
 }
 
+async function logAdminEvent(env, actor, type, message, metadata = {}) {
+  await upsertRows(env, "admin_events", {
+    id: cleanId(`evt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`),
+    actor_user_id: cleanId(actor?.id || actor?.offlineId || ""),
+    event_type: type,
+    entity_type: "user",
+    entity_id: cleanId(metadata.userId || ""),
+    payload_json: { message, actor_email: String(actor?.email || "").toLowerCase(), metadata },
+    created_at: new Date().toISOString(),
+  }).catch(() => null);
+}
+
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   if (url.searchParams.get("all") === "1") {
@@ -114,4 +126,35 @@ export async function onRequestPost({ request, env }) {
   if (nextCourses.length) await saveEnrollments(env, user.id, nextCourses);
   if (nextPass) await saveSubscription(env, user.id, nextPass);
   return json({ success: true, user: { ...user, pass: nextPass }, coursesOpted: nextCourses, pass: nextPass });
+}
+
+export async function onRequestDelete({ request, env }) {
+  const body = await readJson(request);
+  const actor = body.actor || {};
+  const userId = userIdFrom(body.user || body.userId || body.offlineId || body.email);
+  if (!userId) return json({ error: "user id required" }, 400);
+
+  const userRows = await supabaseRequest(env, `users?select=email,role&id=${eq(userId)}&limit=1`).catch(() => []);
+  const userRow = userRows?.[0];
+  if (userRow?.role === "admin" && !body.allowAdminDelete) {
+    return json({ error: "Admin account cannot be deleted from this panel." }, 403);
+  }
+
+  const relatedDeletes = [
+    ["attempts", `user_id=${eq(userId)}`],
+    ["enrollments", `user_id=${eq(userId)}`],
+    ["notebook_questions", `user_id=${eq(userId)}`],
+    ["notebooks", `user_id=${eq(userId)}`],
+    ["subscriptions", `user_id=${eq(userId)}`],
+    ["user_blobs", `user_id=${eq(userId)}`],
+    ["payment_orders", `user_id=${eq(userId)}`],
+  ];
+
+  for (const [table, filter] of relatedDeletes) {
+    await supabaseRequest(env, `${table}?${filter}`, { method: "DELETE", headers: { Prefer: "return=minimal" } }).catch(() => null);
+  }
+
+  await supabaseRequest(env, `users?id=${eq(userId)}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+  await logAdminEvent(env, actor, "user.deleted", `Deleted user ${userRow?.email || userId}`, { userId, email: userRow?.email || "" });
+  return json({ success: true, deleted: true, userId });
 }

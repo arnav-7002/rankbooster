@@ -127,10 +127,10 @@ button{touch-action:manipulation}
 .stat-up{background:rgba(16,185,129,0.15);color:#34D399}
 .stat-dn{background:rgba(239,68,68,0.15);color:#F87171}
 .tooltip-custom .recharts-tooltip-wrapper .recharts-default-tooltip{background:#1E1B4B!important;border:1px solid #4C1D95!important;border-radius:8px!important;font-size:12px!important}
-.admin-tabs{position:relative;display:grid;grid-template-columns:repeat(var(--tab-count,4),1fr);gap:4px;margin-bottom:20px;background:rgba(255,255,255,0.04);padding:4px;border-radius:11px;width:min(100%,820px);overflow:hidden}
-.admin-tabs::before{content:"";position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - ((var(--tab-count,4) + 1) * 4px)) / var(--tab-count,4));border-radius:9px;background:rgba(124,58,237,0.25);transform:translateX(calc(var(--tab-index,0) * (100% + 4px)));transition:transform .24s cubic-bezier(.2,.8,.2,1),background .18s ease}
+.admin-tabs{position:relative;display:flex;gap:4px;margin-bottom:20px;background:rgba(255,255,255,0.04);padding:4px;border-radius:11px;width:100%;max-width:1040px;overflow-x:auto;scrollbar-width:thin}
+.admin-tabs::before{display:none}
 .admin-tab{position:relative;z-index:1;padding:9px 14px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;transition:color 0.15s,transform .15s;border:none;font-family:'Outfit',sans-serif;background:transparent;color:#64748B;white-space:nowrap}
-.admin-tab.active{color:#A78BFA}
+.admin-tab.active{color:#C4B5FD;background:rgba(124,58,237,.24);box-shadow:inset 0 0 0 1px rgba(167,139,250,.18)}
 .admin-tab:not(.active):hover{color:#CBD5E1;transform:translateY(-1px)}
 .fade-in{animation:fadeIn 0.24s ease}
 .dropdown-panel{animation:dropdownIn .18s cubic-bezier(.2,.8,.2,1);transform-origin:top center}
@@ -3222,6 +3222,7 @@ function AdminPlans({ passPlans, setPassPlans, notify, recordAdminEvent }) {
   const [plans, setPlans] = useState(passPlans?.length ? passPlans : PASS_PLANS);
   const [saving, setSaving] = useState(false);
   const [deletingPlanId, setDeletingPlanId] = useState(null);
+  const compactSingle = plans.length === 1;
 
   useEffect(() => { setPlans(passPlans?.length ? passPlans : PASS_PLANS); }, [passPlans]);
 
@@ -3303,9 +3304,9 @@ function AdminPlans({ passPlans, setPassPlans, notify, recordAdminEvent }) {
           <button className="btn-primary" disabled={saving} onClick={savePlans}>{saving ? "Saving..." : "Save Pricing"}</button>
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: compactSingle ? "minmax(280px,560px)" : "repeat(auto-fit,minmax(260px,420px))", gap: 12, alignItems: "start", justifyContent: "start" }}>
         {plans.map((plan, idx) => (
-          <div key={plan.id} className="card landing-hover-card" style={{ display: "grid", gap: 10 }}>
+          <div key={plan.id} className="card landing-hover-card" style={{ display: "grid", gap: 10, width: "100%", maxWidth: compactSingle ? 560 : undefined }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               <span className="tag tag-purple">#{idx + 1}</span>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -3327,7 +3328,7 @@ function AdminPlans({ passPlans, setPassPlans, notify, recordAdminEvent }) {
               <input className="input-field" type="number" value={plan.durationDays} onChange={e => updatePlan(plan.id, { durationDays: e.target.value, label: `${e.target.value} days` })} placeholder="Days" />
               <input className="input-field" value={plan.badge || ""} onChange={e => updatePlan(plan.id, { badge: e.target.value })} placeholder="Badge" />
             </div>
-            <textarea className="input-field" value={plan.note || ""} onChange={e => updatePlan(plan.id, { note: e.target.value })} placeholder="Short description" rows={3} />
+            <textarea className="input-field" value={plan.note || ""} onChange={e => updatePlan(plan.id, { note: e.target.value })} placeholder="Short description" rows={compactSingle ? 2 : 3} />
           </div>
         ))}
       </div>
@@ -3662,6 +3663,34 @@ function AdminUsers({ allUsers, allUC, allCourses, passPlans = PASS_PLANS, onRef
     }
   }
 
+  async function deleteUserAccount() {
+    if (!selectedUser?.id) return;
+    if (selectedUser.role === "admin") {
+      notify?.("Admin account cannot be deleted from this panel.", "error");
+      return;
+    }
+    if (!window.confirm(`Delete ${selectedUser.email} and all attempts, enrollments, notebooks, payments, and subscriptions? This cannot be undone.`)) return;
+    setDeleteBusy("account");
+    try {
+      const res = await fetch(`${IMPORTER_API}/users`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: selectedUser.id, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "User delete failed.");
+      notify?.("User account deleted.", "success");
+      recordAdminEvent?.("user.deleted", `Deleted user ${selectedUser.email}`, { userId: selectedUser.id });
+      setSelectedUserId("");
+      setHistory([]);
+      await onRefresh?.();
+    } catch (err) {
+      notify?.(err.message || "User delete failed.", "error");
+    } finally {
+      setDeleteBusy("");
+    }
+  }
+
   async function deleteSelectedTestAttempts() {
     if (!selectedTestIds.length) return;
     if (!window.confirm(`Delete attempts of ${selectedTestIds.length} selected test(s) for ALL users?`)) return;
@@ -3751,6 +3780,9 @@ function AdminUsers({ allUsers, allUC, allCourses, passPlans = PASS_PLANS, onRef
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button className="btn-ghost" onClick={refreshSelectedHistory} disabled={historyLoading}><Icon n="repeat" s={13} />Refresh History</button>
               <button className="btn-danger" onClick={deleteAllForUser} disabled={deleteBusy === "user" || history.length === 0}><Icon n="trash" s={13} />{deleteBusy === "user" ? "Deleting..." : "Delete User Attempts"}</button>
+              <button className="btn-danger" onClick={deleteUserAccount} disabled={deleteBusy === "account" || selectedUser.role === "admin"} title={selectedUser.role === "admin" ? "Admin account cannot be deleted here" : "Delete account and all user data"}>
+                <Icon n="trash" s={13} />{deleteBusy === "account" ? "Deleting..." : "Delete Account"}
+              </button>
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", padding: 12, borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", marginBottom: 14 }}>

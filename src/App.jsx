@@ -2222,7 +2222,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminEvents, setAdminEvents] = useState([]);
   const allUC = {};
-  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["payments", "Payments"], ["announcements", "Announcements"], ["users", "Users"], ["activity", "Activity"], ["checklist", "Publish Checklist"]];
+  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["payments", "Payments"], ["announcements", "Announcements"], ["users", "Users"], ["activity", "Activity"], ["checklist", "Publish Checklist"], ["reset", "Reset"]];
   const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
   const toast = useCallback((message, type = "info") => notify?.(message, type), [notify]);
 
@@ -2329,6 +2329,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
         {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} passPlans={passPlans} onRefresh={loadAdminUsers} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "activity" && <AdminActivity events={adminEvents} onRefresh={loadAdminEvents} />}
         {tab === "checklist" && <AdminPublishChecklist dbStatus={dbStatus} allCourses={allCourses} passPlans={passPlans} appSettings={appSettings} adminUsers={adminUsers} />}
+        {tab === "reset" && <AdminReset setAllCourses={setAllCourses} setPassPlans={setPassPlans} setAppSettings={setAppSettings} loadAdminUsers={loadAdminUsers} checkDatabase={checkDatabase} notify={toast} currentAdmin={user} />}
       </div>
     </div>
   );
@@ -2397,6 +2398,119 @@ function AdminPublishChecklist({ dbStatus, allCourses, passPlans, appSettings, a
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function AdminReset({ setAllCourses, setPassPlans, setAppSettings, loadAdminUsers, checkDatabase, notify, currentAdmin }) {
+  const resetOptions = [
+    { id: "content", title: "Courses & Tests", detail: "Deletes course cards, folders, configured test links, and related enrollments/attempts." },
+    { id: "attempts", title: "Attempts & Analysis", detail: "Deletes submitted papers, scorecards, leaderboards, and analysis data." },
+    { id: "users", title: "Student Accounts", detail: "Deletes non-admin users plus their pass, enrollment, notebook, payment, and attempt data." },
+    { id: "notebooks", title: "Notebooks", detail: "Deletes saved notebooks and bookmarked questions." },
+    { id: "payments", title: "Payments & Passes", detail: "Deletes payment orders and active subscriptions." },
+    { id: "plans", title: "Pass Plans", detail: "Deletes pricing/pass cards shown on the landing page." },
+    { id: "settings", title: "Announcements & Settings", detail: "Deletes banners, home announcements, and payment settings." },
+    { id: "activity", title: "Admin Activity Log", detail: "Clears the admin event history." },
+  ];
+  const [selected, setSelected] = useState(["attempts"]);
+  const [fullReset, setFullReset] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const activeAreas = fullReset ? resetOptions.map(o => o.id) : selected;
+
+  function toggleArea(id) {
+    setSelected(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
+  }
+
+  async function runReset() {
+    if (!activeAreas.length) {
+      notify?.("Select what you want to reset.", "error");
+      return;
+    }
+    if (confirmText.trim().toUpperCase() !== "RESET") {
+      notify?.("Type RESET to confirm.", "error");
+      return;
+    }
+    const label = fullReset ? "reset the website" : `wipe ${activeAreas.length} selected area${activeAreas.length === 1 ? "" : "s"}`;
+    if (!window.confirm(`This will ${label}. Admin login will be kept. Continue?`)) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`${IMPORTER_API}/reset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ areas: selected, fullReset, confirmText, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Reset failed.");
+      if (activeAreas.includes("content")) setAllCourses([]);
+      if (activeAreas.includes("plans")) setPassPlans([]);
+      if (activeAreas.includes("settings")) setAppSettings(DEFAULT_SETTINGS);
+      await Promise.all([loadAdminUsers?.(), checkDatabase?.()]);
+      setConfirmText("");
+      notify?.(fullReset ? "Website reset complete. Admin login was kept." : "Selected data wiped.", "success");
+    } catch (err) {
+      notify?.(err.message || "Reset failed.", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fade-in">
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ color: "#FCA5A5", fontSize: 15, fontWeight: 850 }}>Website Reset</div>
+        <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>Choose exactly what to wipe. Admin accounts are preserved so you can still log in after reset.</div>
+      </div>
+
+      <div className="card" style={{ borderColor: "rgba(239,68,68,0.28)", background: "linear-gradient(135deg,rgba(239,68,68,0.08),rgba(255,255,255,0.035))", marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(239,68,68,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon n="alert-tri" s={18} c="#F87171" />
+            </div>
+            <div>
+              <div style={{ color: "#F1F5F9", fontSize: 14, fontWeight: 850 }}>Danger Zone</div>
+              <div style={{ color: "#94A3B8", fontSize: 12 }}>This action writes directly to the database and cannot be undone.</div>
+            </div>
+          </div>
+          <label className="tag tag-red" style={{ cursor: "pointer", padding: "8px 11px" }}>
+            <input type="checkbox" checked={fullReset} onChange={e => setFullReset(e.target.checked)} style={{ marginRight: 7 }} />
+            Wipe All Website Data
+          </label>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 10, opacity: fullReset ? 0.72 : 1 }}>
+          {resetOptions.map(option => {
+            const checked = activeAreas.includes(option.id);
+            return (
+              <label key={option.id} className="tap-card" style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 12, borderRadius: 13, border: checked ? "1px solid rgba(248,113,113,0.42)" : "1px solid rgba(255,255,255,0.08)", background: checked ? "rgba(239,68,68,0.11)" : "rgba(255,255,255,0.035)", cursor: fullReset ? "default" : "pointer" }}>
+                <input type="checkbox" checked={checked} disabled={fullReset} onChange={() => toggleArea(option.id)} style={{ marginTop: 2 }} />
+                <span>
+                  <span style={{ display: "block", color: "#E2E8F0", fontSize: 13, fontWeight: 800 }}>{option.title}</span>
+                  <span style={{ display: "block", color: "#64748B", fontSize: 11, lineHeight: 1.45, marginTop: 3 }}>{option.detail}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="card" style={{ display: "grid", gap: 12, maxWidth: 720 }}>
+        <div>
+          <div style={{ color: "#E2E8F0", fontSize: 14, fontWeight: 800 }}>Final Confirmation</div>
+          <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>Type <span style={{ color: "#FCA5A5", fontWeight: 850 }}>RESET</span> before the button unlocks.</div>
+        </div>
+        <input className="input-field" value={confirmText} onChange={e => setConfirmText(e.target.value)} placeholder="Type RESET" />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ color: "#94A3B8", fontSize: 12 }}>
+            Selected: <span style={{ color: "#FCA5A5", fontWeight: 800 }}>{activeAreas.length}</span> area{activeAreas.length === 1 ? "" : "s"}
+          </div>
+          <button className="btn-danger" disabled={busy || confirmText.trim().toUpperCase() !== "RESET" || activeAreas.length === 0} onClick={runReset}>
+            <Icon n="trash" s={14} />{busy ? "Resetting..." : fullReset ? "Reset Website" : "Wipe Selected Data"}
+          </button>
+        </div>
       </div>
     </div>
   );

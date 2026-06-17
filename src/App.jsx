@@ -127,10 +127,12 @@ button{touch-action:manipulation}
 .stat-up{background:rgba(16,185,129,0.15);color:#34D399}
 .stat-dn{background:rgba(239,68,68,0.15);color:#F87171}
 .tooltip-custom .recharts-tooltip-wrapper .recharts-default-tooltip{background:#1E1B4B!important;border:1px solid #4C1D95!important;border-radius:8px!important;font-size:12px!important}
-.admin-tabs{position:relative;display:flex;gap:4px;margin-bottom:20px;background:rgba(255,255,255,0.04);padding:4px;border-radius:11px;width:100%;max-width:1040px;overflow-x:auto;scrollbar-width:thin}
+.admin-tabs{position:relative;margin-bottom:20px;background:rgba(255,255,255,0.04);padding:4px;border-radius:11px;width:100%;max-width:1040px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+.admin-tabs-track{position:relative;display:grid;grid-template-columns:repeat(var(--tab-count,4),minmax(0,1fr));gap:4px;min-width:100%}
+.admin-tabs-track::before{content:"";position:absolute;top:0;bottom:0;left:0;width:calc((100% - ((var(--tab-count,4) - 1) * 4px)) / var(--tab-count,4));border-radius:9px;background:rgba(124,58,237,0.25);box-shadow:inset 0 0 0 1px rgba(167,139,250,.18);transform:translateX(calc(var(--tab-index,0) * (100% + 4px)));transition:transform .24s cubic-bezier(.2,.8,.2,1),background .18s ease}
 .admin-tabs::before{display:none}
 .admin-tab{position:relative;z-index:1;padding:9px 14px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;transition:color 0.15s,transform .15s;border:none;font-family:'Outfit',sans-serif;background:transparent;color:#64748B;white-space:nowrap}
-.admin-tab.active{color:#C4B5FD;background:rgba(124,58,237,.24);box-shadow:inset 0 0 0 1px rgba(167,139,250,.18)}
+.admin-tab.active{color:#C4B5FD;background:transparent;box-shadow:none}
 .admin-tab:not(.active):hover{color:#CBD5E1;transform:translateY(-1px)}
 .fade-in{animation:fadeIn 0.24s ease}
 .dropdown-panel{animation:dropdownIn .18s cubic-bezier(.2,.8,.2,1);transform-origin:top center}
@@ -204,7 +206,7 @@ button:disabled{cursor:not-allowed;opacity:.68}
 .pass-validity-pill{display:inline-flex;align-items:center;justify-content:center;height:24px;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);font-size:10px;font-weight:800;color:rgba(255,255,255,.86);white-space:nowrap}
 input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-text-fill-color:#E2E8F0!important;box-shadow:0 0 0 1000px #161622 inset!important;border:1px solid rgba(124,58,237,.34)!important;caret-color:#E2E8F0}
 @media (max-width:980px){.landing-wrap{padding:18px 18px 44px}.landing-main{grid-template-columns:1fr}.landing-auth-card{position:static!important}.landing-stat-grid{grid-template-columns:1fr!important}.landing-pass-stage{max-width:620px}.landing-pass-card{min-height:210px;border-radius:26px;padding:24px 28px}.landing-pass-card::after{right:-92px;top:28px;width:220px;height:220px}.pass-watermark{right:20px;bottom:24px;font-size:96px}.pass-brand-title{font-size:22px!important}.pass-title{font-size:20px!important}}
-@media (max-width:640px){.landing-wrap{padding:16px 14px 38px}.landing-pass-stage{width:100%;max-width:none;perspective:900px}.landing-pass-card{min-height:0;border-radius:22px;padding:20px 18px;transition:transform .12s ease-out,box-shadow .18s ease}.landing-pass-card:active{box-shadow:0 18px 48px rgba(49,46,129,.3),0 12px 28px rgba(0,0,0,.24)}.landing-hover-card:hover{transform:none}.landing-hover-card:active{transform:scale(.985);border-color:rgba(124,58,237,.3)}.landing-pass-card::after{right:-94px;top:38px;width:190px;height:190px;box-shadow:inset 0 0 0 32px rgba(255,255,255,.045)}.landing-pass-card::before{background:radial-gradient(circle at var(--mx,40%) var(--my,12%),rgba(255,255,255,.2),transparent 34%)}.pass-content{min-height:178px!important}.pass-brand-row{gap:8px!important;margin-bottom:20px!important}.pass-brand-logo{width:32px!important;height:32px!important;border-radius:9px!important}.pass-brand-title{font-size:19px!important}.pass-brand-title span{font-size:11px!important;padding:2px 6px!important}.pass-title{font-size:18px!important}.pass-meta-row{align-items:flex-start!important;flex-direction:column;gap:14px!important;margin-top:28px!important}.pass-exam-row{padding-left:0!important}.pass-mini-chip{width:31px;height:31px;margin-left:-5px}.pass-mini-chip:hover{transform:translateY(-2px) scale(1.08)}.pass-validity{text-align:left!important}.pass-validity>div:last-child{justify-content:flex-start!important;max-width:100%!important}.pass-validity-pill{height:22px;padding:0 8px;font-size:9px}.landing-stat-grid{gap:10px!important}.admin-tabs{width:100%;overflow-x:auto;grid-template-columns:repeat(var(--tab-count,4),minmax(138px,1fr))}.admin-tabs::before{display:none}.admin-tab.active{background:rgba(124,58,237,.24)}.site-banner{font-size:12px;line-height:1.45;margin-bottom:12px}.solution-layout{grid-template-columns:1fr;padding:14px}.solution-palette{position:static;max-height:none}.solution-grid{display:flex;overflow-x:auto;gap:8px;padding-bottom:3px}.solution-qbtn{min-width:40px}.report-top{padding:13px 14px;align-items:flex-start}.report-top>div:last-child{flex-wrap:wrap;justify-content:flex-end}.subject-strip{top:65px;padding:9px 14px}.notebook-card{width:145px;height:205px;padding:18px 14px}.notebook-layout{display:grid;grid-template-columns:1fr;gap:12px}.notebook-list{width:100%;display:flex;gap:9px;overflow-x:auto;padding:2px 2px 8px;scroll-snap-type:x proximity}.notebook-list .btn-primary{min-width:148px;width:auto!important;margin-bottom:0!important;scroll-snap-align:start}.notebook-list-item{min-width:190px;margin-bottom:0;scroll-snap-align:start}.notebook-main{min-width:0}.notebook-question-card{padding:14px!important}.notebook-question-card .btn-primary,.notebook-question-card .btn-ghost{flex:1;min-width:132px}.modal{min-width:0;width:94vw;padding:20px;border-radius:16px}.responsive-two-col,.tests-layout{grid-template-columns:1fr!important;display:grid}.tests-course-rail{width:100%}.card{border-radius:13px}.btn-primary,.btn-ghost,.btn-danger,.btn-success{min-height:42px}}
+@media (max-width:640px){.landing-wrap{padding:16px 14px 38px}.landing-pass-stage{width:100%;max-width:none;perspective:900px}.landing-pass-card{min-height:0;border-radius:22px;padding:20px 18px;transition:transform .12s ease-out,box-shadow .18s ease}.landing-pass-card:active{box-shadow:0 18px 48px rgba(49,46,129,.3),0 12px 28px rgba(0,0,0,.24)}.landing-hover-card:hover{transform:none}.landing-hover-card:active{transform:scale(.985);border-color:rgba(124,58,237,.3)}.landing-pass-card::after{right:-94px;top:38px;width:190px;height:190px;box-shadow:inset 0 0 0 32px rgba(255,255,255,.045)}.landing-pass-card::before{background:radial-gradient(circle at var(--mx,40%) var(--my,12%),rgba(255,255,255,.2),transparent 34%)}.pass-content{min-height:178px!important}.pass-brand-row{gap:8px!important;margin-bottom:20px!important}.pass-brand-logo{width:32px!important;height:32px!important;border-radius:9px!important}.pass-brand-title{font-size:19px!important}.pass-brand-title span{font-size:11px!important;padding:2px 6px!important}.pass-title{font-size:18px!important}.pass-meta-row{align-items:flex-start!important;flex-direction:column;gap:14px!important;margin-top:28px!important}.pass-exam-row{padding-left:0!important}.pass-mini-chip{width:31px;height:31px;margin-left:-5px}.pass-mini-chip:hover{transform:translateY(-2px) scale(1.08)}.pass-validity{text-align:left!important}.pass-validity>div:last-child{justify-content:flex-start!important;max-width:100%!important}.pass-validity-pill{height:22px;padding:0 8px;font-size:9px}.landing-stat-grid{gap:10px!important}.admin-tabs{width:100%;overflow-x:auto}.admin-tab.active{background:transparent}.site-banner{font-size:12px;line-height:1.45;margin-bottom:12px}.solution-layout{grid-template-columns:1fr;padding:14px}.solution-palette{position:static;max-height:none}.solution-grid{display:flex;overflow-x:auto;gap:8px;padding-bottom:3px}.solution-qbtn{min-width:40px}.report-top{padding:13px 14px;align-items:flex-start}.report-top>div:last-child{flex-wrap:wrap;justify-content:flex-end}.subject-strip{top:65px;padding:9px 14px}.notebook-card{width:145px;height:205px;padding:18px 14px}.notebook-layout{display:grid;grid-template-columns:1fr;gap:12px}.notebook-list{width:100%;display:flex;gap:9px;overflow-x:auto;padding:2px 2px 8px;scroll-snap-type:x proximity}.notebook-list .btn-primary{min-width:148px;width:auto!important;margin-bottom:0!important;scroll-snap-align:start}.notebook-list-item{min-width:190px;margin-bottom:0;scroll-snap-align:start}.notebook-main{min-width:0}.notebook-question-card{padding:14px!important}.notebook-question-card .btn-primary,.notebook-question-card .btn-ghost{flex:1;min-width:132px}.modal{min-width:0;width:94vw;padding:20px;border-radius:16px}.responsive-two-col,.tests-layout{grid-template-columns:1fr!important;display:grid}.tests-course-rail{width:100%}.card{border-radius:13px}.btn-primary,.btn-ghost,.btn-danger,.btn-success{min-height:42px}}
 @media (max-width:390px){.landing-pass-card{padding:18px 15px;border-radius:20px}.pass-content{min-height:176px!important}.pass-brand-title{font-size:17px!important}.pass-title{font-size:17px!important}.pass-mini-chip{width:29px;height:29px;margin-left:-4px}.pass-validity-pill{height:21px;padding:0 7px}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
 @keyframes dropdownIn{from{opacity:0;transform:translateY(-6px) scale(.995)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -350,7 +352,7 @@ body{overflow-x:hidden}
 .admin-tabs{width:100%;overflow-x:auto;display:flex}
 .admin-tabs::before{display:none}
 .admin-tab{flex:0 0 auto;min-width:116px}
-.admin-tab.active{background:rgba(124,58,237,.22);border:1px solid rgba(167,139,250,.35)}
+.admin-tab.active{background:transparent;border:none}
 table{min-width:640px}
 .table-scroll{overflow-x:auto}
 .responsive-grid,.responsive-two-col,.responsive-stats-grid{grid-template-columns:1fr!important}
@@ -2224,6 +2226,8 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
   const allUC = {};
   const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["payments", "Payments"], ["announcements", "Announcements"], ["users", "Users"], ["activity", "Activity"], ["checklist", "Publish Checklist"], ["reset", "Reset"]];
   const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
+  const adminTabWidth = 148;
+  const adminTrackWidth = (adminTabs.length * adminTabWidth) + ((adminTabs.length - 1) * 4);
   const toast = useCallback((message, type = "info") => notify?.(message, type), [notify]);
 
   const checkDatabase = useCallback(async () => {
@@ -2314,10 +2318,12 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
       </div>
 
       {/* Tabs */}
-      <div className="admin-tabs" style={{ "--tab-index": tabIndex, "--tab-count": adminTabs.length }}>
-        {adminTabs.map(([k, v]) => (
-          <button key={k} className={`admin-tab ${tab === k ? "active" : ""}`} onClick={() => setTab(k)}>{v}</button>
-        ))}
+      <div className="admin-tabs">
+        <div className="admin-tabs-track" style={{ "--tab-index": tabIndex, "--tab-count": adminTabs.length, minWidth: adminTrackWidth }}>
+          {adminTabs.map(([k, v]) => (
+            <button key={k} className={`admin-tab ${tab === k ? "active" : ""}`} onClick={() => setTab(k)}>{v}</button>
+          ))}
+        </div>
       </div>
 
       <div key={tab} className="tab-panel">

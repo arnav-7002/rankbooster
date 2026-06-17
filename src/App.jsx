@@ -1312,6 +1312,10 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
 
   async function activatePlan(plan) {
     if (paymentSettings.enabled) {
+      if (!paymentSettings.upiId) {
+        notify?.("UPI payments are enabled, but UPI ID is not configured in Admin Panel.", "error");
+        return;
+      }
       setPaymentModal(plan);
       setUtr("");
       setPaymentStep("qr");
@@ -1452,7 +1456,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
         </>
       )}
       {paymentModal && (
-        <Modal onClose={() => setPaymentModal(null)} title="Complete UPI Payment">
+        <Modal open={!!paymentModal} onClose={() => setPaymentModal(null)} title="Complete UPI Payment">
           <div style={{ display: "grid", gap: 14 }}>
             <div className="card" style={{ padding: 14, display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>

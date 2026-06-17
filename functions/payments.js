@@ -75,6 +75,10 @@ export async function onRequestGet({ request, env }) {
 
 export async function onRequestPost({ request, env }) {
   const body = await readJson(request);
+  const action = String(body.action || "").toLowerCase();
+  if (action === "manual_grant") return manualGrant({ body, env });
+  if (action === "manual_revoke") return manualRevoke({ body, env });
+
   const user = body.user || {};
   const plan = body.plan || {};
   const userId = userIdFrom(user);
@@ -102,6 +106,87 @@ export async function onRequestPost({ request, env }) {
   const saved = await upsertRows(env, "payment_orders", order);
   await logEvent(env, user, "payment.submitted", `${user.email} submitted payment UTR ${utr}`, { orderId, planId: plan.id, amount, utr });
   return json({ success: true, order: mapOrder(saved?.[0] || order) });
+}
+
+async function manualGrant({ body, env }) {
+  const actor = body.actor || {};
+  const target = body.user || {};
+  const plan = body.plan || {};
+  const userId = userIdFrom(target);
+  if (!userId || !target.email) return json({ error: "Target user required." }, 400);
+  if (!plan.id) return json({ error: "Pass plan required." }, 400);
+  const orderId = cleanId(`manual_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+  const pass = createPass(plan, orderId, "manual-admin");
+  pass.paymentMode = "manual_admin";
+  pass.paymentStatus = "paid";
+  const profile = await loadProfile(env, userId);
+  await saveProfile(env, userId, { ...profile, pass, updatedAt: new Date().toISOString() });
+  await upsertRows(env, "subscriptions", {
+    id: `${userId}_${pass.planId}`,
+    user_id: userId,
+    plan_id: pass.planId,
+    status: "active",
+    starts_at: pass.activatedAt,
+    expires_at: pass.expiresAt,
+    payment_provider: "manual_admin",
+    payment_ref: "manual-admin",
+    metadata_json: { pass, orderId, grantedBy: actor.email || actor.id || "admin" },
+  });
+  const amount = Number(plan.price || plan.price_inr || 0);
+  const order = {
+    id: orderId,
+    user_id: userId,
+    user_email: String(target.email || "").toLowerCase(),
+    user_name: target.name || target.displayName || "",
+    plan_id: cleanId(plan.id),
+    plan_name: String(plan.name || "Pass"),
+    amount_inr: amount,
+    utr: "manual-admin",
+    status: "approved",
+    reviewed_by: actor.email || actor.id || "admin",
+    reviewed_at: new Date().toISOString(),
+    payload_json: { plan, pass, method: "manual_admin", note: body.note || "Pass granted manually from admin panel." },
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  const saved = await upsertRows(env, "payment_orders", order);
+  await logEvent(env, actor, "payment.manual_grant", `Manually granted ${plan.name || "Pass"} to ${target.email}`, { orderId, userId, planId: plan.id, amount });
+  return json({ success: true, order: mapOrder(saved?.[0] || order), pass });
+}
+
+async function manualRevoke({ body, env }) {
+  const actor = body.actor || {};
+  const target = body.user || {};
+  const userId = userIdFrom(target);
+  if (!userId || !target.email) return json({ error: "Target user required." }, 400);
+  const profile = await loadProfile(env, userId);
+  const oldPass = profile.pass || null;
+  await saveProfile(env, userId, { ...profile, pass: null, updatedAt: new Date().toISOString() });
+  await supabaseRequest(env, `subscriptions?user_id=${eq(userId)}&status=${eq("active")}`, {
+    method: "PATCH",
+    body: { status: "revoked", metadata_json: { revokedBy: actor.email || actor.id || "admin", oldPass } },
+    headers: { Prefer: "return=minimal" },
+  }).catch(() => null);
+  const orderId = cleanId(`manual_revoke_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+  const order = {
+    id: orderId,
+    user_id: userId,
+    user_email: String(target.email || "").toLowerCase(),
+    user_name: target.name || target.displayName || "",
+    plan_id: cleanId(oldPass?.planId || "manual_revoke"),
+    plan_name: String(oldPass?.planName || "Pass removed"),
+    amount_inr: 0,
+    utr: "manual-remove",
+    status: "declined",
+    reviewed_by: actor.email || actor.id || "admin",
+    reviewed_at: new Date().toISOString(),
+    payload_json: { method: "manual_admin", note: body.note || "Pass removed manually from admin panel.", oldPass },
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  const saved = await upsertRows(env, "payment_orders", order);
+  await logEvent(env, actor, "payment.manual_remove", `Manually removed pass from ${target.email}`, { orderId, userId, oldPass });
+  return json({ success: true, order: mapOrder(saved?.[0] || order), pass: null });
 }
 
 export async function onRequestPatch({ request, env }) {

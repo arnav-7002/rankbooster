@@ -1278,6 +1278,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
   const [savedAttempts, setSavedAttempts] = useState([]);
   const [passBusy, setPassBusy] = useState("");
   const [paymentModal, setPaymentModal] = useState(null);
+  const [paymentStep, setPaymentStep] = useState("qr");
   const [utr, setUtr] = useState("");
   const [pendingOrders, setPendingOrders] = useState([]);
   const currentPass = user?.pass;
@@ -1311,6 +1312,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
     if (paymentSettings.enabled) {
       setPaymentModal(plan);
       setUtr("");
+      setPaymentStep("qr");
       return;
     }
     setPassBusy(plan.id);
@@ -1465,13 +1467,31 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
                 <div style={{ color: "#CBD5E1", fontSize: 13, lineHeight: 1.6, marginBottom: 10 }}>{paymentSettings.note}</div>
                 <div style={{ color: "#64748B", fontSize: 12, marginBottom: 5 }}>Pay to</div>
                 <div style={{ color: "#F1F5F9", fontWeight: 850, marginBottom: 12 }}>{paymentSettings.upiId}</div>
-                <label style={{ color: "#64748B", fontSize: 11, display: "block", marginBottom: 5 }}>UTR / Reference ID</label>
-                <input className="input-field" value={utr} onChange={e => setUtr(e.target.value)} placeholder="Enter UTR after payment" />
+                {paymentStep === "utr" ? (
+                  <>
+                    <label style={{ color: "#64748B", fontSize: 11, display: "block", marginBottom: 5 }}>UTR / Reference ID</label>
+                    <input className="input-field" value={utr} onChange={e => setUtr(e.target.value)} placeholder="Enter UTR after payment" autoFocus />
+                  </>
+                ) : (
+                  <div style={{ padding: 12, borderRadius: 12, background: "rgba(124,58,237,0.10)", border: "1px solid rgba(124,58,237,0.20)", color: "#C4B5FD", fontSize: 12, lineHeight: 1.6 }}>
+                    Scan this QR and pay exactly ₹{Number(paymentModal.price || 0)}. After payment, click Paid to enter the UTR/reference ID.
+                  </div>
+                )}
               </div>
             </div>
-            <button className="btn-primary" disabled={passBusy === paymentModal.id} onClick={submitPaymentOrder}>
-              <Icon n="check" s={14} />{passBusy === paymentModal.id ? "Submitting..." : "Submit Payment for Approval"}
-            </button>
+            {paymentStep === "qr" ? (
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                <button className="btn-ghost" onClick={() => setPaymentModal(null)}><Icon n="x" s={14} />Cancel</button>
+                <button className="btn-primary" onClick={() => setPaymentStep("utr")}><Icon n="check" s={14} />Paid</button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                <button className="btn-ghost" onClick={() => setPaymentStep("qr")}><Icon n="chevleft" s={14} />Back to QR</button>
+                <button className="btn-primary" disabled={passBusy === paymentModal.id} onClick={submitPaymentOrder}>
+                  <Icon n="check" s={14} />{passBusy === paymentModal.id ? "Submitting..." : "Submit for Approval"}
+                </button>
+              </div>
+            )}
           </div>
         </Modal>
       )}
@@ -2306,7 +2326,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
         {tab === "plans" && <AdminPlans passPlans={passPlans} setPassPlans={setPassPlans} notify={toast} recordAdminEvent={recordAdminEvent} />}
         {tab === "payments" && <AdminPayments appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "announcements" && <AdminAnnouncements appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} />}
-        {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} onRefresh={loadAdminUsers} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
+        {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} passPlans={passPlans} onRefresh={loadAdminUsers} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "activity" && <AdminActivity events={adminEvents} onRefresh={loadAdminEvents} />}
         {tab === "checklist" && <AdminPublishChecklist dbStatus={dbStatus} allCourses={allCourses} passPlans={passPlans} appSettings={appSettings} adminUsers={adminUsers} />}
       </div>
@@ -3542,7 +3562,7 @@ function AdminAnnouncements({ appSettings, setAppSettings, notify, recordAdminEv
   );
 }
 
-function AdminUsers({ allUsers, allUC, allCourses, onRefresh, notify, recordAdminEvent, currentAdmin }) {
+function AdminUsers({ allUsers, allUC, allCourses, passPlans = PASS_PLANS, onRefresh, notify, recordAdminEvent, currentAdmin }) {
   const users = useMemo(() => allUsers || [], [allUsers]);
   const [query, setQuery] = useState("");
   const [selectedUserId, setSelectedUserId] = useState(users.find(u => u.role !== "admin")?.id || users[0]?.id || "");
@@ -3550,6 +3570,8 @@ function AdminUsers({ allUsers, allUC, allCourses, onRefresh, notify, recordAdmi
   const [historyLoading, setHistoryLoading] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState("");
   const [selectedTestIds, setSelectedTestIds] = useState([]);
+  const activePlans = (passPlans?.length ? passPlans : PASS_PLANS).filter(p => p.isActive !== false);
+  const [manualPlanId, setManualPlanId] = useState(activePlans[0]?.id || "");
 
   useEffect(() => {
     if (!selectedUserId && users.length) setSelectedUserId(users.find(u => u.role !== "admin")?.id || users[0]?.id || "");
@@ -3663,6 +3685,34 @@ function AdminUsers({ allUsers, allUC, allCourses, onRefresh, notify, recordAdmi
     }
   }
 
+  async function manualPass(action) {
+    if (!selectedUser?.id) return;
+    const plan = activePlans.find(p => p.id === manualPlanId) || activePlans[0];
+    if (action === "manual_grant" && !plan) {
+      notify?.("Create an active pass plan first.", "error");
+      return;
+    }
+    const verb = action === "manual_grant" ? "grant" : "remove";
+    if (!window.confirm(`${verb === "grant" ? "Grant" : "Remove"} pass for ${selectedUser.email}?`)) return;
+    setDeleteBusy(action);
+    try {
+      const res = await fetch(`${IMPORTER_API}/payments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, user: selectedUser, plan, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Manual pass update failed.");
+      notify?.(action === "manual_grant" ? "Pass granted manually." : "Pass removed.", "success");
+      recordAdminEvent?.(action === "manual_grant" ? "payment.manual_grant" : "payment.manual_remove", `${action === "manual_grant" ? "Granted" : "Removed"} pass for ${selectedUser.email}`, { userId: selectedUser.id, planId: plan?.id });
+      await onRefresh?.();
+    } catch (err) {
+      notify?.(err.message || "Manual pass update failed.", "error");
+    } finally {
+      setDeleteBusy("");
+    }
+  }
+
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
@@ -3702,6 +3752,14 @@ function AdminUsers({ allUsers, allUC, allCourses, onRefresh, notify, recordAdmi
               <button className="btn-ghost" onClick={refreshSelectedHistory} disabled={historyLoading}><Icon n="repeat" s={13} />Refresh History</button>
               <button className="btn-danger" onClick={deleteAllForUser} disabled={deleteBusy === "user" || history.length === 0}><Icon n="trash" s={13} />{deleteBusy === "user" ? "Deleting..." : "Delete User Attempts"}</button>
             </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", padding: 12, borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", marginBottom: 14 }}>
+            <span style={{ color: "#94A3B8", fontSize: 12, fontWeight: 750 }}>Manual pass</span>
+            <select className="select-field" value={manualPlanId} onChange={e => setManualPlanId(e.target.value)} style={{ minWidth: 180 }}>
+              {activePlans.map(plan => <option key={plan.id} value={plan.id}>{plan.name} · ₹{plan.price}</option>)}
+            </select>
+            <button className="btn-success" disabled={deleteBusy === "manual_grant"} onClick={() => manualPass("manual_grant")}><Icon n="check" s={13} />{deleteBusy === "manual_grant" ? "Granting..." : "Grant Pass"}</button>
+            <button className="btn-danger" disabled={deleteBusy === "manual_revoke"} onClick={() => manualPass("manual_revoke")}><Icon n="x" s={13} />{deleteBusy === "manual_revoke" ? "Removing..." : "Remove Pass"}</button>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10, marginBottom: 14 }}>
             {[

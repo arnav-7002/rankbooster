@@ -1481,7 +1481,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
                   </>
                 ) : (
                   <div style={{ padding: 12, borderRadius: 12, background: "rgba(124,58,237,0.10)", border: "1px solid rgba(124,58,237,0.20)", color: "#C4B5FD", fontSize: 12, lineHeight: 1.6 }}>
-                    Scan this QR and pay exactly ₹{Number(paymentModal.price || 0)}. After payment, click Paid to enter the UTR/reference ID.
+                    Scan this QR and pay exactly ₹{Number(paymentModal.price || 0)}. After successful payment, click Paid.
                   </div>
                 )}
               </div>

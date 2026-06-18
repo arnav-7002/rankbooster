@@ -1311,7 +1311,8 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
   }, [user?.offlineId, passBusy]);
 
   async function activatePlan(plan) {
-    if (paymentSettings.enabled) {
+    const isFreePlan = Number(plan.price || 0) <= 0;
+    if (paymentSettings.enabled && !isFreePlan) {
       if (!paymentSettings.upiId) {
         notify?.("UPI payments are enabled, but UPI ID is not configured in Admin Panel.", "error");
         return;
@@ -1331,6 +1332,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
     }).catch(() => null);
     const data = res?.ok ? await res.json().catch(() => null) : null;
     if (data?.user) onUserUpdate?.({ ...updatedUser, ...data.user, pass: data.pass || data.user.pass || updatedUser.pass });
+    if (isFreePlan) notify?.(`${plan.name || "Free pass"} activated.`, "success");
     setPassBusy("");
   }
 

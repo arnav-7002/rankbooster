@@ -1283,6 +1283,9 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
   const [paymentStep, setPaymentStep] = useState("qr");
   const [utr, setUtr] = useState("");
   const [pendingOrders, setPendingOrders] = useState([]);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponPreview, setCouponPreview] = useState(null);
+  const [couponBusy, setCouponBusy] = useState(false);
   const currentPass = user?.pass;
   const currentPassStatus = passStatus(currentPass);
   const paymentSettings = { ...DEFAULT_SETTINGS.payments, ...(appSettings.payments || {}) };
@@ -1366,6 +1369,51 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
     }
   }
 
+  async function validateCouponCode() {
+    const code = couponCode.trim().toUpperCase();
+    if (!code) {
+      notify?.("Enter a coupon code.", "error");
+      return;
+    }
+    setCouponBusy(true);
+    try {
+      const res = await fetch(`${IMPORTER_API}/coupons`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "validate", code, user }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Coupon could not be validated.");
+      setCouponPreview(data.coupon);
+    } catch (err) {
+      notify?.(err.message || "Invalid coupon.", "error");
+    } finally {
+      setCouponBusy(false);
+    }
+  }
+
+  async function redeemCoupon() {
+    if (!couponPreview?.code) return;
+    setCouponBusy(true);
+    try {
+      const res = await fetch(`${IMPORTER_API}/coupons`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "redeem", code: couponPreview.code, user }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Coupon redemption failed.");
+      onUserUpdate?.({ ...user, pass: data.pass });
+      setCouponCode("");
+      setCouponPreview(null);
+      notify?.(`Coupon applied. ${data.coupon?.durationDays || couponPreview.durationDays} day${Number(data.coupon?.durationDays || couponPreview.durationDays) === 1 ? "" : "s"} added.`, "success");
+    } catch (err) {
+      notify?.(err.message || "Coupon redemption failed.", "error");
+    } finally {
+      setCouponBusy(false);
+    }
+  }
+
   async function enroll(courseId) {
     if (!currentPassStatus.active) return;
     const nu = [...new Set([...userCourseIds, courseId])];
@@ -1430,6 +1478,15 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
             {pendingOrders.length} payment request{pendingOrders.length === 1 ? "" : "s"} pending admin approval.
           </div>
         )}
+        <div style={{ display: "flex", gap: 8, alignItems: "end", flexWrap: "wrap", marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ flex: "1 1 220px" }}>
+            <label style={{ display: "block", color: "#64748B", fontSize: 11, marginBottom: 5 }}>Have a coupon?</label>
+            <input className="input-field" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} onKeyDown={e => e.key === "Enter" && validateCouponCode()} placeholder="Enter coupon code" />
+          </div>
+          <button className="btn-ghost" disabled={couponBusy || !couponCode.trim()} onClick={validateCouponCode}>
+            <Icon n="star" s={13} />{couponBusy ? "Checking..." : "Apply Coupon"}
+          </button>
+        </div>
       </div>
 
       {myCourses.length === 0 && (
@@ -1504,6 +1561,23 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
           </div>
         </Modal>
       )}
+      <Modal open={!!couponPreview} onClose={() => !couponBusy && setCouponPreview(null)} title="Apply Coupon" width={440}>
+        {couponPreview && (
+          <div>
+            <div style={{ padding: 16, borderRadius: 14, background: "linear-gradient(135deg,rgba(124,58,237,0.16),rgba(79,70,229,0.08))", border: "1px solid rgba(167,139,250,0.28)", marginBottom: 16 }}>
+              <div style={{ color: "#A78BFA", fontSize: 12, fontWeight: 850, letterSpacing: ".7px", marginBottom: 8 }}>{couponPreview.code}</div>
+              <div style={{ color: "#F1F5F9", fontSize: 16, fontWeight: 850 }}>
+                This coupon will add {couponPreview.durationDays} day{Number(couponPreview.durationDays) === 1 ? "" : "s"} of pass access to your account.
+              </div>
+              {currentPassStatus.active && <div style={{ color: "#94A3B8", fontSize: 12, marginTop: 7 }}>Your current pass will be extended from its existing expiry date.</div>}
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button className="btn-ghost" disabled={couponBusy} onClick={() => setCouponPreview(null)}><Icon n="x" s={13} />Cancel</button>
+              <button className="btn-primary" disabled={couponBusy} onClick={redeemCoupon}><Icon n="check" s={13} />{couponBusy ? "Applying..." : "Confirm"}</button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
@@ -2231,7 +2305,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminEvents, setAdminEvents] = useState([]);
   const allUC = {};
-  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["payments", "Payments"], ["announcements", "Announcements"], ["users", "Users"], ["activity", "Activity"], ["checklist", "Publish Checklist"], ["reset", "Reset"]];
+  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["coupons", "Coupons"], ["payments", "Payments"], ["announcements", "Announcements"], ["users", "Users"], ["activity", "Activity"], ["checklist", "Publish Checklist"], ["reset", "Reset"]];
   const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
   const adminTabWidth = 148;
   const adminTrackWidth = (adminTabs.length * adminTabWidth) + ((adminTabs.length - 1) * 4);
@@ -2337,6 +2411,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
         {tab === "courses" && <AdminCourses allCourses={allCourses} setAllCourses={setAllCourses} notify={toast} recordAdminEvent={recordAdminEvent} />}
         {tab === "tests" && <AdminTests allCourses={allCourses} setAllCourses={setAllCourses} notify={toast} recordAdminEvent={recordAdminEvent} />}
         {tab === "plans" && <AdminPlans passPlans={passPlans} setPassPlans={setPassPlans} notify={toast} recordAdminEvent={recordAdminEvent} />}
+        {tab === "coupons" && <AdminCoupons notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "payments" && <AdminPayments appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "announcements" && <AdminAnnouncements appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} />}
         {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} passPlans={passPlans} onRefresh={loadAdminUsers} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
@@ -3458,6 +3533,171 @@ function AdminPlans({ passPlans, setPassPlans, notify, recordAdminEvent }) {
             <textarea className="input-field" value={plan.note || ""} onChange={e => updatePlan(plan.id, { note: e.target.value })} placeholder="Short description" rows={compactSingle ? 2 : 3} />
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function AdminCoupons({ notify, recordAdminEvent, currentAdmin }) {
+  const emptyForm = { code: "", label: "", durationDays: 1, maxUses: 0, expiresAt: "", isActive: true };
+  const [coupons, setCoupons] = useState([]);
+  const [form, setForm] = useState(emptyForm);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState("");
+
+  const loadCoupons = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch(`${IMPORTER_API}/coupons?all=1`, { cache: "no-store" }).catch(() => null);
+    const data = res?.ok ? await res.json().catch(() => null) : null;
+    setCoupons(data?.coupons || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadCoupons(); }, [loadCoupons]);
+
+  async function saveCoupon() {
+    if (!form.code.trim()) {
+      notify?.("Coupon code required.", "error");
+      return;
+    }
+    setSaving(true);
+    try {
+      const coupon = {
+        ...form,
+        code: form.code.trim().toUpperCase(),
+        durationDays: Math.max(1, Number(form.durationDays || 1)),
+        maxUses: Math.max(0, Number(form.maxUses || 0)),
+      };
+      const res = await fetch(`${IMPORTER_API}/coupons`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "save", coupon, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Coupon could not be saved.");
+      notify?.("Coupon saved.", "success");
+      recordAdminEvent?.("coupon.saved", `Saved coupon ${coupon.code}`, { code: coupon.code, durationDays: coupon.durationDays });
+      setForm(emptyForm);
+      await loadCoupons();
+    } catch (err) {
+      notify?.(err.message || "Coupon save failed.", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function editCoupon(coupon) {
+    setForm({
+      code: coupon.code || "",
+      label: coupon.label || "",
+      durationDays: Number(coupon.durationDays || 1),
+      maxUses: Number(coupon.maxUses || 0),
+      expiresAt: coupon.expiresAt ? String(coupon.expiresAt).slice(0, 16) : "",
+      isActive: coupon.isActive !== false,
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function deleteCoupon(coupon) {
+    if (!window.confirm(`Delete coupon ${coupon.code}? Existing passes already granted will remain active.`)) return;
+    setDeleting(coupon.code);
+    try {
+      const res = await fetch(`${IMPORTER_API}/coupons`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: coupon.code, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Coupon could not be deleted.");
+      notify?.("Coupon deleted.", "success");
+      recordAdminEvent?.("coupon.deleted", `Deleted coupon ${coupon.code}`, { code: coupon.code });
+      await loadCoupons();
+    } catch (err) {
+      notify?.(err.message || "Coupon delete failed.", "error");
+    } finally {
+      setDeleting("");
+    }
+  }
+
+  return (
+    <div className="fade-in">
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ color: "#E2E8F0", fontSize: 15, fontWeight: 850 }}>Pass Coupons</div>
+        <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>Create codes that add a fixed number of pass days to a student account.</div>
+      </div>
+      <div className="responsive-two-col" style={{ alignItems: "start", marginBottom: 16 }}>
+        <div className="card" style={{ display: "grid", gap: 11 }}>
+          <div style={{ color: "#F1F5F9", fontSize: 14, fontWeight: 850 }}>{coupons.some(c => c.code === form.code) ? "Edit Coupon" : "Create Coupon"}</div>
+          <div className="responsive-two-col" style={{ gap: 10 }}>
+            <div>
+              <label style={{ color: "#64748B", fontSize: 11, display: "block", marginBottom: 5 }}>Coupon Code</label>
+              <input className="input-field" value={form.code} onChange={e => setForm(p => ({ ...p, code: e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "") }))} placeholder="FREE7DAYS" />
+            </div>
+            <div>
+              <label style={{ color: "#64748B", fontSize: 11, display: "block", marginBottom: 5 }}>Display Label</label>
+              <input className="input-field" value={form.label} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} placeholder="One Week Pass" />
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 10 }}>
+            <div>
+              <label style={{ color: "#64748B", fontSize: 11, display: "block", marginBottom: 5 }}>Pass Days</label>
+              <input className="input-field" type="number" min="1" value={form.durationDays} onChange={e => setForm(p => ({ ...p, durationDays: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ color: "#64748B", fontSize: 11, display: "block", marginBottom: 5 }}>Maximum Uses</label>
+              <input className="input-field" type="number" min="0" value={form.maxUses} onChange={e => setForm(p => ({ ...p, maxUses: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ color: "#64748B", fontSize: 11, display: "block", marginBottom: 5 }}>Expires At</label>
+              <input className="input-field" type="datetime-local" value={form.expiresAt} onChange={e => setForm(p => ({ ...p, expiresAt: e.target.value }))} />
+            </div>
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#CBD5E1", fontSize: 12, cursor: "pointer" }}>
+            <input type="checkbox" checked={form.isActive} onChange={e => setForm(p => ({ ...p, isActive: e.target.checked }))} />
+            Coupon is active
+          </label>
+          <div style={{ color: "#475569", fontSize: 11 }}>Set maximum uses to 0 for unlimited use. Each student can use a coupon only once.</div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button className="btn-ghost" onClick={() => setForm(emptyForm)}>Clear</button>
+            <button className="btn-primary" disabled={saving} onClick={saveCoupon}><Icon n="plus" s={13} />{saving ? "Saving..." : "Save Coupon"}</button>
+          </div>
+        </div>
+        <div className="card">
+          <div style={{ color: "#F1F5F9", fontSize: 14, fontWeight: 850, marginBottom: 12 }}>How It Works</div>
+          {[
+            "Student enters the code on My Courses.",
+            "A confirmation popup shows how many pass days will be added.",
+            "Confirming starts a new pass or extends the current pass expiry.",
+            "Redemption is saved in payment orders and admin activity.",
+          ].map((text, idx) => (
+            <div key={text} style={{ display: "flex", gap: 9, color: "#94A3B8", fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>
+              <span className="tag tag-purple" style={{ minWidth: 25, justifyContent: "center" }}>{idx + 1}</span>{text}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ padding: 15, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div>
+            <div style={{ color: "#F1F5F9", fontSize: 14, fontWeight: 850 }}>Created Coupons</div>
+            <div style={{ color: "#64748B", fontSize: 11 }}>{coupons.length} coupon{coupons.length === 1 ? "" : "s"}</div>
+          </div>
+          <button className="btn-ghost" onClick={loadCoupons}><Icon n="repeat" s={13} />Refresh</button>
+        </div>
+        {loading ? [1,2].map(i => <div key={i} className="skeleton-card" style={{ margin: 12, minHeight: 66 }} />) : coupons.length ? coupons.map(coupon => (
+          <div key={coupon.code} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: 12, alignItems: "center", padding: "13px 15px", borderBottom: "1px solid rgba(255,255,255,0.055)" }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ color: "#C4B5FD", fontSize: 14, fontWeight: 900, letterSpacing: ".5px" }}>{coupon.code}</span>
+                <span className={`tag ${coupon.isActive ? "tag-green" : "tag-red"}`}>{coupon.isActive ? "Active" : "Disabled"}</span>
+              </div>
+              <div style={{ color: "#94A3B8", fontSize: 12, marginTop: 3 }}>{coupon.label || "Coupon pass"} · {coupon.durationDays} day{Number(coupon.durationDays) === 1 ? "" : "s"} · {coupon.usedCount}/{coupon.maxUses || "∞"} used{coupon.expiresAt ? ` · expires ${formatDateTime(coupon.expiresAt)}` : ""}</div>
+            </div>
+            <button className="btn-ghost" onClick={() => editCoupon(coupon)}><Icon n="edit" s={13} />Edit</button>
+            <button className="btn-danger" disabled={deleting === coupon.code} onClick={() => deleteCoupon(coupon)}><Icon n="trash" s={13} />{deleting === coupon.code ? "Deleting" : "Delete"}</button>
+          </div>
+        )) : <div style={{ padding: 34, textAlign: "center", color: "#64748B" }}>No coupons created yet.</div>}
       </div>
     </div>
   );

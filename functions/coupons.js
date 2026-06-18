@@ -121,6 +121,11 @@ export async function onRequestPost({ request, env }) {
   const orders = await loadCouponOrders(env);
   const error = validateCoupon(coupon, orders, userId);
   if (error) return json({ error }, 400);
+  const profile = await loadProfile(env, userId);
+  const currentExpiry = profile.pass?.expiresAt ? new Date(profile.pass.expiresAt) : null;
+  if (currentExpiry && currentExpiry.getTime() > Date.now()) {
+    return json({ error: "Coupon can only be used when you do not have an active pass." }, 409);
+  }
 
   if (action === "validate") {
     return json({ success: true, coupon: publicCoupon(coupon), message: `This coupon will add ${coupon.durationDays} day${Number(coupon.durationDays) === 1 ? "" : "s"} of pass access to your account.` });
@@ -128,10 +133,7 @@ export async function onRequestPost({ request, env }) {
   if (action !== "redeem") return json({ error: "Unknown coupon action." }, 400);
 
   const now = new Date();
-  const profile = await loadProfile(env, userId);
-  const currentExpiry = profile.pass?.expiresAt ? new Date(profile.pass.expiresAt) : null;
-  const base = currentExpiry && currentExpiry.getTime() > now.getTime() ? currentExpiry : now;
-  const expiresAt = new Date(base.getTime() + Number(coupon.durationDays || 1) * 86400000);
+  const expiresAt = new Date(now.getTime() + Number(coupon.durationDays || 1) * 86400000);
   const orderId = cleanId(`coupon_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
   const pass = {
     planId: `coupon_${coupon.code}`,

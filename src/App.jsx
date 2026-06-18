@@ -1478,15 +1478,17 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
             {pendingOrders.length} payment request{pendingOrders.length === 1 ? "" : "s"} pending admin approval.
           </div>
         )}
-        <div style={{ display: "flex", gap: 8, alignItems: "end", flexWrap: "wrap", marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ flex: "1 1 220px" }}>
-            <label style={{ display: "block", color: "#64748B", fontSize: 11, marginBottom: 5 }}>Have a coupon?</label>
-            <input className="input-field" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} onKeyDown={e => e.key === "Enter" && validateCouponCode()} placeholder="Enter coupon code" />
+        {!currentPassStatus.active && (
+          <div style={{ display: "flex", gap: 8, alignItems: "end", flexWrap: "wrap", marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ flex: "1 1 220px" }}>
+              <label style={{ display: "block", color: "#64748B", fontSize: 11, marginBottom: 5 }}>Have a coupon?</label>
+              <input className="input-field" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} onKeyDown={e => e.key === "Enter" && validateCouponCode()} placeholder="Enter coupon code" />
+            </div>
+            <button className="btn-ghost" disabled={couponBusy || !couponCode.trim()} onClick={validateCouponCode}>
+              <Icon n="star" s={13} />{couponBusy ? "Checking..." : "Apply Coupon"}
+            </button>
           </div>
-          <button className="btn-ghost" disabled={couponBusy || !couponCode.trim()} onClick={validateCouponCode}>
-            <Icon n="star" s={13} />{couponBusy ? "Checking..." : "Apply Coupon"}
-          </button>
-        </div>
+        )}
       </div>
 
       {myCourses.length === 0 && (

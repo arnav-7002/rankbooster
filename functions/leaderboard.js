@@ -23,6 +23,7 @@ export async function onRequestGet({ request, env }) {
   const testId = cleanId(url.searchParams.get("testId"));
   const currentUserId = cleanId(url.searchParams.get("offlineId") || url.searchParams.get("userId"));
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 10), 3), 50);
+  const offset = Math.max(Number(url.searchParams.get("offset") || 0), 0);
   if (!testId) return json({ entries: [], myRank: null, total: 0, error: "testId required" }, 400);
 
   const attemptRows = await supabaseRequest(
@@ -83,5 +84,5 @@ export async function onRequestGet({ request, env }) {
   });
 
   const mine = entries.find(e => e.isMe) || null;
-  return json({ entries: entries.slice(0, limit), myRank: mine?.rank || null, mine, total: entries.length });
+  return json({ entries: entries.slice(offset, offset + limit), myRank: mine?.rank || null, mine, total: entries.length, offset, limit });
 }

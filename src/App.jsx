@@ -4991,6 +4991,8 @@ function TestAttemptReport({ report, user, onBack }) {
   const [notebookName, setNotebookName] = useState("");
   const [reportNotebooks, setReportNotebooks] = useState([]);
   const [leaderboard, setLeaderboard] = useState({ loading: true, entries: [], myRank: null, total: 0 });
+  const [leaderboardPage, setLeaderboardPage] = useState(1);
+  const [leaderboardFull, setLeaderboardFull] = useState({ loading: false, entries: [], total: 0 });
 
   const { course, folder, test, attempt } = report || {};
   const attemptHasDetails = !!(
@@ -5139,6 +5141,34 @@ function TestAttemptReport({ report, user, onBack }) {
 
   useEffect(() => {
     let cancelled = false;
+    const testId = reportTestId;
+    if (mode !== "leaderboard" || !testId) return undefined;
+    setLeaderboardFull(prev => ({ ...prev, loading: true }));
+    const qs = new URLSearchParams({
+      testId,
+      offlineId: user?.offlineId || user?.id || "",
+      limit: "50",
+      offset: String((leaderboardPage - 1) * 50),
+    });
+    fetch(`${IMPORTER_API}/leaderboard?${qs.toString()}`, { cache: "no-store" })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!cancelled) {
+          setLeaderboardFull({
+            loading: false,
+            entries: data?.entries || [],
+            total: data?.total || 0,
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLeaderboardFull({ loading: false, entries: [], total: 0 });
+      });
+    return () => { cancelled = true; };
+  }, [mode, reportTestId, leaderboardPage, user?.id, user?.offlineId]);
+
+  useEffect(() => {
+    let cancelled = false;
     if (!reportActiveQId || reportActiveQuestion?.images?.length || reportLazyImages || !reportZipName || !reportCourseName || !reportFolderName) return undefined;
     setLoadingReportImage(true);
     const qs = new URLSearchParams({ course: reportCourseName, folder: reportFolderName, zip: reportZipName, qId: reportActiveQId });
@@ -5209,6 +5239,89 @@ function TestAttemptReport({ report, user, onBack }) {
   }
 
   if (!report) return null;
+
+  if (mode === "leaderboard") {
+    const totalPages = Math.max(1, Math.ceil(Number(leaderboardFull.total || 0) / 50));
+    const from = leaderboardFull.total ? ((leaderboardPage - 1) * 50) + 1 : 0;
+    const to = Math.min(leaderboardPage * 50, Number(leaderboardFull.total || 0));
+    return (
+      <div className="report-shell fade-in">
+        <div className="report-top">
+          <div>
+            <div className="report-title">{displayTest?.name || summary.source?.testName} Leaderboard</div>
+            <div className="report-subtitle">
+              {leaderboardFull.total ? `Showing ${from}-${to} of ${leaderboardFull.total} ranked students` : "Best attempt per student for this test."}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button className="report-tab" onClick={() => setMode("report")}><span className="tab-icon"><Icon n="chevleft" s={13} /></span> Scorecard</button>
+            <button className="report-tab" onClick={() => setMode("solution")}><span className="tab-icon"><Icon n="eye" s={13} /></span> Solutions</button>
+            <button className="report-tab close-tab" onClick={onBack}><span className="tab-icon"><Icon n="x" s={13} /></span> Close</button>
+          </div>
+        </div>
+        <div style={{ padding: "24px", maxWidth: 1180, margin: "0 auto" }}>
+          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            <div style={{ padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div>
+                <div className="report-section-title">Detailed Leaderboard</div>
+                <div style={{ color: "#64748B", fontSize: 12, marginTop: 3 }}>50 entries per page. Higher score ranks first, then lower paper time.</div>
+              </div>
+              <span className="tag tag-amber">{leaderboard.myRank ? `Your Rank #${leaderboard.myRank}` : "No rank yet"}</span>
+            </div>
+            <div className="table-scroll">
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
+                <thead>
+                  <tr className="table-head">
+                    {["Rank", "Student", "Score", "Correct", "Wrong", "Paper Time", "Submitted"].map(h => <th key={h}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboardFull.loading ? (
+                    Array.from({ length: 8 }, (_, i) => (
+                      <tr key={i} className="table-row">
+                        <td colSpan="7"><div className="skeleton-line" style={{ height: 14, width: `${55 + (i % 3) * 12}%` }} /></td>
+                      </tr>
+                    ))
+                  ) : leaderboardFull.entries.length ? leaderboardFull.entries.map(entry => (
+                    <tr key={`${entry.userId}_${entry.attemptId}`} className="table-row" style={entry.isMe ? { background: "rgba(124,58,237,0.11)" } : undefined}>
+                      <td style={{ color: "#A78BFA", fontWeight: 850 }}>#{entry.rank}</td>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                          <div className="leaderboard-avatar">{entry.avatar || "ST"}</div>
+                          <div style={{ minWidth: 0 }}>
+                            <div className="leaderboard-name" style={{ fontSize: 13 }}>{entry.name}{entry.isMe ? " · You" : ""}</div>
+                            <div className="leaderboard-meta">{entry.userId}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ color: "#F8FAFC", fontWeight: 850 }}>{entry.score}/{entry.maxMarks}</td>
+                      <td style={{ color: "#34D399", fontWeight: 700 }}>{entry.correct}</td>
+                      <td style={{ color: "#F87171", fontWeight: 700 }}>{entry.wrong}</td>
+                      <td style={{ color: "#94A3B8" }}>{formatLeaderboardTime(entry.timeSpentSec)}</td>
+                      <td style={{ color: "#64748B" }}>{entry.submittedAt ? new Date(entry.submittedAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                    </tr>
+                  )) : (
+                    <tr className="table-row">
+                      <td colSpan="7" style={{ textAlign: "center", color: "#64748B", padding: 28 }}>No leaderboard entries yet.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <button className="btn-ghost" disabled={leaderboardPage <= 1 || leaderboardFull.loading} onClick={() => setLeaderboardPage(p => Math.max(1, p - 1))}>
+                <Icon n="chevleft" s={13} /> Previous
+              </button>
+              <span style={{ color: "#94A3B8", fontSize: 12, fontWeight: 700 }}>Page {leaderboardPage} / {totalPages}</span>
+              <button className="btn-ghost" disabled={leaderboardPage >= totalPages || leaderboardFull.loading} onClick={() => setLeaderboardPage(p => Math.min(totalPages, p + 1))}>
+                Next <Icon n="chevright" s={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (mode === "solution") {
     const activeSubject = subjects[solutionSubjectIdx] || subjects[0];
@@ -5441,64 +5554,33 @@ function TestAttemptReport({ report, user, onBack }) {
         </div>
 
         <div className="card" style={{ marginBottom: 18 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div>
               <div className="report-section-title">Leaderboard</div>
               <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>
-                Best attempt per student for this test.
+                Best attempt per student for this test. Open full leaderboard for all ranks.
               </div>
             </div>
-            <span className="tag tag-amber">{leaderboard.myRank ? `Your Rank #${leaderboard.myRank}` : leaderboard.loading ? "Loading" : "No rank yet"}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span className="tag tag-amber">{leaderboard.myRank ? `Your Rank #${leaderboard.myRank}` : leaderboard.loading ? "Loading" : "No rank yet"}</span>
+              <button className="btn-ghost" onClick={() => { setLeaderboardPage(1); setMode("leaderboard"); }}>
+                <Icon n="award" s={14} />View Full Leaderboard
+              </button>
+            </div>
           </div>
-          {leaderboard.loading ? (
-            <div style={{ display: "grid", gap: 10 }}>
-              {[0, 1, 2].map(i => (
-                <div key={i} style={{ display: "grid", gridTemplateColumns: "36px 1fr 80px", gap: 10, alignItems: "center" }}>
-                  <div className="skeleton-line" style={{ width: 30, height: 30, borderRadius: 10 }} />
-                  <div>
-                    <div className="skeleton-line" style={{ width: "42%", height: 12, marginBottom: 7 }} />
-                    <div className="skeleton-line" style={{ width: "28%", height: 9 }} />
-                  </div>
-                  <div className="skeleton-line" style={{ width: 70, height: 14 }} />
+          {!leaderboard.loading && leaderboard.mine && (
+            <div className="leaderboard-row me" style={{ marginTop: 14 }}>
+              <div className="leaderboard-rank">#{leaderboard.mine.rank}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <div className="leaderboard-avatar">{leaderboard.mine.avatar || "ME"}</div>
+                <div style={{ minWidth: 0 }}>
+                  <div className="leaderboard-name">{leaderboard.mine.name || "You"} · You</div>
+                  <div className="leaderboard-meta">{leaderboard.mine.correct} correct · {leaderboard.mine.wrong} wrong · {formatLeaderboardTime(leaderboard.mine.timeSpentSec)}</div>
                 </div>
-              ))}
-            </div>
-          ) : leaderboard.entries.length ? (
-            <div>
-              {leaderboard.entries.map(entry => (
-                <div key={`${entry.userId}_${entry.attemptId}`} className={`leaderboard-row ${entry.isMe ? "me" : ""}`}>
-                  <div className="leaderboard-rank">#{entry.rank}</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                    <div className="leaderboard-avatar">{entry.avatar || "ST"}</div>
-                    <div style={{ minWidth: 0 }}>
-                      <div className="leaderboard-name">{entry.name}{entry.isMe ? " · You" : ""}</div>
-                      <div className="leaderboard-meta">{entry.correct} correct · {entry.wrong} wrong · {formatLeaderboardTime(entry.timeSpentSec)}</div>
-                    </div>
-                  </div>
-                  <div style={{ color: "#F8FAFC", fontWeight: 850, textAlign: "right" }}>
-                    {entry.score}<span style={{ color: "#64748B", fontSize: 11, fontWeight: 700 }}>/{entry.maxMarks}</span>
-                  </div>
-                </div>
-              ))}
-              {!leaderboard.entries.some(e => e.isMe) && leaderboard.mine && (
-                <div className="leaderboard-row me" style={{ marginTop: 8 }}>
-                  <div className="leaderboard-rank">#{leaderboard.mine.rank}</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                    <div className="leaderboard-avatar">{leaderboard.mine.avatar || "ME"}</div>
-                    <div style={{ minWidth: 0 }}>
-                      <div className="leaderboard-name">{leaderboard.mine.name || "You"} · You</div>
-                      <div className="leaderboard-meta">{leaderboard.mine.correct} correct · {leaderboard.mine.wrong} wrong · {formatLeaderboardTime(leaderboard.mine.timeSpentSec)}</div>
-                    </div>
-                  </div>
-                  <div style={{ color: "#F8FAFC", fontWeight: 850, textAlign: "right" }}>
-                    {leaderboard.mine.score}<span style={{ color: "#64748B", fontSize: 11, fontWeight: 700 }}>/{leaderboard.mine.maxMarks}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div style={{ padding: 18, borderRadius: 12, background: "rgba(255,255,255,0.035)", color: "#64748B", textAlign: "center" }}>
-              Your score will appear here as soon as this attempt syncs.
+              </div>
+              <div style={{ color: "#F8FAFC", fontWeight: 850, textAlign: "right" }}>
+                {leaderboard.mine.score}<span style={{ color: "#64748B", fontSize: 11, fontWeight: 700 }}>/{leaderboard.mine.maxMarks}</span>
+              </div>
             </div>
           )}
         </div>

@@ -198,6 +198,8 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
   const questionTimesRef = useRef(resumeState?.questionTimes || {});
   const activeTimeRef = useRef({ id: null, at: null });
   const resumeSaveBusyRef = useRef(false);
+  const resumeLastSavedRef = useRef("");
+  const resumePendingRef = useRef(false);
 
   const activeSubject = subjects[secIdx];
   const activeQ       = activeSubject?.questions[qIdx];
@@ -556,11 +558,29 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
     };
   }, [bitsatBonusEntered, draftResponses, elapsedSecs, flushQuestionTiming, qIdx, responses, secIdx, statuses, test, timer.secs]);
 
+  const resumeStateFingerprint = useCallback(() => JSON.stringify({
+    secIdx,
+    qIdx,
+    bitsatBonusEntered,
+    responses,
+    draftResponses,
+    statuses,
+  }), [bitsatBonusEntered, draftResponses, qIdx, responses, secIdx, statuses]);
+
   const saveResumeDraft = useCallback((keepalive = false) => {
     if (!user?.offlineId || showResults || submitting || attemptSavedRef.current) return;
     if (resumeSaveBusyRef.current && !keepalive) return;
+    const fingerprint = resumeStateFingerprint();
+    if (!keepalive && fingerprint === resumeLastSavedRef.current) return;
     const state = buildResumeState();
-    const body = JSON.stringify({ user, test, state, testId: state.testId, courseId: state.courseId });
+    const body = JSON.stringify({
+      user: { offlineId: user.offlineId, email: user.email },
+      state,
+      testId: state.testId,
+      courseId: state.courseId,
+    });
+    resumePendingRef.current = false;
+    resumeLastSavedRef.current = fingerprint;
     resumeSaveBusyRef.current = true;
     fetch(`${IMPORTER_API}/attempt-resumes`, {
       method: "POST",
@@ -568,23 +588,26 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
       body,
       keepalive,
     }).catch(() => null).finally(() => { resumeSaveBusyRef.current = false; });
-  }, [buildResumeState, showResults, submitting, test, user]);
+  }, [buildResumeState, resumeStateFingerprint, showResults, submitting, user?.email, user?.offlineId]);
 
   useEffect(() => {
     if (showInstructions || showResults || submitting) return undefined;
-    const id = setInterval(() => saveResumeDraft(false), 1000);
-    return () => clearInterval(id);
-  }, [saveResumeDraft, showInstructions, showResults, submitting]);
+    resumePendingRef.current = true;
+    const id = setTimeout(() => saveResumeDraft(false), 350);
+    return () => clearTimeout(id);
+  }, [saveResumeDraft, showInstructions, showResults, submitting, secIdx, qIdx, bitsatBonusEntered, responses, draftResponses, statuses]);
 
   useEffect(() => {
     if (showInstructions || showResults || submitting) return undefined;
-    const onBeforeUnload = () => saveResumeDraft(true);
+    const onBeforeUnload = () => {
+      if (resumePendingRef.current || resumeStateFingerprint() !== resumeLastSavedRef.current) saveResumeDraft(true);
+    };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
-      saveResumeDraft(true);
+      if (resumePendingRef.current || resumeStateFingerprint() !== resumeLastSavedRef.current) saveResumeDraft(true);
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
-  }, [saveResumeDraft, showInstructions, showResults, submitting]);
+  }, [resumeStateFingerprint, saveResumeDraft, showInstructions, showResults, submitting]);
 
   const saveAttemptOnce = useCallback(async () => {
     if (attemptSavedRef.current) return;

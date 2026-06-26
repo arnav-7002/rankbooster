@@ -388,7 +388,12 @@ const DEFAULT_SETTINGS = {
   homeAnnouncement: { enabled: false, title: "", body: "" },
   payments: { enabled: false, upiId: "", payeeName: "RankBooster", note: "Pay using UPI, then submit the UTR/reference ID for manual approval." },
   resumes: { expiryHours: 24 },
+  cleanup: { noPassInactiveDays: "never", freeCourseInactiveDays: "never" },
 };
+
+function isCourseFree(course) {
+  return !!(course?.freeAccess || course?.config?.freeAccess || course?.config_json?.freeAccess);
+}
 
 function passStatus(pass) {
   if (!pass?.expiresAt) return { active: false, label: "No active pass", daysLeft: 0 };
@@ -691,6 +696,45 @@ function LoginNudgeIcon({ s = 14 }) {
   );
 }
 
+function SupportButton({ compact = false }) {
+  return (
+    <a
+      href="https://www.reddit.com/user/AffectionateFloor607/"
+      target="_blank"
+      rel="noreferrer"
+      title="DM support on Reddit"
+      className="support-link"
+      style={{
+        minHeight: compact ? 32 : 40,
+        padding: compact ? "7px 10px" : "9px 13px",
+        borderRadius: 12,
+        border: "1px solid rgba(255,69,0,0.24)",
+        background: "linear-gradient(135deg,rgba(255,69,0,0.14),rgba(124,58,237,0.10))",
+        color: "#FFB199",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        textDecoration: "none",
+        fontSize: compact ? 11 : 12,
+        fontWeight: 850,
+        boxShadow: "0 14px 34px rgba(255,69,0,0.08)",
+      }}
+    >
+      <svg width={compact ? 15 : 17} height={compact ? 15 : 17} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" fill="#FF4500" opacity=".95" />
+        <circle cx="8.7" cy="12.2" r="1.15" fill="white" />
+        <circle cx="15.3" cy="12.2" r="1.15" fill="white" />
+        <path d="M8.5 15.1c1.75 1.25 5.25 1.25 7 0" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M13.5 7.9l1.25-3 3.15.72" stroke="#FF4500" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="18.3" cy="5.8" r="1.25" fill="#FF4500" />
+        <path d="M5.4 10.5c-1.1-.35-1.8.35-1.8 1.3 0 .75.55 1.3 1.4 1.45M18.6 10.5c1.1-.35 1.8.35 1.8 1.3 0 .75-.55 1.3-1.4 1.45" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
+      {!compact && <span>Support</span>}
+      {compact && <span>Help</span>}
+    </a>
+  );
+}
+
 // ─── MODAL WRAPPER ────────────────────────────────────────────────────────────
 function Modal({ open, onClose, title, children, width = 560 }) {
   if (!open) return null;
@@ -933,6 +977,7 @@ function LoginPage({ onLogin, passPlans = PASS_PLANS }) {
             </div>
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <SupportButton />
             <button className="btn-ghost signin-nudge" onClick={() => scrollToAuth("login")}><LoginNudgeIcon s={14} />Log In</button>
             <button className="btn-primary" onClick={() => scrollToAuth("signup")}><Icon n="plus" s={14} />Sign Up</button>
           </div>
@@ -1420,7 +1465,8 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
   }
 
   async function enroll(courseId) {
-    if (!currentPassStatus.active) return;
+    const courseToEnroll = courses.find(c => c.id === courseId);
+    if (!currentPassStatus.active && !isCourseFree(courseToEnroll)) return;
     const nu = [...new Set([...userCourseIds, courseId])];
     setUserCourseIds(nu);
     const coursesOpted = nu.map(id => {
@@ -1517,7 +1563,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
         <>
           <div style={{ fontSize: 12, color: "#64748B", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.5px" }}>Available Courses</div>
           <div className="responsive-grid course-card-grid">
-            {available.map(c => <CourseCard key={c.id} course={c} passActive={currentPassStatus.active} onEnroll={() => enroll(c.id)} />)}
+            {available.map(c => <CourseCard key={c.id} course={c} passActive={currentPassStatus.active || isCourseFree(c)} onEnroll={() => enroll(c.id)} />)}
           </div>
         </>
       )}
@@ -1591,6 +1637,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
 
 function CourseCard({ course, enrolled, onEnroll, completedTests, passActive = true }) {
   const totalTests = configuredTestCount(course);
+  const freeCourse = isCourseFree(course);
   const doneTests = Number.isFinite(completedTests)
     ? completedTests
     : (course.testFolders?.reduce((a, f) => a + configuredTests(f).filter(t => t.attempted).length, 0) || 0);
@@ -1624,12 +1671,12 @@ function CourseCard({ course, enrolled, onEnroll, completedTests, passActive = t
         )}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <span style={{ fontSize: 16, fontWeight: 800, color: course.textColor }}>{passActive ? "Included" : `₹${course.price.toLocaleString()}`}</span>
-            {!passActive && <span style={{ fontSize: 12, color: "#334155", textDecoration: "line-through", marginLeft: 6 }}>₹{course.originalPrice.toLocaleString()}</span>}
+            <span style={{ fontSize: 16, fontWeight: 800, color: course.textColor }}>{freeCourse ? "Free" : passActive ? "Included" : `₹${Number(course.price || 0).toLocaleString()}`}</span>
+            {!passActive && !freeCourse && <span style={{ fontSize: 12, color: "#334155", textDecoration: "line-through", marginLeft: 6 }}>₹{Number(course.originalPrice || 0).toLocaleString()}</span>}
           </div>
           {enrolled
             ? <span className="tag tag-green" style={{display:"inline-flex",alignItems:"center",gap:4}}><Icon n="check" s={11} /> Enrolled</span>
-            : <button className={passActive ? "btn-primary" : "btn-ghost"} disabled={!passActive} style={{ padding: "10px 20px", fontSize: 13 }} onClick={onEnroll}>{passActive ? "Enroll Now" : "Pass needed"}</button>
+            : <button className={passActive ? "btn-primary" : "btn-ghost"} disabled={!passActive} style={{ padding: "10px 20px", fontSize: 13 }} onClick={onEnroll}>{freeCourse ? "Enroll Free" : passActive ? "Enroll Now" : "Pass needed"}</button>
           }
         </div>
       </div>
@@ -2347,7 +2394,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminEvents, setAdminEvents] = useState([]);
   const allUC = {};
-  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["coupons", "Coupons"], ["payments", "Payments"], ["resumes", "Resumes"], ["announcements", "Announcements"], ["users", "Users"], ["activity", "Activity"], ["checklist", "Publish Checklist"], ["reset", "Reset"]];
+  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["coupons", "Coupons"], ["payments", "Payments"], ["resumes", "Resumes"], ["announcements", "Announcements"], ["cleanup", "Data Rules"], ["users", "Users"], ["activity", "Activity"], ["checklist", "Publish Checklist"], ["reset", "Reset"]];
   const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
   const adminTabWidth = 148;
   const adminTrackWidth = (adminTabs.length * adminTabWidth) + ((adminTabs.length - 1) * 4);
@@ -2457,6 +2504,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
         {tab === "payments" && <AdminPayments appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "resumes" && <AdminResumes appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "announcements" && <AdminAnnouncements appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} />}
+        {tab === "cleanup" && <AdminDataRetention appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} passPlans={passPlans} onRefresh={loadAdminUsers} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "activity" && <AdminActivity events={adminEvents} onRefresh={loadAdminEvents} />}
         {tab === "checklist" && <AdminPublishChecklist dbStatus={dbStatus} allCourses={allCourses} passPlans={passPlans} appSettings={appSettings} adminUsers={adminUsers} />}
@@ -2652,7 +2700,7 @@ function AdminCourses({ allCourses, setAllCourses, notify, recordAdminEvent }) {
   const [editModal, setEditModal] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [addModal, setAddModal] = useState(false);
-  const [form, setForm] = useState({ title: "", subtitle: "", price: "", originalPrice: "", badge: "New", color: "#7C3AED", textColor: "#A78BFA", description: "", subjects: "Physics,Chemistry,Mathematics" });
+  const [form, setForm] = useState({ title: "", subtitle: "", price: "", originalPrice: "", badge: "New", color: "#7C3AED", textColor: "#A78BFA", description: "", subjects: "Physics,Chemistry,Mathematics", freeAccess: false });
   const [folderChoices, setFolderChoices] = useState({ full: true, part: true, chapter: false });
   const [extraFolders, setExtraFolders] = useState("");
 
@@ -2664,6 +2712,8 @@ function AdminCourses({ allCourses, setAllCourses, notify, recordAdminEvent }) {
       subjects: Array.isArray(course.subjects)
         ? course.subjects
         : String(course.subjects || "").split(",").map(s => s.trim()).filter(Boolean),
+      freeAccess: isCourseFree(course),
+      config: { ...(course.config || {}), freeAccess: isCourseFree(course) },
     };
   }
 
@@ -2689,6 +2739,8 @@ function AdminCourses({ allCourses, setAllCourses, notify, recordAdminEvent }) {
           ...cleaned,
           previousTitle: original?.folderName || original?.title || cleaned.folderName || cleaned.title,
           testFolders: cleaned.testFolders || original?.testFolders || [],
+          freeAccess: !!cleaned.freeAccess,
+          config: { ...(cleaned.config || {}), freeAccess: !!cleaned.freeAccess },
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -2739,6 +2791,8 @@ function AdminCourses({ allCourses, setAllCourses, notify, recordAdminEvent }) {
       id: Date.now(), title: form.title.trim(), subtitle: form.subtitle, price: Number(form.price || 0), originalPrice: Number(form.originalPrice || form.price || 0),
       badge: form.badge, color: form.color, textColor: form.textColor, description: form.description,
       subjects: form.subjects.split(",").map(s => s.trim()).filter(Boolean),
+      freeAccess: !!form.freeAccess,
+      config: { freeAccess: !!form.freeAccess },
       enrolledCount: 0, rating: 4.5,
       testFolders: uniqueFolders.map((name, idx) => ({
         id: "f" + Date.now() + "_" + idx,
@@ -2764,7 +2818,7 @@ function AdminCourses({ allCourses, setAllCourses, notify, recordAdminEvent }) {
       return;
     }
     setAddModal(false);
-    setForm({ title: "", subtitle: "", price: "", originalPrice: "", badge: "New", color: "#7C3AED", textColor: "#A78BFA", description: "", subjects: "Physics,Chemistry,Mathematics" });
+    setForm({ title: "", subtitle: "", price: "", originalPrice: "", badge: "New", color: "#7C3AED", textColor: "#A78BFA", description: "", subjects: "Physics,Chemistry,Mathematics", freeAccess: false });
     setFolderChoices({ full: true, part: true, chapter: false });
     setExtraFolders("");
   }
@@ -2786,6 +2840,7 @@ function AdminCourses({ allCourses, setAllCourses, notify, recordAdminEvent }) {
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: "#E2E8F0" }}>{course.title}</span>
                 <span className="tag" style={{ background: course.color + "25", color: course.textColor }}>{course.badge}</span>
+                {isCourseFree(course) && <span className="tag tag-green">Free</span>}
               </div>
               <div style={{ fontSize: 12, color: "#64748B", marginBottom: 6 }}>{course.subtitle}</div>
               <div style={{ display: "flex", gap: 16, fontSize: 12, color: "#475569" }}>
@@ -2893,6 +2948,13 @@ function CourseForm({ form, setForm, onSave, saveLabel = "Save Changes", childre
           <label style={{ fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" }}>Subjects (comma separated)</label>
           <input className="input-field" value={subjectsValue} onChange={e => F("subjects", e.target.value)} placeholder="Physics, Chemistry, Mathematics" />
         </div>
+        <label style={{ gridColumn: "1/-1", display: "flex", gap: 10, alignItems: "flex-start", padding: 12, borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.18)", cursor: "pointer" }}>
+          <input type="checkbox" checked={!!form.freeAccess} onChange={e => F("freeAccess", e.target.checked)} style={{ marginTop: 2 }} />
+          <span>
+            <span style={{ display: "block", color: "#D1FAE5", fontSize: 13, fontWeight: 800 }}>Free for everyone</span>
+            <span style={{ display: "block", color: "#94A3B8", fontSize: 12, marginTop: 2 }}>Students can enroll and access this course without an active pass. Paid courses stay locked when the pass expires or is removed.</span>
+          </span>
+        </label>
         <div style={{ gridColumn: "1/-1" }}>
           <label style={{ fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" }}>Description</label>
           <textarea className="input-field" rows={3} style={{ resize: "vertical" }} value={form.description || ""} onChange={e => F("description", e.target.value)} placeholder="Course description..." />
@@ -4143,6 +4205,123 @@ function AdminAnnouncements({ appSettings, setAppSettings, notify, recordAdminEv
           <input className="input-field" value={draft.homeAnnouncement?.title || ""} onChange={e => patch("homeAnnouncement", { title: e.target.value })} placeholder="Title" style={{ marginBottom: 10 }} />
           <textarea className="input-field" rows={5} value={draft.homeAnnouncement?.body || ""} onChange={e => patch("homeAnnouncement", { body: e.target.value })} placeholder="Longer announcement for students..." />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminDataRetention({ appSettings, setAppSettings, notify, recordAdminEvent, currentAdmin }) {
+  const [draft, setDraft] = useState({ ...DEFAULT_SETTINGS.cleanup, ...(appSettings?.cleanup || {}) });
+  const [busy, setBusy] = useState("");
+
+  useEffect(() => { setDraft({ ...DEFAULT_SETTINGS.cleanup, ...(appSettings?.cleanup || {}) }); }, [appSettings]);
+
+  const options = [
+    ["never", "Never wipe automatically"],
+    [7, "7 days"],
+    [15, "15 days"],
+    [30, "30 days"],
+    [60, "60 days"],
+    [90, "90 days"],
+    [180, "180 days"],
+  ];
+
+  async function saveRules() {
+    setBusy("save");
+    try {
+      const settings = { ...DEFAULT_SETTINGS, ...appSettings, cleanup: draft };
+      const res = await fetch(`${IMPORTER_API}/settings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Cleanup rules could not be saved.");
+      setAppSettings({ ...DEFAULT_SETTINGS, ...(data.settings || settings) });
+      notify?.("Data rules saved.", "success");
+      recordAdminEvent?.("cleanup.rules_updated", "Updated data retention rules", draft);
+    } catch (err) {
+      notify?.(err.message || "Data rules save failed.", "error");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function runCleanup(mode) {
+    const days = mode === "no_pass_inactive" ? draft.noPassInactiveDays : draft.freeCourseInactiveDays;
+    const label = mode === "no_pass_inactive" ? "inactive no-pass users" : "stale free-course enrollments";
+    if (days === "never") {
+      notify?.("This cleanup rule is set to never.", "info");
+      return;
+    }
+    if (!window.confirm(`Run cleanup for ${label} older than ${days} days? This deletes learning data, resumes, attempts, notebooks/enrollments covered by this rule.`)) return;
+    setBusy(mode);
+    try {
+      const res = await fetch(`${IMPORTER_API}/cleanup-data`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode, days, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Cleanup failed.");
+      const count = data.cleanedUsers ?? data.cleanedEnrollments ?? 0;
+      notify?.(`Cleanup complete. ${count} item${Number(count) === 1 ? "" : "s"} affected.`, "success");
+      recordAdminEvent?.(`cleanup.${mode}`, `Ran cleanup for ${label}`, { days, result: data });
+    } catch (err) {
+      notify?.(err.message || "Cleanup failed.", "error");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  const RuleCard = ({ title, body, value, onChange, onRun, busyKey }) => (
+    <div className="card landing-hover-card">
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", marginBottom: 12 }}>
+        <div>
+          <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 850 }}>{title}</div>
+          <div style={{ color: "#64748B", fontSize: 12, lineHeight: 1.5, marginTop: 3 }}>{body}</div>
+        </div>
+        <Icon n="trash" s={18} c="#A78BFA" />
+      </div>
+      <select className="select-field" style={{ width: "100%", marginBottom: 12 }} value={value} onChange={e => onChange(e.target.value === "never" ? "never" : Number(e.target.value))}>
+        {options.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+      </select>
+      <button className="btn-danger" disabled={busy === busyKey || value === "never"} onClick={onRun} style={{ width: "100%" }}>
+        <Icon n="trash" s={13} />{busy === busyKey ? "Cleaning..." : "Run Cleanup Now"}
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="fade-in">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14 }}>
+        <div>
+          <div style={{ color: "#E2E8F0", fontSize: 15, fontWeight: 800 }}>Data Retention Rules</div>
+          <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>Control old learning data cleanup. Accounts are not deleted here.</div>
+        </div>
+        <button className="btn-primary" disabled={busy === "save"} onClick={saveRules}>{busy === "save" ? "Saving..." : "Save Rules"}</button>
+      </div>
+      <div className="responsive-two-col">
+        <RuleCard
+          title="No-Pass Inactive Users"
+          body="If a non-admin user has no active pass and has been inactive longer than this, wipe attempts, resumes, notebooks, enrollments, and stale pass data."
+          value={draft.noPassInactiveDays}
+          onChange={v => setDraft(p => ({ ...p, noPassInactiveDays: v }))}
+          onRun={() => runCleanup("no_pass_inactive")}
+          busyKey="no_pass_inactive"
+        />
+        <RuleCard
+          title="Free Course Data"
+          body="For free courses only, remove old free-course enrollments plus attempts/resumes for those courses after the selected age."
+          value={draft.freeCourseInactiveDays}
+          onChange={v => setDraft(p => ({ ...p, freeCourseInactiveDays: v }))}
+          onRun={() => runCleanup("free_course_inactive")}
+          busyKey="free_course_inactive"
+        />
+      </div>
+      <div className="card" style={{ marginTop: 14, padding: 14, borderColor: "rgba(251,191,36,0.22)", background: "rgba(251,191,36,0.06)" }}>
+        <div style={{ color: "#FCD34D", fontSize: 13, fontWeight: 850, marginBottom: 4 }}>Careful zone</div>
+        <div style={{ color: "#94A3B8", fontSize: 12, lineHeight: 1.55 }}>These buttons are manual right now. Saving the rule stores it in the database; clicking Run Cleanup applies it immediately and records an admin event.</div>
       </div>
     </div>
   );
@@ -5449,7 +5628,8 @@ export default function App() {
     if (!user) return undefined;
     const refreshAndLock = async () => {
       const latest = await refreshCurrentUser();
-      if (latest && !passStatus(latest.pass).active) {
+      const activeCourseFree = activeTest && courses.some(c => c.id === activeTest.courseId && isCourseFree(c));
+      if (latest && !passStatus(latest.pass).active && !activeCourseFree) {
         setActiveTest(null);
         setActiveReport(null);
         if (page === "tests") setPage("courses");
@@ -5464,7 +5644,7 @@ export default function App() {
       document.removeEventListener("visibilitychange", onFocus);
       clearInterval(id);
     };
-  }, [user, page, refreshCurrentUser]);
+  }, [user, page, refreshCurrentUser, activeTest, courses]);
 
   useEffect(() => {
     if (!user || !page) return;
@@ -5485,8 +5665,8 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    if (user && activeTest && !passStatus(user.pass).active) setActiveTest(null);
-  }, [user, activeTest]);
+    if (user && activeTest && !passStatus(user.pass).active && !courses.some(c => c.id === activeTest.courseId && isCourseFree(c))) setActiveTest(null);
+  }, [user, activeTest, courses]);
 
   async function handleLogin(u) {
     const offlineUser = ensureOfflineUser(u);
@@ -5528,9 +5708,11 @@ export default function App() {
   );
 
   const userPassStatus = passStatus(user.pass);
-  const accessibleCourseIds = userPassStatus.active ? userCourseIds : [];
+  const freeCourseIds = courses.filter(isCourseFree).map(c => c.id);
+  const accessibleCourseIds = userCourseIds.filter(id => userPassStatus.active || freeCourseIds.includes(id));
+  const activeTestCourseFree = activeTest && freeCourseIds.includes(activeTest.courseId);
 
-  if (activeTest && userPassStatus.active) return (
+  if (activeTest && (userPassStatus.active || activeTestCourseFree)) return (
     <TestInterface
       test={activeTest}
       user={user}
@@ -5583,6 +5765,7 @@ export default function App() {
               )}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <SupportButton compact />
               {user.role === "admin" && <span className="tag tag-amber" style={{ fontSize: 11 }}><Icon n="zap" s={10} /> Admin</span>}
               <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#7C3AED,#4F46E5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, cursor: "pointer" }} onClick={() => setPage("settings")}>{user.avatar}</div>
             </div>

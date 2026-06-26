@@ -6,6 +6,8 @@ function courseRow(input = {}) {
   const title = String(input.title || input.courseTitle || "Course").trim();
   const id = cleanId(input.id) || slugify(title);
   const folders = Array.isArray(input.testFolders) ? input.testFolders : [];
+  const config = { ...(input.config_json || {}), ...(input.config || {}) };
+  if (input.freeAccess !== undefined) config.freeAccess = !!input.freeAccess;
   return {
     id,
     slug: slugify(title),
@@ -19,7 +21,7 @@ function courseRow(input = {}) {
     text_color: input.textColor || input.text_color || "#A78BFA",
     subjects_json: Array.isArray(input.subjects) ? input.subjects : String(input.subjects || "").split(",").map(s => s.trim()).filter(Boolean),
     folders_json: folders.map(f => ({ id: f.id, name: f.name, icon: f.icon || "folder" })),
-    config_json: input.config || input.config_json || {},
+    config_json: config,
     is_published: input.is_published !== false,
     updated_at: new Date().toISOString(),
   };
@@ -42,6 +44,8 @@ export async function onRequestPost({ request, env }) {
       color: row.accent_color,
       textColor: row.text_color,
       subjects: row.subjects_json,
+      freeAccess: !!row.config_json?.freeAccess,
+      config: row.config_json || {},
       testFolders: body.testFolders || row.folders_json.map(f => ({ ...f, tests: [] })),
     },
   });

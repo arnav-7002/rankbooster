@@ -223,5 +223,5 @@ on conflict (email) do update set
   updated_at = now();
 
 insert into app_settings (key, value_json) values
-('announcements', '{"banner":{"enabled":false,"text":"","variant":"info"},"homeAnnouncement":{"enabled":false,"title":"","body":""},"payments":{"enabled":false,"upiId":"","payeeName":"RankBooster","note":"Pay using UPI, then submit the UTR/reference ID for manual approval."},"resumes":{"expiryHours":24}}'::jsonb)
+('announcements', '{"banner":{"enabled":false,"text":"","variant":"info"},"homeAnnouncement":{"enabled":false,"title":"","body":""},"payments":{"enabled":false,"upiId":"","payeeName":"RankBooster","note":"Pay using UPI, then submit the UTR/reference ID for manual approval."},"resumes":{"expiryHours":24},"cleanup":{"noPassInactiveDays":"never","freeCourseInactiveDays":"never"}}'::jsonb)
 on conflict (key) do nothing;

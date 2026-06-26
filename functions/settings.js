@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS = {
   homeAnnouncement: { enabled: false, title: "", body: "" },
   payments: { enabled: false, upiId: "", payeeName: "RankBooster", note: "Pay using UPI, then submit the UTR/reference ID for manual approval." },
   resumes: { expiryHours: 24 },
+  cleanup: { noPassInactiveDays: "never", freeCourseInactiveDays: "never" },
 };
 
 export async function onRequestGet({ env }) {

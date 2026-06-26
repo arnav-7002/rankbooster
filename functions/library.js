@@ -23,6 +23,8 @@ export async function onRequestGet({ request, env }) {
         color: row.accent_color || "#7C3AED",
         textColor: row.text_color || "#A78BFA",
         subjects: row.subjects_json || [],
+        freeAccess: !!row.config_json?.freeAccess,
+        config: row.config_json || {},
         testFolders: (row.folders_json || []).map(f => ({ id: f.id || f.name, name: f.name, icon: f.icon || "folder", tests: [] })),
       });
     }

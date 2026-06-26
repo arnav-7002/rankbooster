@@ -181,6 +181,12 @@ button{touch-action:manipulation}
 .pass-plan-action .btn-primary,.pass-plan-action .btn-ghost{width:100%;min-height:40px;font-size:12px;display:inline-flex!important;visibility:visible!important}
 .skeleton-line{position:relative;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.06)}
 .skeleton-line::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);animation:skeletonSweep 1.1s infinite}
+.upi-qr-shell{position:relative;padding:12px;background:white;border-radius:14px;display:grid;place-items:center;min-height:220px;overflow:hidden}
+.upi-qr-loading{position:absolute;inset:12px;border-radius:10px;background:linear-gradient(135deg,#F8FAFC,#EDE9FE);display:grid;place-items:center;color:#7C3AED;transition:opacity .18s ease,visibility .18s ease}
+.upi-qr-loading.is-hidden{opacity:0;visibility:hidden}
+.upi-spinner{width:34px;height:34px;border-radius:50%;border:3px solid rgba(124,58,237,.16);border-top-color:#7C3AED;animation:rbSpin .75s linear infinite}
+.upi-submit-overlay{position:absolute;inset:0;z-index:4;background:rgba(8,8,18,.72);backdrop-filter:blur(5px);display:grid;place-items:center;border-radius:18px;animation:fadeIn .16s ease}
+.upi-submit-box{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:#11111D;border:1px solid rgba(167,139,250,.24);color:#C4B5FD;font-size:13px;font-weight:750;box-shadow:0 18px 45px rgba(0,0,0,.28)}
 .leaderboard-row{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)}
 .leaderboard-row:last-child{border-bottom:0}
 .leaderboard-row.me{margin:0 -8px;padding:10px 8px;border-radius:12px;background:rgba(124,58,237,.13);border-bottom-color:transparent}
@@ -218,6 +224,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 @keyframes toastIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes progressGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @keyframes skeletonSweep{to{transform:translateX(100%)}}
+@keyframes rbSpin{to{transform:rotate(360deg)}}
 @keyframes sidebarTilePop{0%{transform:scale(.84);opacity:.75}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
 @keyframes sidebarIconPop{0%{transform:scale(.72) rotate(-8deg)}70%{transform:scale(1.16) rotate(3deg)}100%{transform:scale(1) rotate(0)}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
@@ -1346,6 +1353,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
   const [passBusy, setPassBusy] = useState("");
   const [paymentModal, setPaymentModal] = useState(null);
   const [paymentStep, setPaymentStep] = useState("qr");
+  const [qrLoaded, setQrLoaded] = useState(false);
   const [utr, setUtr] = useState("");
   const [pendingOrders, setPendingOrders] = useState([]);
   const [couponCode, setCouponCode] = useState("");
@@ -1386,6 +1394,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
         return;
       }
       setPaymentModal(plan);
+      setQrLoaded(false);
       setUtr("");
       setPaymentStep("qr");
       return;
@@ -1584,7 +1593,15 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
       )}
       {paymentModal && (
         <Modal open={!!paymentModal} onClose={() => setPaymentModal(null)} title="Complete UPI Payment">
-          <div style={{ display: "grid", gap: 14 }}>
+          <div style={{ display: "grid", gap: 14, position: "relative" }}>
+            {passBusy === paymentModal.id && (
+              <div className="upi-submit-overlay">
+                <div className="upi-submit-box">
+                  <span className="upi-spinner" style={{ width: 22, height: 22, borderWidth: 2 }} />
+                  Submitting payment request...
+                </div>
+              </div>
+            )}
             <div className="card" style={{ padding: 14, display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
                 <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 850 }}>{paymentModal.name}</div>
@@ -1593,8 +1610,20 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
               <div style={{ color: "#A78BFA", fontSize: 22, fontWeight: 900 }}>₹{Number(paymentModal.price || 0)}</div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "220px minmax(0,1fr)", gap: 14, alignItems: "center" }}>
-              <div style={{ padding: 12, background: "white", borderRadius: 14, display: "grid", placeItems: "center" }}>
-                <img alt="UPI QR code" style={{ width: 196, height: 196, display: "block" }} src={qrImageUrl(upiPaymentUrl({ upiId: paymentSettings.upiId, payeeName: paymentSettings.payeeName, amount: paymentModal.price, note: "RankBooster Pass", orderId: paymentModal.id }))} />
+              <div className="upi-qr-shell">
+                <div className={`upi-qr-loading ${qrLoaded ? "is-hidden" : ""}`}>
+                  <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
+                    <span className="upi-spinner" />
+                    <span style={{ fontSize: 12, fontWeight: 800 }}>Generating QR</span>
+                  </div>
+                </div>
+                <img
+                  alt="UPI QR code"
+                  style={{ width: 196, height: 196, display: "block", opacity: qrLoaded ? 1 : 0, transition: "opacity .18s ease" }}
+                  src={qrImageUrl(upiPaymentUrl({ upiId: paymentSettings.upiId, payeeName: paymentSettings.payeeName, amount: paymentModal.price, note: "RankBooster Pass", orderId: paymentModal.id }))}
+                  onLoad={() => setQrLoaded(true)}
+                  onError={() => setQrLoaded(true)}
+                />
               </div>
               <div>
                 <div style={{ color: "#CBD5E1", fontSize: 13, lineHeight: 1.6, marginBottom: 10 }}>{paymentSettings.note}</div>

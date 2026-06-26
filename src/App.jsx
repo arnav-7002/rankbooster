@@ -702,32 +702,31 @@ function SupportButton({ compact = false }) {
       href="https://www.reddit.com/user/AffectionateFloor607/"
       target="_blank"
       rel="noreferrer"
-      title="DM support on Reddit"
+      title="Contact support"
       className="support-link"
       style={{
         minHeight: compact ? 32 : 40,
         padding: compact ? "7px 10px" : "9px 13px",
         borderRadius: 12,
-        border: "1px solid rgba(255,69,0,0.24)",
-        background: "linear-gradient(135deg,rgba(255,69,0,0.14),rgba(124,58,237,0.10))",
-        color: "#FFB199",
+        border: "1px solid rgba(56,189,248,0.24)",
+        background: "linear-gradient(135deg,rgba(56,189,248,0.12),rgba(124,58,237,0.10))",
+        color: "#BAE6FD",
         display: "inline-flex",
         alignItems: "center",
         gap: 8,
         textDecoration: "none",
         fontSize: compact ? 11 : 12,
         fontWeight: 850,
-        boxShadow: "0 14px 34px rgba(255,69,0,0.08)",
+        boxShadow: "0 14px 34px rgba(56,189,248,0.08)",
       }}
     >
       <svg width={compact ? 15 : 17} height={compact ? 15 : 17} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" fill="#FF4500" opacity=".95" />
-        <circle cx="8.7" cy="12.2" r="1.15" fill="white" />
-        <circle cx="15.3" cy="12.2" r="1.15" fill="white" />
-        <path d="M8.5 15.1c1.75 1.25 5.25 1.25 7 0" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-        <path d="M13.5 7.9l1.25-3 3.15.72" stroke="#FF4500" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="18.3" cy="5.8" r="1.25" fill="#FF4500" />
-        <path d="M5.4 10.5c-1.1-.35-1.8.35-1.8 1.3 0 .75.55 1.3 1.4 1.45M18.6 10.5c1.1-.35 1.8.35 1.8 1.3 0 .75-.55 1.3-1.4 1.45" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
+        <path d="M4 12a8 8 0 0 1 16 0" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+        <path d="M5 12h2.2a1 1 0 0 1 1 1v3.6a1 1 0 0 1-1 1H5.8A2.8 2.8 0 0 1 3 14.8v0A2.8 2.8 0 0 1 5.8 12H5Z" fill="currentColor" opacity=".28" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M19 12h-2.2a1 1 0 0 0-1 1v3.6a1 1 0 0 0 1 1h1.4a2.8 2.8 0 0 0 2.8-2.8v0a2.8 2.8 0 0 0-2.8-2.8H19Z" fill="currentColor" opacity=".28" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M16.8 17.6c-.8 2-2.4 3-4.8 3h-1.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M9.7 20.6h2.2" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        <path d="M8.6 8.9c.9-.8 2-1.2 3.4-1.2s2.5.4 3.4 1.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity=".75" />
       </svg>
       {!compact && <span>Support</span>}
       {compact && <span>Help</span>}

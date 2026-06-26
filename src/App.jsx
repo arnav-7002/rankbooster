@@ -310,7 +310,9 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 body{overflow-x:hidden}
 .app-shell{display:block;min-height:100svh;padding-bottom:74px}
 .app-main{padding:16px 14px 92px!important;overflow:visible}
-.app-topbar{position:sticky;top:0;z-index:60;margin:-16px -14px 18px;padding:12px 14px;background:rgba(8,8,18,.9);backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,.06)}
+.app-topbar{position:sticky;top:0;z-index:60;margin:-16px -14px 18px;padding:12px 14px;background:rgba(8,8,18,.9);backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap}
+.app-topbar>div:first-child{min-width:0;flex:1 1 auto}
+.app-topbar>div:last-child{min-width:0;flex:0 1 auto}
 .sidebar-shell{position:fixed;left:0;right:0;bottom:0;top:auto;width:100%!important;height:70px;z-index:90;border-right:none;border-top:1px solid rgba(255,255,255,.08);display:block;background:rgba(10,10,20,.94);backdrop-filter:blur(16px);overflow:visible}
 .sidebar-logo-row,.sidebar-section,.sidebar-footer,.sidebar-toggle,.sidebar-brand,.nav-tree-panel{display:none!important}
 .sidebar-nav{height:70px;display:flex;align-items:center;justify-content:space-around;gap:4px;padding:7px 8px;overflow-x:auto;overflow-y:hidden}
@@ -358,14 +360,25 @@ table{min-width:640px}
 .table-scroll{overflow-x:auto}
 .responsive-grid,.responsive-two-col,.responsive-stats-grid{grid-template-columns:1fr!important}
 .course-card-grid{grid-template-columns:1fr!important}
+.admin-course-row{flex-direction:column!important;align-items:stretch!important}
+.admin-course-meta{flex-wrap:wrap!important;gap:8px 12px!important}
+.admin-course-actions{width:100%;display:grid!important;grid-template-columns:1fr 1fr!important}
+.admin-course-actions button{justify-content:center!important;min-width:0!important}
 .tests-layout{display:block!important}
 .tests-course-rail{width:100%!important;margin-bottom:16px}
 .responsive-split{flex-direction:column!important;align-items:flex-start!important}
 }
 @media (max-width: 560px){
 .app-main{padding-left:12px!important;padding-right:12px!important}
-.app-topbar{margin-left:-12px;margin-right:-12px}
-.mobile-top-brand{display:flex!important}
+.app-topbar{margin-left:-12px;margin-right:-12px;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:10px!important}
+.app-topbar>div:first-child{display:contents!important}
+.app-topbar>div:first-child>button{grid-column:1/-1;width:100%;justify-content:center!important;padding-left:11px!important;padding-right:11px!important}
+.mobile-top-brand{display:flex!important;grid-column:1;min-width:0}
+.mobile-top-brand>div:last-child{min-width:0}
+.mobile-top-brand>div:last-child>div{overflow:hidden;text-overflow:ellipsis}
+.mobile-top-actions{grid-column:2;gap:8px!important}
+.mobile-top-actions .support-link{width:40px!important;min-width:40px!important;padding:8px!important;justify-content:center!important}
+.mobile-top-actions .support-link span{display:none!important}
 .mobile-top-actions .tag-amber{display:none!important}
 .landing-main h1{font-size:30px!important}
 .quiz-main-title,.quiz-left-title{font-size:24px}
@@ -2838,22 +2851,22 @@ function AdminCourses({ allCourses, setAllCourses, notify, recordAdminEvent }) {
       {allCourses.map(course => (
         <div key={course.id} className="card" style={{ marginBottom: 12, padding: 0, overflow: "hidden" }}>
           <div style={{ height: 4, background: course.color }} />
-          <div style={{ padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+          <div className="admin-course-row" style={{ padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#E2E8F0" }}>{course.title}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#E2E8F0", overflowWrap: "anywhere" }}>{course.title}</span>
                 <span className="tag" style={{ background: course.color + "25", color: course.textColor }}>{course.badge}</span>
                 {isCourseFree(course) && <span className="tag tag-green">Free</span>}
               </div>
               <div style={{ fontSize: 12, color: "#64748B", marginBottom: 6 }}>{course.subtitle}</div>
-              <div style={{ display: "flex", gap: 16, fontSize: 12, color: "#475569" }}>
+              <div className="admin-course-meta" style={{ display: "flex", gap: 16, fontSize: 12, color: "#475569" }}>
                 <span style={{display:"flex",alignItems:"center",gap:4}}><Icon n="price-tag" s={12} c="#64748B" /> Included in pass</span>
                 <span style={{display:"flex",alignItems:"center",gap:4}}><Icon n="clipboard" s={12} c="#64748B" />{course.testFolders.reduce((a, f) => a + f.tests.length, 0)} tests</span>
                 <span style={{display:"flex",alignItems:"center",gap:4}}><Icon n="users" s={12} c="#64748B" /> {course.enrolledCount || 0} enrolled</span>
                 <span style={{display:"flex",alignItems:"center",gap:4}}><Icon n="star" s={12} c="#F59E0B" /> {course.rating || 4.5}</span>
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="admin-course-actions" style={{ display: "flex", gap: 8 }}>
               <button className="btn-ghost" style={{ display: "flex", alignItems: "center", gap: 5 }} onClick={() => setEditModal({ ...course })}>
                 <Icon n="edit" s={13} />Edit
               </button>

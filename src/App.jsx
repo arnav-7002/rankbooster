@@ -206,7 +206,7 @@ button:disabled{cursor:not-allowed;opacity:.68}
 .pass-validity-pill{display:inline-flex;align-items:center;justify-content:center;height:24px;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);font-size:10px;font-weight:800;color:rgba(255,255,255,.86);white-space:nowrap}
 input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-text-fill-color:#E2E8F0!important;box-shadow:0 0 0 1000px #161622 inset!important;border:1px solid rgba(124,58,237,.34)!important;caret-color:#E2E8F0}
 @media (max-width:980px){.landing-wrap{padding:18px 18px 44px}.landing-main{grid-template-columns:1fr}.landing-auth-card{position:static!important}.landing-stat-grid{grid-template-columns:1fr!important}.landing-pass-stage{max-width:620px}.landing-pass-card{min-height:210px;border-radius:26px;padding:24px 28px}.landing-pass-card::after{right:-92px;top:28px;width:220px;height:220px}.pass-watermark{right:20px;bottom:24px;font-size:96px}.pass-brand-title{font-size:22px!important}.pass-title{font-size:20px!important}}
-@media (max-width:640px){.landing-wrap{padding:16px 14px 38px}.landing-pass-stage{width:100%;max-width:none;perspective:900px}.landing-pass-card{min-height:0;border-radius:22px;padding:20px 18px;transition:transform .12s ease-out,box-shadow .18s ease}.landing-pass-card:active{box-shadow:0 18px 48px rgba(49,46,129,.3),0 12px 28px rgba(0,0,0,.24)}.landing-hover-card:hover{transform:none}.landing-hover-card:active{transform:scale(.985);border-color:rgba(124,58,237,.3)}.landing-pass-card::after{right:-94px;top:38px;width:190px;height:190px;box-shadow:inset 0 0 0 32px rgba(255,255,255,.045)}.landing-pass-card::before{background:radial-gradient(circle at var(--mx,40%) var(--my,12%),rgba(255,255,255,.2),transparent 34%)}.pass-content{min-height:178px!important}.pass-brand-row{gap:8px!important;margin-bottom:20px!important}.pass-brand-logo{width:32px!important;height:32px!important;border-radius:9px!important}.pass-brand-title{font-size:19px!important}.pass-brand-title span{font-size:11px!important;padding:2px 6px!important}.pass-title{font-size:18px!important}.pass-meta-row{align-items:flex-start!important;flex-direction:column;gap:14px!important;margin-top:28px!important}.pass-exam-row{padding-left:0!important}.pass-mini-chip{width:31px;height:31px;margin-left:-5px}.pass-mini-chip:hover{transform:translateY(-2px) scale(1.08)}.pass-validity{text-align:left!important}.pass-validity>div:last-child{justify-content:flex-start!important;max-width:100%!important}.pass-validity-pill{height:22px;padding:0 8px;font-size:9px}.landing-stat-grid{gap:10px!important}.admin-tabs{width:100%;overflow-x:auto}.admin-tab.active{background:transparent}.site-banner{font-size:12px;line-height:1.45;margin-bottom:12px}.solution-layout{grid-template-columns:1fr;padding:14px}.solution-palette{position:static;max-height:none}.solution-grid{display:flex;overflow-x:auto;gap:8px;padding-bottom:3px}.solution-qbtn{min-width:40px}.report-top{padding:13px 14px;align-items:flex-start}.report-top>div:last-child{flex-wrap:wrap;justify-content:flex-end}.subject-strip{top:65px;padding:9px 14px}.notebook-card{width:145px;height:205px;padding:18px 14px}.notebook-layout{display:grid;grid-template-columns:1fr;gap:12px}.notebook-list{width:100%;display:flex;gap:9px;overflow-x:auto;padding:2px 2px 8px;scroll-snap-type:x proximity}.notebook-list .btn-primary{min-width:148px;width:auto!important;margin-bottom:0!important;scroll-snap-align:start}.notebook-list-item{min-width:190px;margin-bottom:0;scroll-snap-align:start}.notebook-main{min-width:0}.notebook-question-card{padding:14px!important}.notebook-question-card .btn-primary,.notebook-question-card .btn-ghost{flex:1;min-width:132px}.modal{min-width:0;width:94vw;padding:20px;border-radius:16px}.responsive-two-col,.tests-layout{grid-template-columns:1fr!important;display:grid}.tests-course-rail{width:100%}.card{border-radius:13px}.btn-primary,.btn-ghost,.btn-danger,.btn-success{min-height:42px}}
+@media (max-width:640px){.landing-wrap{padding:16px 14px 38px}.landing-wrap header{align-items:flex-start!important;margin-bottom:28px!important}.landing-wrap header>div:nth-child(2){order:3;flex-basis:100%;justify-content:flex-start!important}.landing-wrap header>div:nth-child(3){width:100%;display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}.landing-wrap header>div:nth-child(3) .support-link{grid-column:1/-1;justify-content:center}.landing-wrap header>div:nth-child(3) button{width:100%;justify-content:center}.landing-main{gap:22px!important}.landing-pass-stage{width:100%;max-width:none;perspective:900px}.landing-pass-card{min-height:0;border-radius:22px;padding:20px 18px;transition:transform .12s ease-out,box-shadow .18s ease}.landing-pass-card:active{box-shadow:0 18px 48px rgba(49,46,129,.3),0 12px 28px rgba(0,0,0,.24)}.landing-hover-card:hover{transform:none}.landing-hover-card:active{transform:scale(.985);border-color:rgba(124,58,237,.3)}.landing-pass-card::after{right:-94px;top:38px;width:190px;height:190px;box-shadow:inset 0 0 0 32px rgba(255,255,255,.045)}.landing-pass-card::before{background:radial-gradient(circle at var(--mx,40%) var(--my,12%),rgba(255,255,255,.2),transparent 34%)}.pass-content{min-height:178px!important}.pass-brand-row{gap:8px!important;margin-bottom:20px!important}.pass-brand-logo{width:32px!important;height:32px!important;border-radius:9px!important}.pass-brand-title{font-size:19px!important}.pass-brand-title span{font-size:11px!important;padding:2px 6px!important}.pass-title{font-size:18px!important}.pass-meta-row{align-items:flex-start!important;flex-direction:column;gap:14px!important;margin-top:28px!important}.pass-exam-row{padding-left:0!important}.pass-mini-chip{width:31px;height:31px;margin-left:-5px}.pass-mini-chip:hover{transform:translateY(-2px) scale(1.08)}.pass-validity{text-align:left!important}.pass-validity>div:last-child{justify-content:flex-start!important;max-width:100%!important}.pass-validity-pill{height:22px;padding:0 8px;font-size:9px}.landing-stat-grid{gap:10px!important}.admin-tabs{width:100%;overflow-x:auto}.admin-tab.active{background:transparent}.site-banner{font-size:12px;line-height:1.45;margin-bottom:12px}.solution-layout{grid-template-columns:1fr;padding:14px}.solution-palette{position:static;max-height:none}.solution-grid{display:flex;overflow-x:auto;gap:8px;padding-bottom:3px}.solution-qbtn{min-width:40px}.report-top{padding:13px 14px;align-items:flex-start}.report-top>div:last-child{flex-wrap:wrap;justify-content:flex-end}.subject-strip{top:65px;padding:9px 14px}.notebook-layout{display:grid!important;grid-template-columns:1fr!important;gap:14px!important}.notebook-list{width:100%!important;display:grid!important;grid-template-columns:1fr!important;gap:10px!important;overflow:visible!important;padding:0!important}.notebook-list .btn-primary{width:100%!important;min-height:52px!important;margin-bottom:0!important;scroll-snap-align:unset!important}.notebook-create-btn{background:linear-gradient(135deg,#7C3AED,#6D28D9)!important;border-radius:14px!important}.notebook-list-item{min-width:0!important;margin-bottom:0!important;scroll-snap-align:unset!important}.notebook-main{min-width:0;width:100%}.notebook-main .card{padding:22px!important;text-align:center}.notebook-empty-state{min-height:150px!important;display:grid!important;place-items:center!important}.notebook-question-card{padding:14px!important;text-align:left!important}.notebook-question-card .btn-primary,.notebook-question-card .btn-ghost{flex:1;min-width:132px}.modal{min-width:0;width:94vw;padding:20px;border-radius:16px}.responsive-two-col,.tests-layout{grid-template-columns:1fr!important;display:grid}.tests-course-rail{width:100%}.card{border-radius:13px}.btn-primary,.btn-ghost,.btn-danger,.btn-success{min-height:42px}}
 @media (max-width:390px){.landing-pass-card{padding:18px 15px;border-radius:20px}.pass-content{min-height:176px!important}.pass-brand-title{font-size:17px!important}.pass-title{font-size:17px!important}.pass-mini-chip{width:29px;height:29px;margin-left:-4px}.pass-validity-pill{height:21px;padding:0 7px}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
 @keyframes dropdownIn{from{opacity:0;transform:translateY(-6px) scale(.995)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -318,6 +318,7 @@ body{overflow-x:hidden}
 .sidebar-nav .nav-item:hover{transform:translateY(-2px)}
 .sidebar-nav .nav-item.active{background:rgba(255,255,255,.95);color:#0F172A}
 .sidebar-label,.sidebar-nav .nav-item svg + span,.sidebar-nav .nav-item .sidebar-label{display:none!important}
+.sidebar-nav .nav-item > span:not(.sidebar-icon-wrap){display:none!important}
 .sidebar-icon-wrap{width:20px;height:20px}
 .account-popover{position:fixed;left:12px;right:12px;bottom:86px;width:auto}
 .account-popover::after{display:none}
@@ -364,6 +365,8 @@ table{min-width:640px}
 @media (max-width: 560px){
 .app-main{padding-left:12px!important;padding-right:12px!important}
 .app-topbar{margin-left:-12px;margin-right:-12px}
+.mobile-top-brand{display:flex!important}
+.mobile-top-actions .tag-amber{display:none!important}
 .landing-main h1{font-size:30px!important}
 .quiz-main-title,.quiz-left-title{font-size:24px}
 .test-row-main{padding:16px;align-items:flex-start;flex-direction:column}
@@ -2266,7 +2269,7 @@ function NotebookPage({ user }) {
       <div className="notebook-layout">
         {/* Notebook list */}
         <div className="notebook-list">
-          <button className="btn-primary" style={{ width: "100%", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => setNewNbModal(true)}>
+          <button className="btn-primary notebook-create-btn" style={{ width: "100%", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }} onClick={() => setNewNbModal(true)}>
             <Icon n="plus" s={14} /> New Notebook
           </button>
           {loadingNotebooks && <div style={{ fontSize: 12, color: "#64748B", textAlign: "center", padding: 16 }}>Loading notebooks...</div>}
@@ -2293,12 +2296,13 @@ function NotebookPage({ user }) {
         {/* Questions in selected notebook */}
         <div className="notebook-main">
           {!nb ? (
-            <div className="card" style={{ textAlign: "center", padding: 48 }}>
+            <div className="card notebook-empty-state" style={{ textAlign: "center", padding: 48 }}>
               <div style={{ marginBottom: 12, display:"flex", justifyContent:"center" }}><Icon n="notebook" s={32} c="#475569" /></div>
-              <div style={{ color: "#475569" }}>Select a notebook to view questions</div>
+              <div style={{ color: "#94A3B8", fontSize: 14, fontWeight: 750 }}>Select a notebook</div>
+              <div style={{ color: "#475569", fontSize: 12, marginTop: 4 }}>Saved questions and practice controls will appear here.</div>
             </div>
           ) : nbQuestions.length === 0 ? (
-            <div className="card" style={{ textAlign: "center", padding: 48 }}>
+            <div className="card notebook-empty-state" style={{ textAlign: "center", padding: 48 }}>
               <div style={{ marginBottom: 12, display:"flex", justifyContent:"center" }}><Icon n="file-text" s={32} c="#475569" /></div>
               <div style={{ fontSize: 14, color: "#94A3B8", marginBottom: 6 }}>{nb.name}</div>
               <div style={{ color: "#475569", fontSize: 12 }}>No questions added yet. Add questions from the solution review page.</div>
@@ -5757,13 +5761,20 @@ export default function App() {
           {/* Top bar */}
           {!activeReport && <div className="app-topbar">
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <div className="mobile-top-brand" style={{ display: "none", alignItems: "center", gap: 9, marginRight: 4 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: "linear-gradient(135deg,#7C3AED,#4F46E5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 850, color: "#fff", flexShrink: 0 }}>R</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ color: "#F1F5F9", fontSize: 14, fontWeight: 850, lineHeight: 1 }}>RankBooster</div>
+                  <div style={{ color: "#475569", fontSize: 10, marginTop: 3, whiteSpace: "nowrap" }}>Test series platform</div>
+                </div>
+              </div>
               {page !== "dashboard" && (
                 <button onClick={() => setPage("dashboard")} style={{ minHeight: 40, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 16px", color: "#94A3B8", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 7 }}>
                   <Icon n="chevleft" s={12} />Dashboard
                 </button>
               )}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div className="mobile-top-actions" style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <SupportButton compact />
               {user.role === "admin" && <span className="tag tag-amber" style={{ fontSize: 11 }}><Icon n="zap" s={10} /> Admin</span>}
               <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#7C3AED,#4F46E5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, cursor: "pointer" }} onClick={() => setPage("settings")}>{user.avatar}</div>

@@ -24,9 +24,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 button{touch-action:manipulation}
 .tap-card{transition:transform .16s cubic-bezier(.2,.8,.2,1),border-color .16s ease,background .16s ease,box-shadow .16s ease}
 .tap-card:active{transform:scale(.985);border-color:rgba(167,139,250,.28);background:rgba(255,255,255,.055)}
-.btn-primary,.btn-ghost,.btn-danger,.btn-success{min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:7px;border-radius:10px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;user-select:none;transition:transform 0.12s,opacity 0.15s,border-color 0.15s,background 0.15s,color 0.15s}
+.btn-primary,.btn-ghost,.btn-danger,.btn-success{position:relative;overflow:hidden;min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:7px;border-radius:10px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;user-select:none;transition:transform 0.12s,opacity 0.15s,border-color 0.15s,background 0.15s,color 0.15s,box-shadow .18s ease}
+.btn-primary::after,.btn-success::after{content:"";position:absolute;inset:-1px auto -1px -42%;width:34%;transform:skewX(-18deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);opacity:0;pointer-events:none}
+.btn-primary:hover::after,.btn-success:hover::after{opacity:1;animation:buttonSheen .7s ease}
 .btn-primary{background:linear-gradient(135deg,#7C3AED,#6D28D9);color:white;border:none;padding:10px 22px;box-shadow:0 8px 18px rgba(124,58,237,0.18)}
-.btn-primary:hover{opacity:0.92;transform:translateY(-1px)}
+.btn-primary:hover{opacity:0.94;transform:translateY(-1px);box-shadow:0 14px 28px rgba(124,58,237,0.24)}
 .btn-primary:active,.btn-ghost:active,.btn-danger:active,.btn-success:active,.report-tab:active,.subject-pill:active,.course-switch-card:active{transform:translateY(1px) scale(.985)}
 .btn-ghost{background:rgba(255,255,255,0.03);color:#CBD5E1;border:1px solid rgba(255,255,255,0.14);padding:9px 18px}
 .btn-ghost:hover{color:#F8FAFC;border-color:rgba(255,255,255,0.28);background:rgba(255,255,255,0.06)}
@@ -54,7 +56,8 @@ button{touch-action:manipulation}
 .sub-nav-item{display:flex;align-items:center;gap:8px;padding:7px 10px 7px 28px;border-radius:8px;cursor:pointer;font-size:12px;color:#475569;transition:all 0.15s}
 .sub-nav-item:hover{background:rgba(255,255,255,0.04);color:#94A3B8}
 .sub-nav-item.active{background:rgba(124,58,237,0.15);color:#A78BFA}
-.tag{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;transition:transform .14s ease,border-color .14s ease}
+.tag:hover{transform:translateY(-1px)}
 .tag-purple{background:rgba(124,58,237,0.2);color:#A78BFA}
 .tag-blue{background:rgba(14,165,233,0.2);color:#38BDF8}
 .tag-green{background:rgba(16,185,129,0.2);color:#34D399}
@@ -107,7 +110,8 @@ button{touch-action:manipulation}
 .sidebar-shell.is-collapsed .account-card{justify-content:center;padding:0;width:42px;height:42px;margin:0;border-radius:13px}
 .sidebar-shell.is-collapsed .account-card:hover{transform:translateY(-2px) scale(1.04)}
 .app-shell{display:flex;min-height:100vh;background:#080812}
-.app-main{flex:1;overflow-y:auto;padding:28px 32px;min-width:0;scroll-behavior:smooth}
+.app-main{position:relative;flex:1;overflow-y:auto;padding:28px 32px;min-width:0;scroll-behavior:smooth;background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:34px 34px;background-attachment:local}
+.page-transition{animation:pageRise .24s cubic-bezier(.2,.8,.2,1);will-change:opacity,transform}
 .app-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;gap:12px}
 .site-banner{display:flex;align-items:center;gap:9px;margin-bottom:16px;padding:11px 14px;border-radius:13px;font-size:13px;font-weight:700;animation:dropdownIn .22s cubic-bezier(.2,.8,.2,1)}
 .site-banner.banner-info{background:rgba(124,58,237,.14);border:1px solid rgba(167,139,250,.25);color:#C4B5FD}
@@ -148,7 +152,8 @@ button{touch-action:manipulation}
 .fade-in{animation:fadeIn 0.24s ease}
 .dropdown-panel{animation:dropdownIn .18s cubic-bezier(.2,.8,.2,1);transform-origin:top center}
 .tab-panel{animation:panelSwitch .22s cubic-bezier(.2,.8,.2,1)}
-.icon-tile{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .14s ease,background .14s ease}
+.icon-tile{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .14s ease,background .14s ease,box-shadow .18s ease}
+.card:hover .icon-tile,.test-item-row:hover .icon-tile{transform:translateY(-1px) scale(1.04);box-shadow:0 10px 22px rgba(124,58,237,.12)}
 .test-item-row{transition:background .15s ease,transform .15s ease}
 .test-item-row:hover{background:rgba(255,255,255,0.025);transform:translateX(2px)}
 .test-action-btn{min-height:38px;padding:8px 13px!important;border-radius:11px!important;font-size:12px!important;font-weight:600!important;color:#CBD5E1}
@@ -224,9 +229,11 @@ button:disabled{cursor:not-allowed;opacity:.68}
 input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-text-fill-color:#E2E8F0!important;box-shadow:0 0 0 1000px #161622 inset!important;border:1px solid rgba(124,58,237,.34)!important;caret-color:#E2E8F0}
 @media (max-width:980px){.landing-wrap{padding:18px 18px 44px}.landing-main{grid-template-columns:1fr}.landing-auth-card{position:static!important}.landing-stat-grid{grid-template-columns:1fr!important}.landing-pass-stage{max-width:620px}.landing-pass-card{min-height:210px;border-radius:26px;padding:24px 28px}.landing-pass-card::after{right:-92px;top:28px;width:220px;height:220px}.pass-watermark{right:20px;bottom:24px;font-size:96px}.pass-brand-title{font-size:22px!important}.pass-title{font-size:20px!important}}
 @media (max-width:640px){.landing-wrap{padding:16px 14px calc(38px + env(safe-area-inset-bottom))}.landing-wrap header{align-items:flex-start!important;margin-bottom:28px!important}.landing-wrap header>div:nth-child(2){order:3;flex-basis:100%;justify-content:flex-start!important}.landing-wrap header>div:nth-child(3){width:100%;display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}.landing-wrap header>div:nth-child(3) .support-link{grid-column:1/-1;justify-content:center}.landing-wrap header>div:nth-child(3) button{width:100%;justify-content:center}.landing-main{gap:22px!important}.landing-pass-stage{width:100%;max-width:none;perspective:900px}.landing-pass-card{min-height:0;border-radius:22px;padding:20px 18px;transition:transform .12s ease-out,box-shadow .18s ease}.landing-pass-card:active{box-shadow:0 18px 48px rgba(49,46,129,.3),0 12px 28px rgba(0,0,0,.24)}.landing-hover-card:hover{transform:none}.landing-hover-card:active{transform:scale(.985);border-color:rgba(124,58,237,.3)}.landing-pass-card::after{right:-94px;top:38px;width:190px;height:190px;box-shadow:inset 0 0 0 32px rgba(255,255,255,.045)}.landing-pass-card::before{background:radial-gradient(circle at var(--mx,40%) var(--my,12%),rgba(255,255,255,.2),transparent 34%)}.pass-content{min-height:178px!important}.pass-brand-row{gap:8px!important;margin-bottom:20px!important}.pass-brand-logo{width:32px!important;height:32px!important;border-radius:9px!important}.pass-brand-title{font-size:19px!important}.pass-brand-title span{font-size:11px!important;padding:2px 6px!important}.pass-title{font-size:18px!important}.pass-meta-row{align-items:flex-start!important;flex-direction:column;gap:14px!important;margin-top:28px!important}.pass-exam-row{padding-left:0!important}.pass-mini-chip{width:31px;height:31px;margin-left:-5px}.pass-mini-chip:hover{transform:translateY(-2px) scale(1.08)}.pass-validity{text-align:left!important}.pass-validity>div:last-child{justify-content:flex-start!important;max-width:100%!important}.pass-validity-pill{height:22px;padding:0 8px;font-size:9px}.landing-stat-grid{gap:10px!important}.admin-tabs{width:100%;overflow-x:auto}.admin-tab.active{background:transparent}.site-banner{font-size:12px;line-height:1.45;margin-bottom:12px}.solution-layout{grid-template-columns:1fr;padding:14px}.solution-palette{position:static;max-height:none}.solution-grid{display:flex;overflow-x:auto;gap:8px;padding-bottom:3px}.solution-qbtn{min-width:40px}.report-top{padding:13px 14px;align-items:flex-start}.report-top>div:last-child{flex-wrap:wrap;justify-content:flex-end}.subject-strip{top:65px;padding:9px 14px}.notebook-layout{display:grid!important;grid-template-columns:1fr!important;gap:14px!important}.notebook-list{width:100%!important;display:grid!important;grid-template-columns:1fr!important;gap:10px!important;overflow:visible!important;padding:0!important}.notebook-list .btn-primary{width:100%!important;min-height:52px!important;margin-bottom:0!important;scroll-snap-align:unset!important}.notebook-create-btn{background:linear-gradient(135deg,#7C3AED,#6D28D9)!important;border-radius:14px!important}.notebook-list-item{min-width:0!important;margin-bottom:0!important;scroll-snap-align:unset!important}.notebook-main{min-width:0;width:100%}.notebook-main .card{padding:22px!important;text-align:center}.notebook-empty-state{min-height:150px!important;display:grid!important;place-items:center!important}.notebook-question-card{padding:14px!important;text-align:left!important}.notebook-question-card .btn-primary,.notebook-question-card .btn-ghost{flex:1;min-width:132px}.modal{min-width:0;width:94vw;padding:20px;border-radius:16px}.responsive-two-col,.tests-layout{grid-template-columns:1fr!important;display:grid}.tests-course-rail{width:100%}.card{border-radius:13px}.btn-primary,.btn-ghost,.btn-danger,.btn-success{min-height:42px}.scroll-top-btn{right:14px;bottom:calc(86px + env(safe-area-inset-bottom));width:40px;height:40px}}
-@media (hover:none){.card:hover,.card-hover:hover,.landing-hover-card:hover,.test-item-row:hover,.course-switch-card:hover,.nav-item:hover,.btn-primary:hover,.btn-ghost:hover,.btn-danger:hover,.btn-success:hover{transform:none}.btn-primary:active,.btn-ghost:active,.btn-danger:active,.btn-success:active,.tap-card:active,.course-switch-card:active,.landing-hover-card:active{transform:scale(.985)}}
+@media (hover:none){.card:hover,.card-hover:hover,.landing-hover-card:hover,.test-item-row:hover,.course-switch-card:hover,.nav-item:hover,.btn-primary:hover,.btn-ghost:hover,.btn-danger:hover,.btn-success:hover,.tag:hover,.card:hover .icon-tile,.test-item-row:hover .icon-tile{transform:none;box-shadow:none}.btn-primary:active,.btn-ghost:active,.btn-danger:active,.btn-success:active,.tap-card:active,.course-switch-card:active,.landing-hover-card:active{transform:scale(.985)}}
 @media (max-width:390px){.landing-pass-card{padding:18px 15px;border-radius:20px}.pass-content{min-height:176px!important}.pass-brand-title{font-size:17px!important}.pass-title{font-size:17px!important}.pass-mini-chip{width:29px;height:29px;margin-left:-4px}.pass-validity-pill{height:21px;padding:0 7px}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pageRise{from{opacity:.55;transform:translateY(10px) scale(.997)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes buttonSheen{from{transform:translateX(0) skewX(-18deg)}to{transform:translateX(420%) skewX(-18deg)}}
 @keyframes dropdownIn{from{opacity:0;transform:translateY(-6px) scale(.995)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes treeSlide{from{opacity:0;transform:translateY(-4px) translateX(-4px);max-height:0}to{opacity:1;transform:translateY(0) translateX(0);max-height:680px}}
 @keyframes panelSwitch{from{opacity:0;transform:translateY(8px) scale(.995)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -5940,7 +5947,9 @@ export default function App() {
               <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#7C3AED,#4F46E5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, cursor: "pointer" }} onClick={() => setPage("settings")}>{user.avatar}</div>
             </div>
           </div>}
-          {renderPage()}
+          <div key={activeReport ? "report" : page} className={activeReport ? "" : "page-transition"}>
+            {renderPage()}
+          </div>
         </div>
         {!activeTest && (
           <button className={`scroll-top-btn ${showScrollTop ? "visible" : ""}`} onClick={scrollToTop} aria-label="Scroll to top">

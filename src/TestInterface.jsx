@@ -2,6 +2,14 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 const IMPORTER_API = "";
 
+function cleanId(value) {
+  return String(value || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
+}
+
+function testIdentity(test) {
+  return cleanId(test?.id || test?.testId || test?.sourceZip || test?.name || "");
+}
+
 const Q_STATUS = {
   NOT_VISITED:     "not_visited",
   NOT_ANSWERED:    "not_answered",
@@ -150,6 +158,7 @@ function SectionInfoModal({ section, onClose }) {
 // ─── MAIN TEST INTERFACE ──────────────────────────────────────────────────────
 export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
   const subjects = normalizeTest(test);
+  const resumeState = test.resume || null;
   const totalQ = subjects.reduce((a,s)=>a+s.questions.length,0);
   const examConfig = test.examConfig || test.config || {};
   const examType = String(examConfig.examType || test.examType || "other").trim().toLowerCase().replace(/\s+/g, "_");
@@ -161,21 +170,21 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
   const suprIndices = subjects.map((s, i) => isSuprSubject(s) ? i : -1).filter(i => i >= 0);
   const reapIndices = subjects.map((s, i) => isReapSubject(s) ? i : -1).filter(i => i >= 0);
 
-  const [secIdx, setSecIdx]   = useState(0);
-  const [qIdx, setQIdx]       = useState(0);
-  const [bitsatBonusEntered, setBitsatBonusEntered] = useState(false);
-  const [responses, setResponses] = useState({});
-  const [draftResponses, setDraftResponses] = useState({});
+  const [secIdx, setSecIdx]   = useState(() => Math.max(0, Math.min(subjects.length - 1, Number(resumeState?.secIdx || 0))));
+  const [qIdx, setQIdx]       = useState(() => Math.max(0, Number(resumeState?.qIdx || 0)));
+  const [bitsatBonusEntered, setBitsatBonusEntered] = useState(() => !!resumeState?.bitsatBonusEntered);
+  const [responses, setResponses] = useState(() => resumeState?.responses || {});
+  const [draftResponses, setDraftResponses] = useState(() => resumeState?.draftResponses || {});
   const [statuses, setStatuses] = useState(() => {
     const s={};
     subjects.forEach(subj=>subj.questions.forEach(q=>{ s[q.id]=Q_STATUS.NOT_VISITED; }));
-    return s;
+    return { ...s, ...(resumeState?.statuses || {}) };
   });
   const [showSubmit, setShowSubmit]       = useState(false);
   const [showSecInfo, setShowSecInfo]     = useState(false);
   const [showResults, setShowResults]     = useState(false);
   const [submitting, setSubmitting]       = useState(false);
-  const [showInstructions, setShowInstructions] = useState(true);
+  const [showInstructions, setShowInstructions] = useState(() => !resumeState);
   const [lightbox, setLightbox]           = useState(null);
   const [lazyImages, setLazyImages]       = useState({});
   const [loadingImage, setLoadingImage]   = useState(false);
@@ -186,14 +195,15 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
   const [guardReason, setGuardReason]     = useState("");
   const examRootRef = useRef(null);
   const attemptSavedRef = useRef(false);
-  const questionTimesRef = useRef({});
+  const questionTimesRef = useRef(resumeState?.questionTimes || {});
   const activeTimeRef = useRef({ id: null, at: null });
+  const resumeSaveBusyRef = useRef(false);
 
   const activeSubject = subjects[secIdx];
   const activeQ       = activeSubject?.questions[qIdx];
   const activeQId     = activeQ?.id;
   const globalQNum    = subjects.slice(0,secIdx).reduce((a,s)=>a+s.questions.length,0) + qIdx + 1;
-  const timer         = useTimer((test.duration||180)*60, ()=>setShowResults(true), guardPaused || showInstructions || showResults || submitting);
+  const timer         = useTimer(Number(resumeState?.timerSecs || resumeState?.remainingSeconds || ((test.duration||180)*60)), ()=>setShowResults(true), guardPaused || showInstructions || showResults || submitting);
   const timingPaused  = guardPaused || showInstructions || showResults || submitting;
   const elapsedSecs   = (test.duration || 180) * 60 - timer.secs;
   const ugeeReapPhase = examType === "ugee" && elapsedSecs >= (examConfig.ugeeSuprMinutes || 60) * 60;
@@ -521,6 +531,60 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
       attemptedQuestions,
     };
   }, [responses, subjects, test, totalQ, flushQuestionTiming]);
+
+  const buildResumeState = useCallback(() => {
+    const questionTimes = flushQuestionTiming();
+    return {
+      secIdx,
+      qIdx,
+      bitsatBonusEntered,
+      responses,
+      draftResponses,
+      statuses,
+      questionTimes,
+      timerSecs: timer.secs,
+      elapsedSecs,
+      courseId: test.courseId || null,
+      courseTitle: test.courseTitle || "",
+      folderId: test.folderId || null,
+      folderName: test.folderName || test.folder || "",
+      testId: testIdentity(test),
+      testName: test.name || "Test",
+      sourceZip: test.sourceZip || test.zipName || "",
+      sourceUrl: test.sourceUrl || "",
+      savedAt: new Date().toISOString(),
+    };
+  }, [bitsatBonusEntered, draftResponses, elapsedSecs, flushQuestionTiming, qIdx, responses, secIdx, statuses, test, timer.secs]);
+
+  const saveResumeDraft = useCallback((keepalive = false) => {
+    if (!user?.offlineId || showResults || submitting || attemptSavedRef.current) return;
+    if (resumeSaveBusyRef.current && !keepalive) return;
+    const state = buildResumeState();
+    const body = JSON.stringify({ user, test, state, testId: state.testId, courseId: state.courseId });
+    resumeSaveBusyRef.current = true;
+    fetch(`${IMPORTER_API}/attempt-resumes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive,
+    }).catch(() => null).finally(() => { resumeSaveBusyRef.current = false; });
+  }, [buildResumeState, showResults, submitting, test, user]);
+
+  useEffect(() => {
+    if (showInstructions || showResults || submitting) return undefined;
+    const id = setInterval(() => saveResumeDraft(false), 1000);
+    return () => clearInterval(id);
+  }, [saveResumeDraft, showInstructions, showResults, submitting]);
+
+  useEffect(() => {
+    if (showInstructions || showResults || submitting) return undefined;
+    const onBeforeUnload = () => saveResumeDraft(true);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      saveResumeDraft(true);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [saveResumeDraft, showInstructions, showResults, submitting]);
 
   const saveAttemptOnce = useCallback(async () => {
     if (attemptSavedRef.current) return;

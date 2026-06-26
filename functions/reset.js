@@ -5,6 +5,7 @@ export async function onRequestOptions() { return json({ ok: true }); }
 const AREA_LABELS = {
   content: "courses and tests",
   attempts: "attempts and analysis",
+  resumes: "in-progress test resumes",
   users: "student accounts",
   notebooks: "notebooks",
   payments: "payments and subscriptions",
@@ -51,6 +52,7 @@ export async function onRequestPost({ request, env }) {
   const wipeContent = selected.includes("content");
   const wipeUsers = selected.includes("users");
   const wipeAttempts = selected.includes("attempts") || wipeContent || wipeUsers;
+  const wipeResumes = selected.includes("resumes") || wipeAttempts;
   const wipeNotebooks = selected.includes("notebooks") || wipeContent || wipeUsers;
   const wipePayments = selected.includes("payments") || wipeUsers;
 
@@ -59,6 +61,7 @@ export async function onRequestPost({ request, env }) {
     await deleteRows(env, "notebooks");
   }
   if (wipeAttempts) await deleteRows(env, "attempts");
+  if (wipeResumes) await deleteRows(env, "attempt_resumes");
   if (wipePayments) {
     await deleteRows(env, "payment_orders");
     await deleteRows(env, "subscriptions");

@@ -124,6 +124,21 @@ create table if not exists attempts (
   submitted_at timestamptz not null default now()
 );
 
+create table if not exists attempt_resumes (
+  id text primary key,
+  user_id text not null,
+  course_id text not null,
+  test_id text not null,
+  course_title text,
+  folder_name text,
+  test_name text,
+  expires_at timestamptz,
+  detail_json jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(user_id, test_id)
+);
+
 create table if not exists notebooks (
   id text primary key,
   user_id text not null,
@@ -176,6 +191,8 @@ create table if not exists app_settings (
 
 create index if not exists idx_attempts_user on attempts(user_id, submitted_at desc);
 create index if not exists idx_attempts_test on attempts(test_id);
+create index if not exists idx_attempt_resumes_user on attempt_resumes(user_id, updated_at desc);
+create index if not exists idx_attempt_resumes_test on attempt_resumes(test_id);
 create index if not exists idx_payment_orders_status on payment_orders(status, created_at desc);
 create index if not exists idx_payment_orders_user on payment_orders(user_id, created_at desc);
 alter table tests add column if not exists source_url text;
@@ -206,5 +223,5 @@ on conflict (email) do update set
   updated_at = now();
 
 insert into app_settings (key, value_json) values
-('announcements', '{"banner":{"enabled":false,"text":"","variant":"info"},"homeAnnouncement":{"enabled":false,"title":"","body":""},"payments":{"enabled":false,"upiId":"","payeeName":"RankBooster","note":"Pay using UPI, then submit the UTR/reference ID for manual approval."}}'::jsonb)
+('announcements', '{"banner":{"enabled":false,"text":"","variant":"info"},"homeAnnouncement":{"enabled":false,"title":"","body":""},"payments":{"enabled":false,"upiId":"","payeeName":"RankBooster","note":"Pay using UPI, then submit the UTR/reference ID for manual approval."},"resumes":{"expiryHours":24}}'::jsonb)
 on conflict (key) do nothing;

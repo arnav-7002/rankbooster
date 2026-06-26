@@ -387,6 +387,7 @@ const DEFAULT_SETTINGS = {
   banner: { enabled: false, text: "", variant: "info" },
   homeAnnouncement: { enabled: false, title: "", body: "" },
   payments: { enabled: false, upiId: "", payeeName: "RankBooster", note: "Pay using UPI, then submit the UTR/reference ID for manual approval." },
+  resumes: { expiryHours: 24 },
 };
 
 function passStatus(pass) {
@@ -571,6 +572,10 @@ function isConfiguredTest(test) {
 function cleanAttemptTestId(test) {
   const raw = String(test?.id || test?.testId || test?.sourceZip || test?.name || "");
   return raw.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
+}
+
+function testIdentity(test) {
+  return cleanAttemptTestId(test);
 }
 
 function configuredTests(folder) {
@@ -1639,6 +1644,7 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
   const [openFolders, setOpenFolders] = useState({});
   const [attemptModal, setAttemptModal] = useState(null);
   const [savedAttempts, setSavedAttempts] = useState([]);
+  const [savedResumes, setSavedResumes] = useState([]);
   const [loadingTestId, setLoadingTestId] = useState(null);
   const selectedCourseObjRaw = myCourses.find(c => c.id === selectedCourse);
   const selectedCourseObj = selectedCourseObjRaw ? { ...selectedCourseObjRaw, testFolders: configuredFolders(selectedCourseObjRaw) } : null;
@@ -1646,11 +1652,16 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
   useEffect(() => {
     let cancelled = false;
     setSavedAttempts([]);
+    setSavedResumes([]);
     if (!user?.offlineId) return undefined;
-    fetch(`${IMPORTER_API}/attempts?offlineId=${encodeURIComponent(user.offlineId)}`)
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (!cancelled && data?.attempts) setSavedAttempts(data.attempts);
+    Promise.all([
+      fetch(`${IMPORTER_API}/attempts?offlineId=${encodeURIComponent(user.offlineId)}`).then(res => res.ok ? res.json() : null).catch(() => null),
+      fetch(`${IMPORTER_API}/attempt-resumes?offlineId=${encodeURIComponent(user.offlineId)}`, { cache: "no-store" }).then(res => res.ok ? res.json() : null).catch(() => null),
+    ])
+      .then(([attemptData, resumeData]) => {
+        if (cancelled) return;
+        if (attemptData?.attempts) setSavedAttempts(attemptData.attempts);
+        if (resumeData?.resumes) setSavedResumes(resumeData.resumes);
       })
       .catch(() => null);
     return () => { cancelled = true; };
@@ -1671,6 +1682,21 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
       const sameCourse = courseTitle === course?.title || a.courseId === course?.id || a.source?.courseId === course?.id;
       const sameFolder = !folderName || folderName === folder?.name;
       const sameTest = testId === test?.id || sourceZip === test?.sourceZip || sameExternalUrl(sourceUrl, test?.sourceUrl) || testName === test?.name;
+      return sameCourse && sameFolder && sameTest;
+    });
+  }
+
+  function savedResumeFor(course, folder, test) {
+    return savedResumes.find(r => {
+      const state = r.state || r.detail || {};
+      const courseTitle = r.courseTitle || state.courseTitle || state.source?.courseTitle;
+      const folderName = r.folderName || state.folderName || state.source?.folderName;
+      const testName = r.testName || state.testName || state.source?.testName;
+      const testId = r.testId || state.testId || state.source?.testId;
+      const sourceUrl = state.sourceUrl || state.source?.sourceUrl;
+      const sameCourse = courseTitle === course?.title || r.courseId === course?.id || state.courseId === course?.id || state.source?.courseId === course?.id;
+      const sameFolder = !folderName || folderName === folder?.name;
+      const sameTest = testId === testIdentity(test) || testId === test?.id || sameExternalUrl(sourceUrl, test?.sourceUrl) || testName === test?.name;
       return sameCourse && sameFolder && sameTest;
     });
   }
@@ -1710,7 +1736,7 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
     await handleStartTest(course, folder, test);
   }
 
-  async function handleStartTest(course, folder, test) {
+  async function handleStartTest(course, folder, test, resume = null) {
     const testId = test.id || `${folder?.name}_${test.name}`;
     setLoadingTestId(testId);
     try {
@@ -1758,6 +1784,7 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
           ...(fullTest.examConfig || fullTest.config || {}),
           ...(test.examConfig || test.config || {}),
         },
+        resume: resume?.state || resume?.detail || null,
       });
     } finally {
       setLoadingTestId(null);
@@ -1828,6 +1855,7 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
                   <div className="dropdown-panel" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
                     {folder.tests.map((test, i) => {
                       const savedAttempt = savedAttemptFor(selectedCourseObj, folder, test);
+                      const savedResume = !savedAttempt ? savedResumeFor(selectedCourseObj, folder, test) : null;
                       const attempted = !!savedAttempt;
                       const schedule = testScheduleState(test);
                       const score = savedAttempt ? Number(savedAttempt.score || 0) : test.score;
@@ -1861,8 +1889,20 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
                             </>
                           )}
                           {!attempted && (
-                            <button className={schedule.available ? "btn-primary" : "btn-ghost"} disabled={loadingTestId === test.id || !schedule.available} style={{ padding: "9px 18px", fontSize: 13, minWidth: 128, opacity: loadingTestId === test.id ? 0.65 : 1 }} onClick={() => handleStartTest(selectedCourseObj, folder, test)}>
-                              {loadingTestId === test.id ? "Loading..." : schedule.available ? "Start Test" : "Scheduled"}
+                            <button
+                              className={savedResume ? "btn-ghost" : schedule.available ? "btn-primary" : "btn-ghost"}
+                              disabled={loadingTestId === test.id || !schedule.available}
+                              style={{
+                                padding: "9px 18px",
+                                fontSize: 13,
+                                minWidth: 128,
+                                opacity: loadingTestId === test.id ? 0.65 : 1,
+                                ...(savedResume ? { color: "#FCD34D", borderColor: "rgba(251,191,36,0.36)", background: "rgba(251,191,36,0.12)" } : {})
+                              }}
+                              onClick={() => handleStartTest(selectedCourseObj, folder, test, savedResume)}
+                              title={savedResume?.updatedAt ? `Saved ${new Date(savedResume.updatedAt).toLocaleString()}` : ""}
+                            >
+                              {loadingTestId === test.id ? "Loading..." : savedResume ? "Resume Test" : schedule.available ? "Start Test" : "Scheduled"}
                             </button>
                           )}
                         </div>
@@ -2307,7 +2347,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminEvents, setAdminEvents] = useState([]);
   const allUC = {};
-  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["coupons", "Coupons"], ["payments", "Payments"], ["announcements", "Announcements"], ["users", "Users"], ["activity", "Activity"], ["checklist", "Publish Checklist"], ["reset", "Reset"]];
+  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["coupons", "Coupons"], ["payments", "Payments"], ["resumes", "Resumes"], ["announcements", "Announcements"], ["users", "Users"], ["activity", "Activity"], ["checklist", "Publish Checklist"], ["reset", "Reset"]];
   const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
   const adminTabWidth = 148;
   const adminTrackWidth = (adminTabs.length * adminTabWidth) + ((adminTabs.length - 1) * 4);
@@ -2415,6 +2455,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
         {tab === "plans" && <AdminPlans passPlans={passPlans} setPassPlans={setPassPlans} notify={toast} recordAdminEvent={recordAdminEvent} />}
         {tab === "coupons" && <AdminCoupons notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "payments" && <AdminPayments appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
+        {tab === "resumes" && <AdminResumes appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "announcements" && <AdminAnnouncements appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} />}
         {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} passPlans={passPlans} onRefresh={loadAdminUsers} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "activity" && <AdminActivity events={adminEvents} onRefresh={loadAdminEvents} />}
@@ -2497,6 +2538,7 @@ function AdminReset({ setAllCourses, setPassPlans, setAppSettings, loadAdminUser
   const resetOptions = [
     { id: "content", title: "Courses & Tests", detail: "Deletes course cards, folders, configured test links, and related enrollments/attempts." },
     { id: "attempts", title: "Attempts & Analysis", detail: "Deletes submitted papers, scorecards, leaderboards, and analysis data." },
+    { id: "resumes", title: "Test Resumes", detail: "Deletes in-progress autosaved test drafts without touching submitted attempts." },
     { id: "users", title: "Student Accounts", detail: "Deletes non-admin users plus their pass, enrollment, notebook, payment, and attempt data." },
     { id: "notebooks", title: "Notebooks", detail: "Deletes saved notebooks and bookmarked questions." },
     { id: "payments", title: "Payments & Passes", detail: "Deletes payment orders and active subscriptions." },
@@ -3700,6 +3742,180 @@ function AdminCoupons({ notify, recordAdminEvent, currentAdmin }) {
             <button className="btn-danger" disabled={deleting === coupon.code} onClick={() => deleteCoupon(coupon)}><Icon n="trash" s={13} />{deleting === coupon.code ? "Deleting" : "Delete"}</button>
           </div>
         )) : <div style={{ padding: 34, textAlign: "center", color: "#64748B" }}>No coupons created yet.</div>}
+      </div>
+    </div>
+  );
+}
+
+function AdminResumes({ appSettings, setAppSettings, notify, recordAdminEvent, currentAdmin }) {
+  const [resumes, setResumes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState("");
+  const [expiryHours, setExpiryHours] = useState(appSettings?.resumes?.expiryHours ?? 24);
+
+  useEffect(() => { setExpiryHours(appSettings?.resumes?.expiryHours ?? 24); }, [appSettings?.resumes?.expiryHours]);
+
+  const loadResumes = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch(`${IMPORTER_API}/attempt-resumes?all=1`, { cache: "no-store" }).catch(() => null);
+    const data = res?.ok ? await res.json().catch(() => null) : null;
+    setResumes(data?.resumes || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadResumes(); }, [loadResumes]);
+
+  async function saveExpiry() {
+    setBusy("settings");
+    try {
+      const normalized = expiryHours === "infinite" ? "infinite" : Math.max(1, Number(expiryHours || 24));
+      const settings = { ...DEFAULT_SETTINGS, ...appSettings, resumes: { ...(appSettings.resumes || {}), expiryHours: normalized } };
+      const res = await fetch(`${IMPORTER_API}/settings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Resume setting could not be saved.");
+      setAppSettings({ ...DEFAULT_SETTINGS, ...(data.settings || settings) });
+      notify?.("Resume expiry saved.", "success");
+      recordAdminEvent?.("resumes.settings_updated", "Updated resume expiry", { expiryHours: normalized });
+    } catch (err) {
+      notify?.(err.message || "Resume setting save failed.", "error");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function deleteResume(resume) {
+    if (!resume?.id) return;
+    if (!window.confirm(`Delete resume for ${resume.testName || "this test"}?`)) return;
+    setBusy(resume.id);
+    try {
+      const res = await fetch(`${IMPORTER_API}/attempt-resumes`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resumeId: resume.id, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Resume delete failed.");
+      notify?.("Resume deleted.", "success");
+      recordAdminEvent?.("resume.deleted", `Deleted resume for ${resume.testName || resume.testId}`, { resumeId: resume.id, userId: resume.userId, testId: resume.testId });
+      await loadResumes();
+    } catch (err) {
+      notify?.(err.message || "Resume delete failed.", "error");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function cleanupExpired() {
+    setBusy("expired");
+    try {
+      const res = await fetch(`${IMPORTER_API}/attempt-resumes`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expiredOnly: true, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Cleanup failed.");
+      notify?.(`${data.deleted || 0} expired resume${Number(data.deleted || 0) === 1 ? "" : "s"} deleted.`, "success");
+      await loadResumes();
+    } catch (err) {
+      notify?.(err.message || "Cleanup failed.", "error");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function deleteAllResumes() {
+    if (!window.confirm("Delete every in-progress test resume for all users? Submitted attempts will not be touched.")) return;
+    setBusy("all");
+    try {
+      const res = await fetch(`${IMPORTER_API}/attempt-resumes`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ all: true, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Delete all failed.");
+      notify?.("All resumes deleted.", "success");
+      await loadResumes();
+    } catch (err) {
+      notify?.(err.message || "Delete all failed.", "error");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  const activeCount = resumes.length;
+  return (
+    <div className="fade-in">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+        <div>
+          <div style={{ color: "#E2E8F0", fontSize: 15, fontWeight: 850 }}>In-Progress Test Resumes</div>
+          <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>Autosaved papers that students can continue after closing the tab.</div>
+        </div>
+        <button className="btn-ghost" onClick={loadResumes}><Icon n="repeat" s={13} />Refresh</button>
+      </div>
+
+      <div className="responsive-two-col" style={{ alignItems: "start", marginBottom: 16 }}>
+        <div className="card landing-hover-card">
+          <div style={{ color: "#F1F5F9", fontSize: 14, fontWeight: 850, marginBottom: 10 }}>Resume Expiry</div>
+          <div style={{ color: "#64748B", fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>A resume is deleted automatically after this time if the student never submits it.</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10 }}>
+            <select className="select-field" value={String(expiryHours)} onChange={e => setExpiryHours(e.target.value)}>
+              <option value="1">1 hour</option>
+              <option value="6">6 hours</option>
+              <option value="12">12 hours</option>
+              <option value="24">1 day</option>
+              <option value="72">3 days</option>
+              <option value="168">7 days</option>
+              <option value="infinite">Infinite / never delete</option>
+            </select>
+            <button className="btn-primary" disabled={busy === "settings"} onClick={saveExpiry}>{busy === "settings" ? "Saving..." : "Save"}</button>
+          </div>
+        </div>
+        <div className="card landing-hover-card">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 12 }}>
+            {[
+              ["Current", activeCount, "#FCD34D"],
+              ["Expired", resumes.filter(r => r.expiresAt && new Date(r.expiresAt).getTime() <= Date.now()).length, "#F87171"],
+              ["Mode", expiryHours === "infinite" ? "∞" : `${expiryHours}h`, "#A78BFA"],
+            ].map(([label, value, color]) => (
+              <div key={label} style={{ padding: 12, borderRadius: 12, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ color, fontSize: 18, fontWeight: 900 }}>{value}</div>
+                <div style={{ color: "#64748B", fontSize: 11 }}>{label}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="btn-ghost" disabled={busy === "expired"} onClick={cleanupExpired}><Icon n="check-circle" s={13} />Clean Expired</button>
+            <button className="btn-danger" disabled={busy === "all"} onClick={deleteAllResumes}><Icon n="trash" s={13} />Delete All</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        {loading ? [1,2,3].map(i => <div key={i} className="skeleton-card" style={{ margin: 12, minHeight: 72 }} />) : resumes.length ? resumes.map(resume => {
+          const state = resume.state || {};
+          const answered = Object.values(state.responses || {}).filter(v => Array.isArray(v) && v.length).length;
+          return (
+            <div key={resume.id} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: 12, alignItems: "center", padding: 14, borderBottom: "1px solid rgba(255,255,255,0.055)" }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ color: "#F1F5F9", fontSize: 13, fontWeight: 850 }}>{resume.testName || resume.testId}</div>
+                <div style={{ color: "#64748B", fontSize: 11, marginTop: 3 }}>
+                  {resume.courseTitle || resume.courseId} · {resume.folderName || "Tests"} · {resume.userId} · {answered} saved answer{answered === 1 ? "" : "s"}
+                </div>
+                <div style={{ color: "#475569", fontSize: 11, marginTop: 3 }}>
+                  Saved {resume.updatedAt ? new Date(resume.updatedAt).toLocaleString() : ""}{resume.expiresAt ? ` · expires ${new Date(resume.expiresAt).toLocaleString()}` : " · never expires"}
+                </div>
+              </div>
+              <span className="tag tag-amber">In progress</span>
+              <button className="btn-danger" disabled={busy === resume.id} onClick={() => deleteResume(resume)}><Icon n="trash" s={13} />{busy === resume.id ? "Deleting" : "Delete"}</button>
+            </div>
+          );
+        }) : <div style={{ padding: 36, textAlign: "center", color: "#64748B" }}>No current test resumes.</div>}
       </div>
     </div>
   );

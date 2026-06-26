@@ -142,6 +142,7 @@ export async function onRequestDelete({ request, env }) {
 
   const relatedDeletes = [
     ["attempts", `user_id=${eq(userId)}`],
+    ["attempt_resumes", `user_id=${eq(userId)}`],
     ["enrollments", `user_id=${eq(userId)}`],
     ["notebook_questions", `user_id=${eq(userId)}`],
     ["notebooks", `user_id=${eq(userId)}`],

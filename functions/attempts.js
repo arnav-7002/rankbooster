@@ -72,6 +72,10 @@ export async function onRequestPost({ request, env }) {
     payload_json: { message: `${user.name || user.email} submitted ${detail.source.testName || detail.testName || "a test"}`, actor_email: user.email, metadata: { attemptId, courseId: refs.courseId, testId: refs.testId, score: Number(detail.score || 0), maxMarks: Number(detail.maxMarks || 0) } },
     created_at: new Date().toISOString(),
   }).catch(() => null);
+  await supabaseRequest(env, `attempt_resumes?user_id=${eq(user.id)}&test_id=${eq(refs.testId)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" },
+  }).catch(() => null);
   return json({ success: true, user, attempt: detail });
 }
 

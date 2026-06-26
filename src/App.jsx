@@ -9,11 +9,16 @@ const GS = `
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Outfit',sans-serif;background:#080812;color:#E2E8F0}
 html,body,#root{min-height:100%}
+html{scroll-behavior:smooth}
+::selection{background:rgba(167,139,250,.32);color:#F8FAFC}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:#3730a3;border-radius:4px}
+button,input,select,textarea{font:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[role="button"]:focus-visible{outline:2px solid rgba(167,139,250,.78);outline-offset:3px}
 .card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:18px;transition:border-color 0.18s ease,background 0.18s ease,transform 0.16s ease,box-shadow 0.18s ease}
 .card:hover{border-color:rgba(255,255,255,0.1)}
+.card:has(.btn-primary:hover),.card:has(.btn-ghost:hover){border-color:rgba(167,139,250,.14)}
 .card-hover{transition:border-color 0.2s,transform 0.15s,background 0.15s}
 .card-hover:hover{border-color:rgba(124,58,237,0.3);background:rgba(255,255,255,0.05);transform:translateY(-1px)}
 button{touch-action:manipulation}
@@ -30,7 +35,7 @@ button{touch-action:manipulation}
 .btn-success{background:rgba(16,185,129,0.15);color:#6EE7B7;border:1px solid rgba(16,185,129,0.28);padding:9px 18px}
 .btn-success:hover{background:rgba(16,185,129,0.22);border-color:rgba(16,185,129,0.42)}
 .input-field{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#E2E8F0;padding:11px 14px;border-radius:10px;font-family:'Outfit',sans-serif;font-size:14px;width:100%;outline:none;transition:border-color 0.15s}
-.input-field:focus{border-color:rgba(124,58,237,0.5)}
+.input-field:focus{border-color:rgba(124,58,237,0.55);box-shadow:0 0 0 3px rgba(124,58,237,.12)}
 .input-field::placeholder{color:#475569}
 .input-field:active,.select-field:active{transform:scale(.997)}
 .select-field{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#E2E8F0;padding:9px 14px;border-radius:9px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;cursor:pointer}
@@ -102,7 +107,7 @@ button{touch-action:manipulation}
 .sidebar-shell.is-collapsed .account-card{justify-content:center;padding:0;width:42px;height:42px;margin:0;border-radius:13px}
 .sidebar-shell.is-collapsed .account-card:hover{transform:translateY(-2px) scale(1.04)}
 .app-shell{display:flex;min-height:100vh;background:#080812}
-.app-main{flex:1;overflow-y:auto;padding:28px 32px;min-width:0}
+.app-main{flex:1;overflow-y:auto;padding:28px 32px;min-width:0;scroll-behavior:smooth}
 .app-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;gap:12px}
 .site-banner{display:flex;align-items:center;gap:9px;margin-bottom:16px;padding:11px 14px;border-radius:13px;font-size:13px;font-weight:700;animation:dropdownIn .22s cubic-bezier(.2,.8,.2,1)}
 .site-banner.banner-info{background:rgba(124,58,237,.14);border:1px solid rgba(167,139,250,.25);color:#C4B5FD}
@@ -115,6 +120,12 @@ button{touch-action:manipulation}
 .toast-card.error{border-color:rgba(239,68,68,.32);background:linear-gradient(135deg,rgba(239,68,68,.12),#11111D)}
 .toast-card.info{border-color:rgba(124,58,237,.28);background:linear-gradient(135deg,rgba(124,58,237,.14),#11111D)}
 .toast-close{margin-left:auto;border:0;background:transparent;color:#64748B;cursor:pointer;padding:0;display:flex}
+.scroll-top-btn{position:fixed;right:22px;bottom:22px;z-index:210;width:42px;height:42px;border-radius:14px;border:1px solid rgba(167,139,250,.22);background:rgba(17,17,29,.86);backdrop-filter:blur(12px);color:#C4B5FD;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 18px 42px rgba(0,0,0,.28);opacity:0;pointer-events:none;transform:translateY(10px) scale(.96);transition:opacity .18s ease,transform .18s ease,border-color .18s ease,background .18s ease}
+.scroll-top-btn.visible{opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}
+.scroll-top-btn:hover{background:rgba(124,58,237,.18);border-color:rgba(167,139,250,.45);transform:translateY(-2px)}
+.soft-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(167,139,250,.18),transparent)}
+.surface-lift{transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .18s ease,border-color .18s ease}
+.surface-lift:hover{transform:translateY(-2px);box-shadow:0 18px 42px rgba(0,0,0,.18);border-color:rgba(167,139,250,.16)}
 .skeleton-card{position:relative;overflow:hidden;min-height:110px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);padding:18px}
 .skeleton-card::after{content:"";position:absolute;inset:0;transform:translateX(-110%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.055),transparent);animation:skeletonSweep 1.1s infinite}
 .responsive-grid{display:grid;gap:16px}
@@ -212,7 +223,8 @@ button:disabled{cursor:not-allowed;opacity:.68}
 .pass-validity-pill{display:inline-flex;align-items:center;justify-content:center;height:24px;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);font-size:10px;font-weight:800;color:rgba(255,255,255,.86);white-space:nowrap}
 input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-text-fill-color:#E2E8F0!important;box-shadow:0 0 0 1000px #161622 inset!important;border:1px solid rgba(124,58,237,.34)!important;caret-color:#E2E8F0}
 @media (max-width:980px){.landing-wrap{padding:18px 18px 44px}.landing-main{grid-template-columns:1fr}.landing-auth-card{position:static!important}.landing-stat-grid{grid-template-columns:1fr!important}.landing-pass-stage{max-width:620px}.landing-pass-card{min-height:210px;border-radius:26px;padding:24px 28px}.landing-pass-card::after{right:-92px;top:28px;width:220px;height:220px}.pass-watermark{right:20px;bottom:24px;font-size:96px}.pass-brand-title{font-size:22px!important}.pass-title{font-size:20px!important}}
-@media (max-width:640px){.landing-wrap{padding:16px 14px 38px}.landing-wrap header{align-items:flex-start!important;margin-bottom:28px!important}.landing-wrap header>div:nth-child(2){order:3;flex-basis:100%;justify-content:flex-start!important}.landing-wrap header>div:nth-child(3){width:100%;display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}.landing-wrap header>div:nth-child(3) .support-link{grid-column:1/-1;justify-content:center}.landing-wrap header>div:nth-child(3) button{width:100%;justify-content:center}.landing-main{gap:22px!important}.landing-pass-stage{width:100%;max-width:none;perspective:900px}.landing-pass-card{min-height:0;border-radius:22px;padding:20px 18px;transition:transform .12s ease-out,box-shadow .18s ease}.landing-pass-card:active{box-shadow:0 18px 48px rgba(49,46,129,.3),0 12px 28px rgba(0,0,0,.24)}.landing-hover-card:hover{transform:none}.landing-hover-card:active{transform:scale(.985);border-color:rgba(124,58,237,.3)}.landing-pass-card::after{right:-94px;top:38px;width:190px;height:190px;box-shadow:inset 0 0 0 32px rgba(255,255,255,.045)}.landing-pass-card::before{background:radial-gradient(circle at var(--mx,40%) var(--my,12%),rgba(255,255,255,.2),transparent 34%)}.pass-content{min-height:178px!important}.pass-brand-row{gap:8px!important;margin-bottom:20px!important}.pass-brand-logo{width:32px!important;height:32px!important;border-radius:9px!important}.pass-brand-title{font-size:19px!important}.pass-brand-title span{font-size:11px!important;padding:2px 6px!important}.pass-title{font-size:18px!important}.pass-meta-row{align-items:flex-start!important;flex-direction:column;gap:14px!important;margin-top:28px!important}.pass-exam-row{padding-left:0!important}.pass-mini-chip{width:31px;height:31px;margin-left:-5px}.pass-mini-chip:hover{transform:translateY(-2px) scale(1.08)}.pass-validity{text-align:left!important}.pass-validity>div:last-child{justify-content:flex-start!important;max-width:100%!important}.pass-validity-pill{height:22px;padding:0 8px;font-size:9px}.landing-stat-grid{gap:10px!important}.admin-tabs{width:100%;overflow-x:auto}.admin-tab.active{background:transparent}.site-banner{font-size:12px;line-height:1.45;margin-bottom:12px}.solution-layout{grid-template-columns:1fr;padding:14px}.solution-palette{position:static;max-height:none}.solution-grid{display:flex;overflow-x:auto;gap:8px;padding-bottom:3px}.solution-qbtn{min-width:40px}.report-top{padding:13px 14px;align-items:flex-start}.report-top>div:last-child{flex-wrap:wrap;justify-content:flex-end}.subject-strip{top:65px;padding:9px 14px}.notebook-layout{display:grid!important;grid-template-columns:1fr!important;gap:14px!important}.notebook-list{width:100%!important;display:grid!important;grid-template-columns:1fr!important;gap:10px!important;overflow:visible!important;padding:0!important}.notebook-list .btn-primary{width:100%!important;min-height:52px!important;margin-bottom:0!important;scroll-snap-align:unset!important}.notebook-create-btn{background:linear-gradient(135deg,#7C3AED,#6D28D9)!important;border-radius:14px!important}.notebook-list-item{min-width:0!important;margin-bottom:0!important;scroll-snap-align:unset!important}.notebook-main{min-width:0;width:100%}.notebook-main .card{padding:22px!important;text-align:center}.notebook-empty-state{min-height:150px!important;display:grid!important;place-items:center!important}.notebook-question-card{padding:14px!important;text-align:left!important}.notebook-question-card .btn-primary,.notebook-question-card .btn-ghost{flex:1;min-width:132px}.modal{min-width:0;width:94vw;padding:20px;border-radius:16px}.responsive-two-col,.tests-layout{grid-template-columns:1fr!important;display:grid}.tests-course-rail{width:100%}.card{border-radius:13px}.btn-primary,.btn-ghost,.btn-danger,.btn-success{min-height:42px}}
+@media (max-width:640px){.landing-wrap{padding:16px 14px calc(38px + env(safe-area-inset-bottom))}.landing-wrap header{align-items:flex-start!important;margin-bottom:28px!important}.landing-wrap header>div:nth-child(2){order:3;flex-basis:100%;justify-content:flex-start!important}.landing-wrap header>div:nth-child(3){width:100%;display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}.landing-wrap header>div:nth-child(3) .support-link{grid-column:1/-1;justify-content:center}.landing-wrap header>div:nth-child(3) button{width:100%;justify-content:center}.landing-main{gap:22px!important}.landing-pass-stage{width:100%;max-width:none;perspective:900px}.landing-pass-card{min-height:0;border-radius:22px;padding:20px 18px;transition:transform .12s ease-out,box-shadow .18s ease}.landing-pass-card:active{box-shadow:0 18px 48px rgba(49,46,129,.3),0 12px 28px rgba(0,0,0,.24)}.landing-hover-card:hover{transform:none}.landing-hover-card:active{transform:scale(.985);border-color:rgba(124,58,237,.3)}.landing-pass-card::after{right:-94px;top:38px;width:190px;height:190px;box-shadow:inset 0 0 0 32px rgba(255,255,255,.045)}.landing-pass-card::before{background:radial-gradient(circle at var(--mx,40%) var(--my,12%),rgba(255,255,255,.2),transparent 34%)}.pass-content{min-height:178px!important}.pass-brand-row{gap:8px!important;margin-bottom:20px!important}.pass-brand-logo{width:32px!important;height:32px!important;border-radius:9px!important}.pass-brand-title{font-size:19px!important}.pass-brand-title span{font-size:11px!important;padding:2px 6px!important}.pass-title{font-size:18px!important}.pass-meta-row{align-items:flex-start!important;flex-direction:column;gap:14px!important;margin-top:28px!important}.pass-exam-row{padding-left:0!important}.pass-mini-chip{width:31px;height:31px;margin-left:-5px}.pass-mini-chip:hover{transform:translateY(-2px) scale(1.08)}.pass-validity{text-align:left!important}.pass-validity>div:last-child{justify-content:flex-start!important;max-width:100%!important}.pass-validity-pill{height:22px;padding:0 8px;font-size:9px}.landing-stat-grid{gap:10px!important}.admin-tabs{width:100%;overflow-x:auto}.admin-tab.active{background:transparent}.site-banner{font-size:12px;line-height:1.45;margin-bottom:12px}.solution-layout{grid-template-columns:1fr;padding:14px}.solution-palette{position:static;max-height:none}.solution-grid{display:flex;overflow-x:auto;gap:8px;padding-bottom:3px}.solution-qbtn{min-width:40px}.report-top{padding:13px 14px;align-items:flex-start}.report-top>div:last-child{flex-wrap:wrap;justify-content:flex-end}.subject-strip{top:65px;padding:9px 14px}.notebook-layout{display:grid!important;grid-template-columns:1fr!important;gap:14px!important}.notebook-list{width:100%!important;display:grid!important;grid-template-columns:1fr!important;gap:10px!important;overflow:visible!important;padding:0!important}.notebook-list .btn-primary{width:100%!important;min-height:52px!important;margin-bottom:0!important;scroll-snap-align:unset!important}.notebook-create-btn{background:linear-gradient(135deg,#7C3AED,#6D28D9)!important;border-radius:14px!important}.notebook-list-item{min-width:0!important;margin-bottom:0!important;scroll-snap-align:unset!important}.notebook-main{min-width:0;width:100%}.notebook-main .card{padding:22px!important;text-align:center}.notebook-empty-state{min-height:150px!important;display:grid!important;place-items:center!important}.notebook-question-card{padding:14px!important;text-align:left!important}.notebook-question-card .btn-primary,.notebook-question-card .btn-ghost{flex:1;min-width:132px}.modal{min-width:0;width:94vw;padding:20px;border-radius:16px}.responsive-two-col,.tests-layout{grid-template-columns:1fr!important;display:grid}.tests-course-rail{width:100%}.card{border-radius:13px}.btn-primary,.btn-ghost,.btn-danger,.btn-success{min-height:42px}.scroll-top-btn{right:14px;bottom:calc(86px + env(safe-area-inset-bottom));width:40px;height:40px}}
+@media (hover:none){.card:hover,.card-hover:hover,.landing-hover-card:hover,.test-item-row:hover,.course-switch-card:hover,.nav-item:hover,.btn-primary:hover,.btn-ghost:hover,.btn-danger:hover,.btn-success:hover{transform:none}.btn-primary:active,.btn-ghost:active,.btn-danger:active,.btn-success:active,.tap-card:active,.course-switch-card:active,.landing-hover-card:active{transform:scale(.985)}}
 @media (max-width:390px){.landing-pass-card{padding:18px 15px;border-radius:20px}.pass-content{min-height:176px!important}.pass-brand-title{font-size:17px!important}.pass-title{font-size:17px!important}.pass-mini-chip{width:29px;height:29px;margin-left:-4px}.pass-validity-pill{height:21px;padding:0 7px}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
 @keyframes dropdownIn{from{opacity:0;transform:translateY(-6px) scale(.995)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -661,6 +673,7 @@ const Icon = ({ n, s = 16, c }) => {
     chevright:    <polyline points="9 18 15 12 9 6"/>,
     chevleft:     <polyline points="15 18 9 12 15 6"/>,
     // misc
+    "arrow-up":   <><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></>,
     check:        <polyline points="20 6 9 17 4 12"/>,
     "check-circle":<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>,
     x:            <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
@@ -5680,6 +5693,8 @@ export default function App() {
   const [passPlans, setPassPlans] = useState(PASS_PLANS);
   const [appSettings, setAppSettings] = useState(DEFAULT_SETTINGS);
   const [toasts, setToasts] = useState([]);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const appMainRef = useRef(null);
 
   const notify = useCallback((message, type = "info") => {
     const id = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -5792,6 +5807,22 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
+    if (!user || activeTest) return undefined;
+    const main = appMainRef.current;
+    const update = () => {
+      const y = Math.max(window.scrollY || 0, main?.scrollTop || 0);
+      setShowScrollTop(y > 520);
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    main?.addEventListener("scroll", update, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", update);
+      main?.removeEventListener("scroll", update);
+    };
+  }, [user, activeTest, activeReport, page]);
+
+  useEffect(() => {
     if (user && activeTest && !passStatus(user.pass).active && !courses.some(c => c.id === activeTest.courseId && isCourseFree(c))) setActiveTest(null);
   }, [user, activeTest, courses]);
 
@@ -5870,12 +5901,17 @@ export default function App() {
     }
   };
 
+  const scrollToTop = () => {
+    appMainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <>
       <style>{GS}</style>
       <div className="app-shell">
         {!activeReport && <Sidebar user={user} page={page} setPage={setPage} courses={courses} userCourseIds={accessibleCourseIds} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} onLogout={handleLogout} />}
-        <div className="app-main" style={activeReport ? { padding: 0 } : undefined}>
+        <div ref={appMainRef} className="app-main" style={activeReport ? { padding: 0 } : undefined}>
           {!activeReport && appSettings.banner?.enabled && appSettings.banner?.text && (
             <div className={`site-banner banner-${appSettings.banner.variant || "info"}`}>
               <Icon n={appSettings.banner.variant === "success" ? "check-circle" : appSettings.banner.variant === "warning" ? "alert-tri" : "zap"} s={15} />
@@ -5906,6 +5942,11 @@ export default function App() {
           </div>}
           {renderPage()}
         </div>
+        {!activeTest && (
+          <button className={`scroll-top-btn ${showScrollTop ? "visible" : ""}`} onClick={scrollToTop} aria-label="Scroll to top">
+            <Icon n="arrow-up" s={18} />
+          </button>
+        )}
       </div>
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </>

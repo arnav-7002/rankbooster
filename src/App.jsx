@@ -692,6 +692,7 @@ const Icon = ({ n, s = 16, c }) => {
     // misc
     "arrow-up":   <><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></>,
     download:     <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>,
+    upload:       <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></>,
     check:        <polyline points="20 6 9 17 4 12"/>,
     "check-circle":<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>,
     x:            <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
@@ -2646,7 +2647,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
         {tab === "announcements" && <AdminAnnouncements appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} courses={allCourses} />}
         {tab === "cleanup" && <AdminDataRetention appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} passPlans={passPlans} onRefresh={loadAdminUsers} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} onImpersonate={onImpersonate} />}
-        {tab === "exports" && <AdminExports allUsers={adminUsers} allCourses={allCourses} passPlans={passPlans} appSettings={appSettings} adminEvents={adminEvents} notify={toast} />}
+        {tab === "exports" && <AdminExports allUsers={adminUsers} allCourses={allCourses} passPlans={passPlans} appSettings={appSettings} adminEvents={adminEvents} currentAdmin={user} notify={toast} />}
         {tab === "activity" && <AdminActivity events={adminEvents} onRefresh={loadAdminEvents} range={eventRange} setRange={setEventRange} />}
         {tab === "checklist" && <AdminPublishChecklist dbStatus={dbStatus} allCourses={allCourses} passPlans={passPlans} appSettings={appSettings} adminUsers={adminUsers} />}
         {tab === "reset" && <AdminReset setAllCourses={setAllCourses} setPassPlans={setPassPlans} setAppSettings={setAppSettings} loadAdminUsers={loadAdminUsers} checkDatabase={checkDatabase} notify={toast} currentAdmin={user} />}
@@ -2655,7 +2656,10 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
   );
 }
 
-function AdminExports({ allUsers = [], allCourses = [], passPlans = [], appSettings = {}, adminEvents = [], notify }) {
+function AdminExports({ allUsers = [], allCourses = [], passPlans = [], appSettings = {}, adminEvents = [], currentAdmin, notify }) {
+  const [backupBusy, setBackupBusy] = useState("");
+  const [wipeBeforeRestore, setWipeBeforeRestore] = useState(true);
+  const restoreInputRef = useRef(null);
   function csvCell(value) {
     return `"${String(value ?? "").replace(/"/g, '""')}"`;
   }
@@ -2685,6 +2689,44 @@ function AdminExports({ allUsers = [], allCourses = [], passPlans = [], appSetti
     URL.revokeObjectURL(url);
     notify?.(`${filename} exported.`, "success");
   }
+  async function downloadDatabaseBackup() {
+    setBackupBusy("download");
+    try {
+      const res = await fetch(`${IMPORTER_API}/backup`, { cache: "no-store" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || data?.error) throw new Error(data?.error || "Backup download failed.");
+      downloadJson(`rankbooster-db-backup-${new Date().toISOString().slice(0,10)}.json`, data);
+    } catch (err) {
+      notify?.(err.message || "Backup download failed.", "error");
+    } finally {
+      setBackupBusy("");
+    }
+  }
+  async function restoreDatabaseBackup(file) {
+    if (!file) return;
+    if (!window.confirm(`${wipeBeforeRestore ? "Wipe current database and restore this backup?" : "Merge this backup into the current database?"} Run the schema SQL on the new Supabase project before restoring.`)) {
+      if (restoreInputRef.current) restoreInputRef.current.value = "";
+      return;
+    }
+    setBackupBusy("restore");
+    try {
+      const backup = JSON.parse(await file.text());
+      const res = await fetch(`${IMPORTER_API}/backup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ backup, wipeFirst: wipeBeforeRestore, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || data?.error) throw new Error(data?.error || "Restore failed.");
+      notify?.("Backup restored. Refreshing app data...", "success");
+      window.setTimeout(() => window.location.reload(), 900);
+    } catch (err) {
+      notify?.(err.message || "Restore failed. Check that this is a valid RankBooster backup.", "error");
+    } finally {
+      setBackupBusy("");
+      if (restoreInputRef.current) restoreInputRef.current.value = "";
+    }
+  }
   const tests = allCourses.flatMap(course => (course.testFolders || []).flatMap(folder => (folder.tests || []).map(test => ({
     course: course.title,
     folder: folder.name,
@@ -2698,8 +2740,31 @@ function AdminExports({ allUsers = [], allCourses = [], passPlans = [], appSetti
   return (
     <div className="fade-in">
       <div style={{ marginBottom: 14 }}>
-        <div style={{ color: "#E2E8F0", fontSize: 15, fontWeight: 800 }}>Data Export</div>
-        <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>Download CSV snapshots for admin review, backups, and reporting.</div>
+        <div style={{ color: "#E2E8F0", fontSize: 15, fontWeight: 800 }}>Data Export & Restore</div>
+        <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>Use database backup for Supabase migration. CSV exports are for review only.</div>
+      </div>
+      <div className="card landing-hover-card" style={{ marginBottom: 14, borderColor: "rgba(16,185,129,0.18)", background: "linear-gradient(135deg,rgba(16,185,129,0.07),rgba(255,255,255,0.035))" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
+          <div style={{ maxWidth: 720 }}>
+            <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 850, marginBottom: 5 }}>Supabase Migration Backup</div>
+            <div style={{ color: "#94A3B8", fontSize: 12, lineHeight: 1.65 }}>
+              Workflow: put the site in maintenance, download backup, create a new Supabase project, run the schema SQL, update Cloudflare env keys, deploy, then upload this backup here.
+            </div>
+          </div>
+          <button className="btn-success" disabled={backupBusy === "download"} onClick={downloadDatabaseBackup}>
+            <Icon n="download" s={14} />{backupBusy === "download" ? "Preparing..." : "Download DB Backup"}
+          </button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: 10, alignItems: "center", marginTop: 14 }}>
+          <label style={{ color: "#CBD5E1", fontSize: 12, display: "flex", gap: 8, alignItems: "center" }}>
+            <input type="checkbox" checked={wipeBeforeRestore} onChange={e => setWipeBeforeRestore(e.target.checked)} />
+            Wipe current database before restore
+          </label>
+          <input ref={restoreInputRef} type="file" accept="application/json,.json" style={{ display: "none" }} onChange={e => restoreDatabaseBackup(e.target.files?.[0])} />
+          <button className="btn-ghost" disabled={backupBusy === "restore"} onClick={() => restoreInputRef.current?.click()}>
+            <Icon n="upload" s={14} />{backupBusy === "restore" ? "Restoring..." : "Upload & Restore"}
+          </button>
+        </div>
       </div>
       <div className="responsive-grid">
         {[
@@ -2707,7 +2772,7 @@ function AdminExports({ allUsers = [], allCourses = [], passPlans = [], appSetti
           { title: "Courses", count: allCourses.length, icon: "courses", action: () => downloadCsv("rankbooster-courses.csv", allCourses.map(c => ({ id: c.id, title: c.title, status: c.isPublished === false ? "draft" : "published", free: isCourseFree(c) ? "yes" : "no", tests: configuredTestCount(c), subjects: (c.subjects || []).join("; ") }))) },
           { title: "Tests", count: tests.length, icon: "tests", action: () => downloadCsv("rankbooster-tests.csv", tests) },
           { title: "Pass Plans", count: passPlans.length, icon: "price-tag", action: () => downloadCsv("rankbooster-pass-plans.csv", passPlans.map(p => ({ id: p.id, name: p.name, price: p.price, originalPrice: p.originalPrice, durationDays: p.durationDays, active: p.isActive !== false ? "yes" : "no" }))) },
-          { title: "Full Backup", count: allUsers.length + allCourses.length + passPlans.length, icon: "download", action: () => downloadJson(`rankbooster-backup-${new Date().toISOString().slice(0,10)}.json`, { exportedAt: new Date().toISOString(), users: allUsers, courses: allCourses, passPlans, settings: appSettings, events: adminEvents }) },
+          { title: "UI Snapshot", count: allUsers.length + allCourses.length + passPlans.length, icon: "download", action: () => downloadJson(`rankbooster-ui-snapshot-${new Date().toISOString().slice(0,10)}.json`, { exportedAt: new Date().toISOString(), users: allUsers, courses: allCourses, passPlans, settings: appSettings, events: adminEvents }) },
         ].map(card => (
           <div key={card.title} className="card landing-hover-card" style={{ display: "grid", gap: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

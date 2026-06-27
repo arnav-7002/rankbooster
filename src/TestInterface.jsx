@@ -161,6 +161,7 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
   const resumeState = test.resume || null;
   const totalQ = subjects.reduce((a,s)=>a+s.questions.length,0);
   const examConfig = test.examConfig || test.config || {};
+  const extraInstructions = String(examConfig.instructions || examConfig.instructionText || "").trim();
   const examType = String(examConfig.examType || test.examType || "other").trim().toLowerCase().replace(/\s+/g, "_");
   const isBonusSubject = (s) => /\bbonus\b/i.test(String(s?.name || ""));
   const isSuprSubject = (s) => String(s?.name || "").toLowerCase().includes("supr");
@@ -884,6 +885,16 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
               <li>Do <strong>NOT</strong> close the browser or refresh the page during the test.</li>
             </ul>
           </div>
+          {extraInstructions && (
+            <div className="instruction-card">
+              <h3>Exam Instructions</h3>
+              <ul>
+                {extraInstructions.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map((line, idx) => (
+                  <li key={`${line}_${idx}`}>{line}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           {/* Legend */}
           <div className="instruction-card">
             <div style={{ fontSize:13,fontWeight:600,color:"#111827",marginBottom:12 }}>Question Status Legend</div>

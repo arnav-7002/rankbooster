@@ -223,5 +223,5 @@ on conflict (email) do update set
   updated_at = now();
 
 insert into app_settings (key, value_json) values
-('announcements', '{"banner":{"enabled":false,"text":"","variant":"info"},"homeAnnouncement":{"enabled":false,"title":"","body":"","target":"all","courseId":""},"payments":{"enabled":false,"upiId":"","payeeName":"RankBooster","note":"Scan the QR, complete payment, then enter the UTR/reference ID."},"resumes":{"expiryHours":24},"cleanup":{"noPassInactiveDays":"never","freeCourseInactiveDays":"never"}}'::jsonb)
+('announcements', '{"banner":{"enabled":false,"text":"","variant":"info"},"homeAnnouncement":{"enabled":false,"title":"","body":"","target":"all","courseId":""},"payments":{"enabled":false,"upiId":"","payeeName":"RankBooster","note":"Scan the QR, complete payment, then enter the UTR/reference ID."},"resumes":{"expiryHours":24},"cleanup":{"noPassInactiveDays":"never","freeCourseInactiveDays":"never"},"maintenance":{"enabled":false,"title":"Maintenance Mode","message":"RankBooster is being updated. Please try again shortly."}}'::jsonb)
 on conflict (key) do nothing;

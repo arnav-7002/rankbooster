@@ -4,10 +4,17 @@ export async function onRequestOptions() {
   return json({ ok: true });
 }
 
-export async function onRequestGet({ env }) {
+export async function onRequestGet({ request, env }) {
+  const url = new URL(request.url);
+  const days = String(url.searchParams.get("days") || "7").toLowerCase();
+  const limit = Math.max(1, Math.min(Number(url.searchParams.get("limit") || (days === "all" ? 1000 : 500)), 2000));
+  const cutoff = days === "all" ? "" : Number(days);
+  const filter = cutoff && Number.isFinite(cutoff)
+    ? `&created_at=gte.${encodeURIComponent(new Date(Date.now() - cutoff * 86400000).toISOString())}`
+    : "";
   const events = await supabaseRequest(
     env,
-    "admin_events?select=*&order=created_at.desc&limit=80"
+    `admin_events?select=*&order=created_at.desc&limit=${limit}${filter}`
   ).catch(() => []);
   return json({ events });
 }

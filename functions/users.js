@@ -61,9 +61,10 @@ async function logAdminEvent(env, actor, type, message, metadata = {}) {
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   if (url.searchParams.get("all") === "1") {
-    const [userRows, blobRows, enrollmentRows, attemptRows, courseRows, subscriptionRows, planRows] = await Promise.all([
+    const [userRows, blobRows, sessionRows, enrollmentRows, attemptRows, courseRows, subscriptionRows, planRows] = await Promise.all([
       supabaseRequest(env, "users?select=id,email,display_name,role,avatar_initials,created_at&order=created_at.asc").catch(() => []),
       supabaseRequest(env, `user_blobs?select=user_id,value_json&blob_key=${eq("profile")}`).catch(() => []),
+      supabaseRequest(env, `user_blobs?select=user_id,value_json,updated_at&blob_key=${eq("session")}`).catch(() => []),
       supabaseRequest(env, "enrollments?select=user_id,course_id,status,created_at").catch(() => []),
       supabaseRequest(env, "attempts?select=user_id,id,score,max_marks,submitted_at").catch(() => []),
       supabaseRequest(env, "courses?select=id,title").catch(() => []),
@@ -71,6 +72,7 @@ export async function onRequestGet({ request, env }) {
       supabaseRequest(env, "pass_plans?select=id,name,duration_days,price_inr").catch(() => []),
     ]);
     const profiles = new Map((blobRows || []).map(row => [row.user_id, row.value_json || {}]));
+    const sessions = new Map((sessionRows || []).map(row => [row.user_id, { ...(row.value_json || {}), updatedAt: row.updated_at || row.value_json?.updatedAt || "" }]));
     const courseNames = new Map((courseRows || []).map(row => [row.id, row.title]));
     const planNames = new Map((planRows || []).map(row => [row.id, row.name]));
     const users = (userRows || []).map(row => {
@@ -100,6 +102,7 @@ export async function onRequestGet({ request, env }) {
         enrollments,
         attemptCount: attempts.length,
         bestScore,
+        session: sessions.get(row.id) || null,
       };
     });
     return json({ success: true, users });

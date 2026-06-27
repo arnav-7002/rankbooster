@@ -9,15 +9,29 @@ function makeSessionToken() {
   return `sess_${Date.now()}_${Math.random().toString(36).slice(2)}_${Math.random().toString(36).slice(2)}`;
 }
 
-async function saveSession(env, userId) {
+function requestLoginMeta(request) {
+  const h = request?.headers;
+  return {
+    loginAt: new Date().toISOString(),
+    userAgent: h?.get("user-agent") || "",
+    ip: h?.get("cf-connecting-ip") || (h?.get("x-forwarded-for") || "").split(",")[0].trim(),
+    country: h?.get("cf-ipcountry") || "",
+    ray: h?.get("cf-ray") || "",
+    platform: h?.get("sec-ch-ua-platform") || "",
+    mobile: h?.get("sec-ch-ua-mobile") || "",
+  };
+}
+
+async function saveSession(env, userId, request, reason = "login") {
   const token = makeSessionToken();
+  const meta = requestLoginMeta(request);
   await upsertRows(env, "user_blobs", {
     user_id: userId,
     blob_key: "session",
-    value_json: { token, updatedAt: new Date().toISOString() },
+    value_json: { token, updatedAt: new Date().toISOString(), reason, ...meta },
     updated_at: new Date().toISOString(),
   }, "user_id,blob_key");
-  return token;
+  return { token, meta };
 }
 
 async function loadSession(env, userId) {
@@ -136,9 +150,9 @@ export async function onRequestPost({ request, env }) {
       const repaired = await supabaseRequest(env, `users?select=*&id=${eq(existingRow.id)}&limit=1`);
       const row = repaired?.[0] || existingRow;
       const profile = await loadProfile(env, row.id);
-      const sessionToken = await saveSession(env, row.id);
-      await logEvent(env, "user.signup", `${displayName} signed up`, { id: row.id, email: row.email }, { repaired: true });
-      return withCookie({ success: true, user: publicUser(row, profile), coursesOpted: profile.coursesOpted || [], pass: profile.pass || null }, row.id, sessionToken);
+      const session = await saveSession(env, row.id, request, "signup_repair");
+      await logEvent(env, "user.signup", `${displayName} signed up`, { id: row.id, email: row.email }, { repaired: true, login: session.meta });
+      return withCookie({ success: true, user: publicUser(row, profile), coursesOpted: profile.coursesOpted || [], pass: profile.pass || null }, row.id, session.token);
     }
     const user = await saveUser(env, {
       email,
@@ -147,9 +161,9 @@ export async function onRequestPost({ request, env }) {
       role: "user",
       avatar: (name || email).split(/\s+|@/).filter(Boolean).map(part => part[0]).join("").toUpperCase().slice(0, 2),
     });
-    const sessionToken = await saveSession(env, user.id);
-    await logEvent(env, "user.signup", `${user.name || user.email} signed up`, user, {});
-    return withCookie({ success: true, user }, user.id, sessionToken);
+    const session = await saveSession(env, user.id, request, "signup");
+    await logEvent(env, "user.signup", `${user.name || user.email} signed up`, user, { login: session.meta });
+    return withCookie({ success: true, user }, user.id, session.token);
   }
 
   const rows = await supabaseRequest(env, `users?select=*&email=${eq(email)}&limit=1`);
@@ -168,8 +182,9 @@ export async function onRequestPost({ request, env }) {
     return json({ success: false, error: "Invalid email or password." }, 401);
   }
   const profile = await loadProfile(env, row.id || userIdFrom({ email }));
-  const sessionToken = await saveSession(env, row.id);
-  return withCookie({ success: true, user: publicUser(row, profile), coursesOpted: profile.coursesOpted || [], pass: profile.pass || null }, row.id, sessionToken);
+  const session = await saveSession(env, row.id, request, "login");
+  await logEvent(env, "user.login", `${row.email} logged in`, { id: row.id, email: row.email }, { login: session.meta });
+  return withCookie({ success: true, user: publicUser(row, profile), coursesOpted: profile.coursesOpted || [], pass: profile.pass || null }, row.id, session.token);
 }
 
 export async function onRequestDelete() {

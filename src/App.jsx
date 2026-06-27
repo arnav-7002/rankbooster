@@ -440,6 +440,7 @@ const DEFAULT_SETTINGS = {
   payments: { enabled: false, upiId: "", payeeName: "RankBooster", note: "Scan the QR, complete payment, then enter the UTR/reference ID." },
   resumes: { expiryHours: 24 },
   cleanup: { noPassInactiveDays: "never", freeCourseInactiveDays: "never" },
+  maintenance: { enabled: false, title: "Maintenance Mode", message: "RankBooster is being updated. Please try again shortly." },
 };
 
 function isCourseFree(course) {
@@ -690,6 +691,7 @@ const Icon = ({ n, s = 16, c }) => {
     chevleft:     <polyline points="15 18 9 12 15 6"/>,
     // misc
     "arrow-up":   <><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></>,
+    download:     <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>,
     check:        <polyline points="20 6 9 17 4 12"/>,
     "check-circle":<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>,
     x:            <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
@@ -936,7 +938,7 @@ function PassPlanCards({ compact = false, activePass, onSelect, plans = PASS_PLA
 }
 
 // ─── LOGIN PAGE ──────────────────────────────────────────────────────────────
-function LoginPage({ onLogin, passPlans = PASS_PLANS }) {
+function LoginPage({ onLogin, passPlans = PASS_PLANS, appSettings = DEFAULT_SETTINGS }) {
   const [tab, setTab] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -969,6 +971,10 @@ function LoginPage({ onLogin, passPlans = PASS_PLANS }) {
 
   async function handleLogin() {
     if (dbStatus.state !== "connected") { setErr("Database is not connected yet. Try again after it turns green."); return; }
+    if (appSettings?.maintenance?.enabled && String(email).trim().toLowerCase() !== "admin@rankbooster.com") {
+      setErr(appSettings.maintenance.message || "RankBooster is temporarily unavailable.");
+      return;
+    }
     setErr("");
     const res = await fetch(`${IMPORTER_API}/auth`, {
       method: "POST",
@@ -982,6 +988,7 @@ function LoginPage({ onLogin, passPlans = PASS_PLANS }) {
 
   async function handleSignup() {
     if (dbStatus.state !== "connected") { setErr("Database is not connected yet. Try again after it turns green."); return; }
+    if (appSettings?.maintenance?.enabled) { setErr(appSettings.maintenance.message || "RankBooster is temporarily unavailable."); return; }
     if (!name || !email || !password) { setErr("All fields required."); return; }
     setErr("");
     const res = await fetch(`${IMPORTER_API}/auth`, {
@@ -1078,6 +1085,12 @@ function LoginPage({ onLogin, passPlans = PASS_PLANS }) {
                 </button>
               ))}
             </div>
+            {appSettings?.maintenance?.enabled && (
+              <div style={{ padding: 12, borderRadius: 12, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.18)", color: "#FDE68A", fontSize: 12, lineHeight: 1.55, marginBottom: 12 }}>
+                <strong>{appSettings.maintenance.title || "Maintenance Mode"}</strong>
+                <div style={{ color: "#FCD34D", marginTop: 3 }}>{appSettings.maintenance.message || "RankBooster is being updated."}</div>
+              </div>
+            )}
 
             <div className="landing-auth-form">
               {tab === "signup" && (
@@ -1886,6 +1899,11 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
     await handleStartTest(course, folder, test);
   }
 
+  async function handleAdditionalAttempt(course, folder, test) {
+    if (!window.confirm("Start another attempt for this test? Your previous attempt will remain saved.")) return;
+    await handleStartTest(course, folder, test);
+  }
+
   async function handleStartTest(course, folder, test, resume = null) {
     const testId = test.id || `${folder?.name}_${test.name}`;
     setLoadingTestId(testId);
@@ -2011,6 +2029,7 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
                       const score = savedAttempt ? Number(savedAttempt.score || 0) : test.score;
                       const maxMarks = savedAttempt ? Number(savedAttempt.maxMarks || test.maxMarks || 0) : test.maxMarks;
                       const performance = savedAttempt ? Number(savedAttempt.percentage ?? savedAttempt.percentile ?? 0) : test.percentile;
+                      const attemptRule = test.examConfig?.attemptRule || test.config?.attemptRule || "replace";
                       return (
                       <div key={test.id} className="test-item-row" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", borderBottom: i < folder.tests.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
                         <div className="icon-tile" style={{ background: attempted ? "rgba(16,185,129,0.1)" : "rgba(124,58,237,0.1)", border: `1px solid ${attempted ? "rgba(16,185,129,0.22)" : "rgba(124,58,237,0.22)"}` }}>
@@ -2034,7 +2053,13 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
                           {attempted && (
                             <>
                               <button className="btn-ghost test-action-btn" onClick={() => onViewAnalysis({ course: selectedCourseObj, folder, test, attempt: savedAttempt })}><Icon n="analysis" s={14} />Analysis</button>
-                              <button className="btn-ghost test-action-btn" onClick={() => handleReattempt(selectedCourseObj, folder, test, savedAttempt)}><Icon n="repeat" s={14} />Reattempt</button>
+                              {attemptRule === "single" ? (
+                                <span className="tag tag-green" style={{ alignSelf: "center" }}>Locked</span>
+                              ) : attemptRule === "unlimited" ? (
+                                <button className="btn-ghost test-action-btn" onClick={() => handleAdditionalAttempt(selectedCourseObj, folder, test)}><Icon n="repeat" s={14} />New Attempt</button>
+                              ) : (
+                                <button className="btn-ghost test-action-btn" onClick={() => handleReattempt(selectedCourseObj, folder, test, savedAttempt)}><Icon n="repeat" s={14} />Reattempt</button>
+                              )}
                               <button className="btn-ghost test-action-btn danger" onClick={() => deleteAttempt(selectedCourseObj, folder, test, savedAttempt)}><Icon n="trash" s={14} />Delete</button>
                             </>
                           )}
@@ -2497,6 +2522,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
   const [dbStatus, setDbStatus] = useState({ state: "checking", label: "Checking Database", detail: "Pinging database..." });
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminEvents, setAdminEvents] = useState([]);
+  const [eventRange, setEventRange] = useState("7");
   const allUC = {};
   const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["coupons", "Coupons"], ["payments", "Payments"], ["resumes", "Resumes"], ["announcements", "Announcements"], ["cleanup", "Data Rules"], ["users", "Users"], ["exports", "Exports"], ["activity", "Activity"], ["checklist", "Publish Checklist"], ["reset", "Reset"]];
   const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
@@ -2528,10 +2554,10 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
   useEffect(() => { if (tab === "users") loadAdminUsers(); }, [tab, loadAdminUsers]);
 
   const loadAdminEvents = useCallback(async () => {
-    const res = await fetch(`${IMPORTER_API}/admin-events`, { cache: "no-store" }).catch(() => null);
+    const res = await fetch(`${IMPORTER_API}/admin-events?days=${encodeURIComponent(eventRange)}&limit=${eventRange === "all" ? 1500 : 500}`, { cache: "no-store" }).catch(() => null);
     const data = res?.ok ? await res.json().catch(() => null) : null;
     if (data?.events) setAdminEvents(data.events);
-  }, []);
+  }, [eventRange]);
 
   const recordAdminEvent = useCallback(async (type, message, metadata = {}) => {
     setAdminEvents(prev => [{ id: `local_${Date.now()}`, event_type: type, payload_json: { message, actor_email: user?.email, metadata }, created_at: new Date().toISOString() }, ...prev].slice(0, 80));
@@ -2542,9 +2568,18 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
     }).catch(() => null);
   }, [user]);
 
-  useEffect(() => { if (tab === "activity") loadAdminEvents(); }, [tab, loadAdminEvents]);
+  useEffect(() => { loadAdminEvents(); }, [loadAdminEvents]);
 
   const totalEnrollments = adminUsers.reduce((sum, u) => sum + (u.enrollments || u.coursesOpted || []).length, 0);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEvents = adminEvents.filter(evt => evt.created_at && new Date(evt.created_at).getTime() >= todayStart.getTime());
+  const quickStats = [
+    { l: "Signups Today", v: todayEvents.filter(e => e.event_type === "user.signup").length, icon: "users", c: "#22C55E" },
+    { l: "Logins Today", v: todayEvents.filter(e => e.event_type === "user.login").length, icon: "user", c: "#38BDF8" },
+    { l: "Attempts Today", v: todayEvents.filter(e => String(e.event_type || "").includes("attempt")).length, icon: "analysis", c: "#A78BFA" },
+    { l: "Payments Today", v: todayEvents.filter(e => String(e.event_type || "").includes("payment")).length, icon: "rupee", c: "#F59E0B" },
+  ];
   return (
     <div className="fade-in">
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
@@ -2578,6 +2613,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
           { l: "Total Tests", v: allCourses.reduce((a, c) => a + c.testFolders.reduce((b, f) => b + f.tests.length, 0), 0), icon: "tests", c: "#0EA5E9" },
           { l: "Registered Users", v: adminUsers.filter(u => u.role !== "admin").length, icon: "users", c: "#10B981" },
           { l: "Total Enrollments", v: totalEnrollments || Object.values(allUC).reduce((a, v) => a + v.length, 0), icon: "star", c: "#F59E0B" },
+          ...quickStats,
         ].map(s => (
           <div key={s.l} className="card" style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 38, height: 38, borderRadius: 9, background: s.c + "22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -2610,8 +2646,8 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
         {tab === "announcements" && <AdminAnnouncements appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} courses={allCourses} />}
         {tab === "cleanup" && <AdminDataRetention appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} passPlans={passPlans} onRefresh={loadAdminUsers} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} onImpersonate={onImpersonate} />}
-        {tab === "exports" && <AdminExports allUsers={adminUsers} allCourses={allCourses} passPlans={passPlans} notify={toast} />}
-        {tab === "activity" && <AdminActivity events={adminEvents} onRefresh={loadAdminEvents} />}
+        {tab === "exports" && <AdminExports allUsers={adminUsers} allCourses={allCourses} passPlans={passPlans} appSettings={appSettings} adminEvents={adminEvents} notify={toast} />}
+        {tab === "activity" && <AdminActivity events={adminEvents} onRefresh={loadAdminEvents} range={eventRange} setRange={setEventRange} />}
         {tab === "checklist" && <AdminPublishChecklist dbStatus={dbStatus} allCourses={allCourses} passPlans={passPlans} appSettings={appSettings} adminUsers={adminUsers} />}
         {tab === "reset" && <AdminReset setAllCourses={setAllCourses} setPassPlans={setPassPlans} setAppSettings={setAppSettings} loadAdminUsers={loadAdminUsers} checkDatabase={checkDatabase} notify={toast} currentAdmin={user} />}
       </div>
@@ -2619,7 +2655,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
   );
 }
 
-function AdminExports({ allUsers = [], allCourses = [], passPlans = [], notify }) {
+function AdminExports({ allUsers = [], allCourses = [], passPlans = [], appSettings = {}, adminEvents = [], notify }) {
   function csvCell(value) {
     return `"${String(value ?? "").replace(/"/g, '""')}"`;
   }
@@ -2631,6 +2667,16 @@ function AdminExports({ allUsers = [], allCourses = [], passPlans = [], notify }
     const headers = Object.keys(rows[0]);
     const csv = [headers.map(csvCell).join(","), ...rows.map(row => headers.map(h => csvCell(row[h])).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    notify?.(`${filename} exported.`, "success");
+  }
+  function downloadJson(filename, data) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -2661,6 +2707,7 @@ function AdminExports({ allUsers = [], allCourses = [], passPlans = [], notify }
           { title: "Courses", count: allCourses.length, icon: "courses", action: () => downloadCsv("rankbooster-courses.csv", allCourses.map(c => ({ id: c.id, title: c.title, status: c.isPublished === false ? "draft" : "published", free: isCourseFree(c) ? "yes" : "no", tests: configuredTestCount(c), subjects: (c.subjects || []).join("; ") }))) },
           { title: "Tests", count: tests.length, icon: "tests", action: () => downloadCsv("rankbooster-tests.csv", tests) },
           { title: "Pass Plans", count: passPlans.length, icon: "price-tag", action: () => downloadCsv("rankbooster-pass-plans.csv", passPlans.map(p => ({ id: p.id, name: p.name, price: p.price, originalPrice: p.originalPrice, durationDays: p.durationDays, active: p.isActive !== false ? "yes" : "no" }))) },
+          { title: "Full Backup", count: allUsers.length + allCourses.length + passPlans.length, icon: "download", action: () => downloadJson(`rankbooster-backup-${new Date().toISOString().slice(0,10)}.json`, { exportedAt: new Date().toISOString(), users: allUsers, courses: allCourses, passPlans, settings: appSettings, events: adminEvents }) },
         ].map(card => (
           <div key={card.title} className="card landing-hover-card" style={{ display: "grid", gap: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -2678,7 +2725,31 @@ function AdminExports({ allUsers = [], allCourses = [], passPlans = [], notify }
   );
 }
 
-function AdminActivity({ events, onRefresh }) {
+function AdminActivity({ events, onRefresh, range, setRange }) {
+  function csvCell(value) {
+    return `"${String(value ?? "").replace(/"/g, '""')}"`;
+  }
+  function downloadLogs(kind = "csv") {
+    const rows = (events || []).map(evt => ({
+      created_at: evt.created_at || "",
+      event_type: evt.event_type || "",
+      actor: evt.payload_json?.actor_email || "",
+      message: evt.payload_json?.message || "",
+      metadata: JSON.stringify(evt.payload_json?.metadata || {}),
+    }));
+    if (!rows.length) return;
+    const label = range === "all" ? "all" : `${range}-day`;
+    const csv = rows.length ? [Object.keys(rows[0]).map(csvCell).join(","), ...rows.map(row => Object.keys(row).map(k => csvCell(row[k])).join(","))].join("\n") : "";
+    const blob = kind === "json"
+      ? new Blob([JSON.stringify(events, null, 2)], { type: "application/json;charset=utf-8" })
+      : new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `rankbooster-logs-${label}.${kind}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
   return (
     <div className="fade-in">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14 }}>
@@ -2686,7 +2757,15 @@ function AdminActivity({ events, onRefresh }) {
           <div style={{ color: "#E2E8F0", fontSize: 15, fontWeight: 800 }}>Admin Activity</div>
           <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>Recent course, test, plan, user, and attempt events saved in the database.</div>
         </div>
-        <button className="btn-ghost" onClick={onRefresh}><Icon n="repeat" s={13} />Refresh</button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <select className="select-field" value={range} onChange={e => setRange?.(e.target.value)}>
+            {[1,2,3,4,5,6,7].map(day => <option key={day} value={String(day)}>{day} day{day === 1 ? "" : "s"}</option>)}
+            <option value="all">All logs</option>
+          </select>
+          <button className="btn-ghost" onClick={() => downloadLogs("csv")} disabled={!events?.length}><Icon n="download" s={13} />CSV</button>
+          <button className="btn-ghost" onClick={() => downloadLogs("json")} disabled={!events?.length}><Icon n="download" s={13} />JSON</button>
+          <button className="btn-ghost" onClick={onRefresh}><Icon n="repeat" s={13} />Refresh</button>
+        </div>
       </div>
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         {(events || []).length === 0 ? (
@@ -2694,18 +2773,22 @@ function AdminActivity({ events, onRefresh }) {
             <Icon n="clipboard" s={28} c="#334155" />
             <div style={{ marginTop: 10 }}>No activity recorded yet.</div>
           </div>
-        ) : events.map(evt => (
+        ) : events.map(evt => {
+          const meta = evt.payload_json?.metadata || {};
+          const login = meta.login || {};
+          const detail = [evt.payload_json?.actor_email || "System", evt.event_type || "event", login.ip ? `IP ${login.ip}` : "", login.country || "", login.platform || ""].filter(Boolean).join(" · ");
+          return (
           <div key={evt.id} style={{ display: "grid", gridTemplateColumns: "34px minmax(0,1fr) auto", gap: 12, alignItems: "center", padding: "13px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
             <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(124,58,237,0.14)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Icon n={String(evt.event_type || "").includes("delete") ? "trash" : String(evt.event_type || "").includes("attempt") ? "analysis" : "zap"} s={15} c="#A78BFA" />
             </div>
             <div style={{ minWidth: 0 }}>
               <div style={{ color: "#E2E8F0", fontSize: 13, fontWeight: 750 }}>{evt.payload_json?.message || evt.event_type}</div>
-              <div style={{ color: "#64748B", fontSize: 11, marginTop: 2 }}>{evt.payload_json?.actor_email || "System"} · {evt.event_type || "event"}</div>
+              <div title={login.userAgent || ""} style={{ color: "#64748B", fontSize: 11, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{detail}</div>
             </div>
             <div style={{ color: "#475569", fontSize: 11, whiteSpace: "nowrap" }}>{evt.created_at ? new Date(evt.created_at).toLocaleString() : ""}</div>
           </div>
-        ))}
+        )})}
       </div>
     </div>
   );
@@ -3217,7 +3300,7 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
           courseId: course?.id,
           courseTitle: course?.title,
           folderName: folder?.name || "Tests",
-          examConfig: { examType: "other" },
+          examConfig: { examType: "other", attemptRule: "replace", instructions: "" },
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -3260,6 +3343,8 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
       examType: cfg.examType || "jee_main",
       customExamName: cfg.customExamName || "",
       bitsatHasBonus: cfg.bitsatHasBonus !== false,
+      attemptRule: cfg.attemptRule || "replace",
+      instructions: cfg.instructions || "",
       scheduledAt: test.scheduledAt || "",
       scheduledUntil: test.scheduledUntil || "",
       isPublished: test.isPublished !== false,
@@ -3280,6 +3365,8 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
       examType: test.examConfig?.examType || "other",
       customExamName: test.examConfig?.customExamName || "",
       bitsatHasBonus: test.examConfig?.bitsatHasBonus !== false,
+      attemptRule: test.examConfig?.attemptRule || "replace",
+      instructions: test.examConfig?.instructions || "",
       scheduledAt: test.scheduledAt || "",
       scheduledUntil: test.scheduledUntil || "",
     });
@@ -3308,6 +3395,8 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
               examType: configModal.examType,
               customExamName: configModal.customExamName,
               bitsatHasBonus: configModal.bitsatHasBonus,
+              attemptRule: configModal.attemptRule || "replace",
+              instructions: configModal.instructions || "",
             },
             scheduledAt: configModal.scheduledAt || "",
             scheduledUntil: configModal.scheduledUntil || "",
@@ -3326,6 +3415,8 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
             examType: configModal.examType,
             customExamName: configModal.customExamName,
             bitsatHasBonus: configModal.bitsatHasBonus,
+            attemptRule: configModal.attemptRule || "replace",
+            instructions: configModal.instructions || "",
             scheduledAt: configModal.scheduledAt || "",
             scheduledUntil: configModal.scheduledUntil || "",
           }),
@@ -3366,6 +3457,8 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
               examType: scheduleModal.examType,
               customExamName: scheduleModal.customExamName,
               bitsatHasBonus: scheduleModal.bitsatHasBonus,
+              attemptRule: scheduleModal.attemptRule || "replace",
+              instructions: scheduleModal.instructions || "",
             },
             scheduledAt,
             scheduledUntil,
@@ -3385,6 +3478,8 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
             examType: scheduleModal.examType,
             customExamName: scheduleModal.customExamName,
             bitsatHasBonus: scheduleModal.bitsatHasBonus,
+            attemptRule: scheduleModal.attemptRule || "replace",
+            instructions: scheduleModal.instructions || "",
             scheduledAt,
             scheduledUntil,
           }),
@@ -3738,6 +3833,18 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
                   JEE Main mode: the last 5 questions of each subject become numerical answer questions with keyboard and on-screen numpad support.
                 </div>
               )}
+              <div>
+                <label style={{ fontSize: 11, color: "#64748B", marginBottom: 5, display: "block" }}>Attempt Rule</label>
+                <select className="select-field" style={{ width: "100%", minHeight: 42 }} value={configModal.attemptRule || "replace"} onChange={e => setConfigModal(p => ({ ...p, attemptRule: e.target.value }))}>
+                  <option value="replace">Reattempt deletes old attempt</option>
+                  <option value="single">One attempt only</option>
+                  <option value="unlimited">Allow multiple attempts</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: "#64748B", marginBottom: 5, display: "block" }}>Extra Instructions</label>
+                <textarea className="input-field" rows={4} value={configModal.instructions || ""} onChange={e => setConfigModal(p => ({ ...p, instructions: e.target.value }))} placeholder="Optional instructions shown on the test start page..." />
+              </div>
               <label style={{ display: "flex", alignItems: "center", gap: 10, padding: 12, borderRadius: 10, background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.18)", color: "#CBD5E1", fontSize: 13, cursor: "pointer" }}>
                 <input type="checkbox" checked={configModal.isPublished !== false} onChange={e => setConfigModal(p => ({ ...p, isPublished: e.target.checked }))} />
                 Published. Draft tests are hidden from students but remain visible here.
@@ -4474,6 +4581,20 @@ function AdminAnnouncements({ appSettings, setAppSettings, notify, recordAdminEv
           </div>
           <textarea className="input-field" rows={5} value={draft.homeAnnouncement?.body || ""} onChange={e => patch("homeAnnouncement", { body: e.target.value })} placeholder="Longer announcement for students..." />
         </div>
+        <div className="card landing-hover-card" style={{ borderColor: draft.maintenance?.enabled ? "rgba(251,191,36,0.24)" : undefined }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
+            <div>
+              <div style={{ color: "#F1F5F9", fontSize: 14, fontWeight: 800 }}>Maintenance Mode</div>
+              <div style={{ color: "#64748B", fontSize: 12 }}>Blocks student login and hides the app for logged-in students. Admin can still enter.</div>
+            </div>
+            <label className="tag tag-amber" style={{ cursor: "pointer" }}>
+              <input type="checkbox" checked={!!draft.maintenance?.enabled} onChange={e => patch("maintenance", { enabled: e.target.checked })} style={{ marginRight: 6 }} />
+              Enabled
+            </label>
+          </div>
+          <input className="input-field" value={draft.maintenance?.title || ""} onChange={e => patch("maintenance", { title: e.target.value })} placeholder="Maintenance title" style={{ marginBottom: 10 }} />
+          <textarea className="input-field" rows={4} value={draft.maintenance?.message || ""} onChange={e => patch("maintenance", { message: e.target.value })} placeholder="Message shown to students..." />
+        </div>
       </div>
     </div>
   );
@@ -4840,6 +4961,30 @@ function AdminUsers({ allUsers, allUC, allCourses, passPlans = PASS_PLANS, onRef
               </div>
             ))}
           </div>
+          <div style={{ padding: 12, borderRadius: 12, background: "rgba(14,165,233,0.06)", border: "1px solid rgba(14,165,233,0.16)", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#BAE6FD", fontSize: 13, fontWeight: 850, marginBottom: 10 }}>
+              <Icon n="user" s={15} /> Latest login / device
+            </div>
+            {selectedUser.session ? (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 10 }}>
+                {[
+                  ["Last Login", selectedUser.session.loginAt ? new Date(selectedUser.session.loginAt).toLocaleString() : selectedUser.session.updatedAt ? new Date(selectedUser.session.updatedAt).toLocaleString() : "Unknown"],
+                  ["IP", selectedUser.session.ip || "Hidden"],
+                  ["Country", selectedUser.session.country || "Unknown"],
+                  ["Platform", selectedUser.session.platform || (selectedUser.session.mobile === "?1" ? "Mobile" : "Desktop")],
+                  ["Session Reason", selectedUser.session.reason || "login"],
+                  ["User Agent", selectedUser.session.userAgent || "Unknown"],
+                ].map(([label, value]) => (
+                  <div key={label} style={{ minWidth: 0 }}>
+                    <div style={{ color: "#64748B", fontSize: 10, textTransform: "uppercase", letterSpacing: ".45px" }}>{label}</div>
+                    <div title={String(value)} style={{ color: "#CBD5E1", fontSize: 12, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ color: "#64748B", fontSize: 12 }}>No active login metadata saved yet.</div>
+            )}
+          </div>
           <div style={{ display: "grid", gap: 8 }}>
             {historyLoading ? [1,2,3].map(i => <div key={i} className="skeleton-card" style={{ minHeight: 58 }} />) : history.length ? history.map(attempt => (
               <div key={attempt.attemptId} className="tap-card" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto auto", gap: 12, alignItems: "center", padding: 12, borderRadius: 13, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.035)" }}>
@@ -5161,6 +5306,23 @@ function DashboardPage({ user, courses, userCourseIds, wrongQuestions, setPage, 
         && (sourceZip === test.sourceZip || testName === test.name || a.testId === test.id || a.source?.testId === test.id);
     }),
   })))).filter(x => !x.done).slice(0, 4);
+  const attemptDaySet = new Set(savedAttempts.map(a => {
+    const d = new Date(a.submittedAt || a.createdAt || a.date || 0);
+    return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+  }).filter(Boolean));
+  const activityDays = Array.from({ length: 28 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (27 - i));
+    const key = d.toISOString().slice(0, 10);
+    return { key, active: attemptDaySet.has(key), label: d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) };
+  });
+  let streak = 0;
+  for (let i = 0; i < 60; i += 1) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    if (attemptDaySet.has(d.toISOString().slice(0, 10))) streak += 1;
+    else if (i > 0) break;
+  }
 
   return (
     <div className="fade-in">
@@ -5174,6 +5336,20 @@ function DashboardPage({ user, courses, userCourseIds, wrongQuestions, setPage, 
               <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 800 }}>{announcement.title || "Announcement"}</div>
               <div style={{ color: "#94A3B8", fontSize: 13, lineHeight: 1.55, marginTop: 4 }}>{announcement.body}</div>
             </div>
+          </div>
+        </div>
+      )}
+      {currentPass.active && currentPass.daysLeft <= 3 && (
+        <div className="card landing-hover-card" style={{ marginBottom: 16, borderColor: "rgba(251,191,36,0.24)", background: "linear-gradient(135deg,rgba(251,191,36,0.10),rgba(255,255,255,0.03))" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div className="icon-tile" style={{ background: "rgba(251,191,36,0.14)", color: "#FCD34D" }}><Icon n="clock" s={17} /></div>
+              <div>
+                <div style={{ color: "#FDE68A", fontSize: 14, fontWeight: 850 }}>Pass expires soon</div>
+                <div style={{ color: "#94A3B8", fontSize: 12, marginTop: 2 }}>{currentPass.daysLeft} day{currentPass.daysLeft === 1 ? "" : "s"} left. Renew before it ends to keep course access.</div>
+              </div>
+            </div>
+            <button className="btn-ghost" onClick={() => setPage("courses")}><Icon n="price-tag" s={13} />View Passes</button>
           </div>
         </div>
       )}
@@ -5239,6 +5415,21 @@ function DashboardPage({ user, courses, userCourseIds, wrongQuestions, setPage, 
                 <div style={{ color: "#475569", fontSize: 10, marginTop: 2 }}>{folder.name} · {course.title}</div>
               </div>
             </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 12 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#E2E8F0" }}>Activity Streak</div>
+            <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>{streak} active day{streak === 1 ? "" : "s"} in a row</div>
+          </div>
+          <span className="tag tag-purple">{attemptDaySet.size} active days</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(28, minmax(6px, 1fr))", gap: 4 }}>
+          {activityDays.map(day => (
+            <div key={day.key} title={day.label} style={{ height: 18, borderRadius: 5, background: day.active ? "linear-gradient(135deg,#7C3AED,#34D399)" : "rgba(255,255,255,0.055)", border: day.active ? "1px solid rgba(167,139,250,0.24)" : "1px solid rgba(255,255,255,0.05)" }} />
           ))}
         </div>
       </div>
@@ -6144,7 +6335,7 @@ export default function App() {
   if (!user) return (
     <>
       <style>{GS}</style>
-      <LoginPage onLogin={handleLogin} passPlans={passPlans} />
+      <LoginPage onLogin={handleLogin} passPlans={passPlans} appSettings={appSettings} />
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </>
   );
@@ -6153,6 +6344,20 @@ export default function App() {
   const freeCourseIds = courses.filter(isCourseFree).map(c => c.id);
   const accessibleCourseIds = userCourseIds.filter(id => userPassStatus.active || freeCourseIds.includes(id));
   const activeTestCourseFree = activeTest && freeCourseIds.includes(activeTest.courseId);
+
+  if (appSettings.maintenance?.enabled && user.role !== "admin") return (
+    <>
+      <style>{GS}</style>
+      <BrandedNotice
+        icon="alert-tri"
+        title={appSettings.maintenance.title || "Maintenance Mode"}
+        body={appSettings.maintenance.message || "RankBooster is being updated. Please try again shortly."}
+        actionLabel="Sign Out"
+        onAction={handleLogout}
+      />
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
+    </>
+  );
 
   if (activeTest && (userPassStatus.active || activeTestCourseFree)) return (
     <TestInterface

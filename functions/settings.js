@@ -8,6 +8,7 @@ const DEFAULT_SETTINGS = {
   payments: { enabled: false, upiId: "", payeeName: "RankBooster", note: "Scan the QR, complete payment, then enter the UTR/reference ID." },
   resumes: { expiryHours: 24 },
   cleanup: { noPassInactiveDays: "never", freeCourseInactiveDays: "never" },
+  maintenance: { enabled: false, title: "Maintenance Mode", message: "RankBooster is being updated. Please try again shortly." },
 };
 
 export async function onRequestGet({ env }) {

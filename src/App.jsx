@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import TestInterface from "./TestInterface";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -63,9 +64,11 @@ button{touch-action:manipulation}
 .tag-green{background:rgba(16,185,129,0.2);color:#34D399}
 .tag-amber{background:rgba(251,191,36,0.2);color:#FCD34D}
 .tag-red{background:rgba(239,68,68,0.2);color:#F87171}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:5000;backdrop-filter:blur(4px)}
 .payment-modal-overlay{align-items:center!important;justify-content:center!important;padding:18px!important;background:rgba(4,4,12,.76);backdrop-filter:blur(13px) saturate(120%)}
-.payment-modal-card{width:min(700px,calc(100vw - 36px))!important;min-width:0!important;max-width:min(700px,calc(100vw - 36px))!important;max-height:calc(100svh - 36px);overflow:auto;border-radius:22px!important;box-shadow:0 36px 100px rgba(0,0,0,.55),0 0 0 1px rgba(167,139,250,.08)}
+.payment-modal-card{width:min(760px,calc(100vw - 36px))!important;min-width:0!important;max-width:min(760px,calc(100vw - 36px))!important;max-height:calc(100svh - 36px);overflow:auto;border-radius:22px!important;box-shadow:0 36px 100px rgba(0,0,0,.55),0 0 0 1px rgba(167,139,250,.08)}
+.payment-modal-grid{display:grid;grid-template-columns:minmax(240px,276px) minmax(0,1fr);gap:18px;align-items:center}
+.payment-copy-stack{display:grid;gap:12px;min-width:0}
 .modal{background:#0F0F1A;border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:28px;min-width:480px;max-width:600px;width:90vw;max-height:85vh;overflow-y:auto;animation:modalPop .18s cubic-bezier(.2,.8,.2,1)}
 .modal::-webkit-scrollbar{width:3px}
 .table-head th{font-size:11px;color:#475569;font-weight:600;text-align:left;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.06);text-transform:uppercase;letter-spacing:0.5px}
@@ -359,6 +362,9 @@ body{overflow-x:hidden}
 .modal-overlay{align-items:flex-end;padding:0}
 .modal{min-width:0!important;width:100vw!important;max-width:100vw!important;max-height:88svh;border-radius:20px 20px 0 0;padding:20px 16px}
 .modal [style*="grid-template-columns"]{grid-template-columns:1fr!important}
+.payment-modal-card{width:min(94vw,520px)!important;max-width:min(94vw,520px)!important;border-radius:20px!important}
+.payment-modal-grid{grid-template-columns:1fr;gap:14px}
+.payment-modal-grid .upi-qr-shell{max-width:280px;margin:0 auto;width:100%}
 .card{overflow-x:auto}
 .btn-primary,.btn-ghost,.btn-danger,.btn-success{min-height:44px}
 .landing-wrap{padding:16px 14px 96px}
@@ -785,7 +791,7 @@ function SupportButton({ compact = false }) {
 // ─── MODAL WRAPPER ────────────────────────────────────────────────────────────
 function Modal({ open, onClose, title, children, width = 560, overlayClassName = "", modalClassName = "" }) {
   if (!open) return null;
-  return (
+  return createPortal(
     <div className={`modal-overlay ${overlayClassName}`} onClick={e => e.target === e.currentTarget && onClose()}>
       <div className={`modal fade-in ${modalClassName}`} style={{ minWidth: width, maxWidth: width }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
@@ -794,7 +800,8 @@ function Modal({ open, onClose, title, children, width = 560, overlayClassName =
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1645,7 +1652,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
               </div>
               <div style={{ color: "#A78BFA", fontSize: 22, fontWeight: 900 }}>₹{Number(paymentModal.price || 0)}</div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "220px minmax(0,1fr)", gap: 14, alignItems: "center" }}>
+            <div className="payment-modal-grid">
               <div className="upi-qr-shell">
                 <div className={`upi-qr-loading ${qrLoaded ? "is-hidden" : ""}`}>
                   <div style={{ display: "grid", justifyItems: "center", gap: 10 }}>
@@ -1661,7 +1668,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
                   onError={() => setQrLoaded(true)}
                 />
               </div>
-              <div>
+              <div className="payment-copy-stack">
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
                   <div className="upi-timer-pill">
                     <span className="upi-pulse-dot" />
@@ -1669,8 +1676,8 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
                   </div>
                   {!qrLoaded && <div style={{ display: "inline-flex", alignItems: "center", gap: 7, color: "#94A3B8", fontSize: 12, fontWeight: 750 }}><span className="upi-spinner" style={{ width: 15, height: 15, borderWidth: 2 }} />Preparing QR</div>}
                 </div>
-                <div style={{ color: "#CBD5E1", fontSize: 13, lineHeight: 1.6, marginBottom: 10 }}>Scan the QR, complete the payment, then enter the UTR/reference ID from your payment app.</div>
-                <div style={{ padding: 12, borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.18)", color: "#6EE7B7", fontSize: 12, lineHeight: 1.55, marginBottom: 12 }}>
+                <div style={{ color: "#CBD5E1", fontSize: 13, lineHeight: 1.6 }}>Scan the QR, complete the payment, then enter the UTR/reference ID from your payment app.</div>
+                <div style={{ padding: 12, borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.18)", color: "#6EE7B7", fontSize: 12, lineHeight: 1.55 }}>
                   UPI details are embedded in the QR. Scan and pay the exact amount shown here.
                 </div>
                 {paymentStep === "utr" ? (

@@ -408,8 +408,7 @@ table{min-width:640px}
 @media (max-width: 560px){
 .app-main{padding-left:12px!important;padding-right:12px!important}
 .app-topbar{margin-left:-12px;margin-right:-12px;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:start!important;gap:10px 12px!important}
-.app-topbar>div:first-child{grid-column:1;display:flex!important;flex-direction:column;align-items:flex-start!important;gap:10px!important;min-width:0}
-.app-topbar>div:first-child>.top-back-btn{width:auto!important;max-width:100%!important;min-height:38px!important;justify-content:flex-start!important;padding:8px 13px!important;border-radius:12px!important;font-size:12px!important}
+.app-topbar>div:first-child{grid-column:1;display:flex!important;align-items:center!important;gap:10px!important;min-width:0}
 .mobile-top-brand{display:flex!important;min-width:0}
 .mobile-top-brand>div:last-child{min-width:0}
 .mobile-top-brand>div:last-child>div{overflow:hidden;text-overflow:ellipsis}
@@ -6225,11 +6224,6 @@ export default function App() {
                   <div style={{ color: "#475569", fontSize: 10, marginTop: 3, whiteSpace: "nowrap" }}>Test series platform</div>
                 </div>
               </div>
-              {page !== "dashboard" && (
-                <button className="top-back-btn" onClick={() => setPage("dashboard")} style={{ minHeight: 40, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "9px 16px", color: "#94A3B8", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 7 }}>
-                  <Icon n="chevleft" s={12} />Dashboard
-                </button>
-              )}
             </div>
             <div className="mobile-top-actions" style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <SupportButton compact />

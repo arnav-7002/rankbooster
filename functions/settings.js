@@ -4,8 +4,8 @@ export async function onRequestOptions() { return json({ ok: true }); }
 
 const DEFAULT_SETTINGS = {
   banner: { enabled: false, text: "", variant: "info" },
-  homeAnnouncement: { enabled: false, title: "", body: "" },
-  payments: { enabled: false, upiId: "", payeeName: "RankBooster", note: "Pay using UPI, then submit the UTR/reference ID for manual approval." },
+  homeAnnouncement: { enabled: false, title: "", body: "", target: "all", courseId: "" },
+  payments: { enabled: false, upiId: "", payeeName: "RankBooster", note: "Scan the QR, complete payment, then enter the UTR/reference ID." },
   resumes: { expiryHours: 24 },
   cleanup: { noPassInactiveDays: "never", freeCourseInactiveDays: "never" },
 };

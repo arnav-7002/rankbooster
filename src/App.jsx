@@ -438,7 +438,7 @@ const PASS_PLANS = [
 
 const DEFAULT_SETTINGS = {
   banner: { enabled: false, text: "", variant: "info" },
-  homeAnnouncement: { enabled: false, title: "", body: "" },
+  homeAnnouncement: { enabled: false, title: "", body: "", target: "all", courseId: "" },
   payments: { enabled: false, upiId: "", payeeName: "RankBooster", note: "Scan the QR, complete payment, then enter the UTR/reference ID." },
   resumes: { expiryHours: 24 },
   cleanup: { noPassInactiveDays: "never", freeCourseInactiveDays: "never" },
@@ -1592,8 +1592,19 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
           </div>
         )}
         {!currentPassStatus.active && pendingOrders.length > 0 && (
-          <div style={{ marginTop: 12, padding: 12, borderRadius: 12, background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.22)", color: "#FCD34D", fontSize: 12, fontWeight: 750 }}>
-            {pendingOrders.length} payment request{pendingOrders.length === 1 ? "" : "s"} pending admin approval.
+          <div style={{ marginTop: 12, padding: 14, borderRadius: 14, background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.22)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 9, color: "#FCD34D", fontSize: 13, fontWeight: 850, marginBottom: 8 }}>
+              <Icon n="clock" s={15} /> Payment submitted
+            </div>
+            <div style={{ color: "#94A3B8", fontSize: 12, lineHeight: 1.5, marginBottom: 8 }}>Your pass will activate once the payment is checked.</div>
+            <div style={{ display: "grid", gap: 7 }}>
+              {pendingOrders.slice(0, 2).map(order => (
+                <div key={order.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: 9, borderRadius: 10, background: "rgba(255,255,255,0.035)", color: "#CBD5E1", fontSize: 12 }}>
+                  <span>{order.planName || "Pass"} · ₹{order.amount}</span>
+                  <span style={{ color: "#FCD34D" }}>Ref: {order.utr}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
         {!currentPassStatus.active && (
@@ -2483,13 +2494,13 @@ function NotebookPage({ user }) {
 }
 
 // ─── ADMIN PAGE ───────────────────────────────────────────────────────────────
-function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSettings, setAppSettings, user, notify }) {
+function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSettings, setAppSettings, user, notify, onImpersonate }) {
   const [tab, setTab] = useState("courses");
   const [dbStatus, setDbStatus] = useState({ state: "checking", label: "Checking Database", detail: "Pinging database..." });
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminEvents, setAdminEvents] = useState([]);
   const allUC = {};
-  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["coupons", "Coupons"], ["payments", "Payments"], ["resumes", "Resumes"], ["announcements", "Announcements"], ["cleanup", "Data Rules"], ["users", "Users"], ["activity", "Activity"], ["checklist", "Publish Checklist"], ["reset", "Reset"]];
+  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["coupons", "Coupons"], ["payments", "Payments"], ["resumes", "Resumes"], ["announcements", "Announcements"], ["cleanup", "Data Rules"], ["users", "Users"], ["exports", "Exports"], ["activity", "Activity"], ["checklist", "Publish Checklist"], ["reset", "Reset"]];
   const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
   const adminTabWidth = 148;
   const adminTrackWidth = (adminTabs.length * adminTabWidth) + ((adminTabs.length - 1) * 4);
@@ -2598,12 +2609,72 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
         {tab === "coupons" && <AdminCoupons notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "payments" && <AdminPayments appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
         {tab === "resumes" && <AdminResumes appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
-        {tab === "announcements" && <AdminAnnouncements appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} />}
+        {tab === "announcements" && <AdminAnnouncements appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} courses={allCourses} />}
         {tab === "cleanup" && <AdminDataRetention appSettings={appSettings} setAppSettings={setAppSettings} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
-        {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} passPlans={passPlans} onRefresh={loadAdminUsers} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} />}
+        {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} passPlans={passPlans} onRefresh={loadAdminUsers} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} onImpersonate={onImpersonate} />}
+        {tab === "exports" && <AdminExports allUsers={adminUsers} allCourses={allCourses} passPlans={passPlans} notify={toast} />}
         {tab === "activity" && <AdminActivity events={adminEvents} onRefresh={loadAdminEvents} />}
         {tab === "checklist" && <AdminPublishChecklist dbStatus={dbStatus} allCourses={allCourses} passPlans={passPlans} appSettings={appSettings} adminUsers={adminUsers} />}
         {tab === "reset" && <AdminReset setAllCourses={setAllCourses} setPassPlans={setPassPlans} setAppSettings={setAppSettings} loadAdminUsers={loadAdminUsers} checkDatabase={checkDatabase} notify={toast} currentAdmin={user} />}
+      </div>
+    </div>
+  );
+}
+
+function AdminExports({ allUsers = [], allCourses = [], passPlans = [], notify }) {
+  function csvCell(value) {
+    return `"${String(value ?? "").replace(/"/g, '""')}"`;
+  }
+  function downloadCsv(filename, rows) {
+    if (!rows.length) {
+      notify?.("Nothing to export.", "info");
+      return;
+    }
+    const headers = Object.keys(rows[0]);
+    const csv = [headers.map(csvCell).join(","), ...rows.map(row => headers.map(h => csvCell(row[h])).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    notify?.(`${filename} exported.`, "success");
+  }
+  const tests = allCourses.flatMap(course => (course.testFolders || []).flatMap(folder => (folder.tests || []).map(test => ({
+    course: course.title,
+    folder: folder.name,
+    test: test.name,
+    duration: test.duration,
+    maxMarks: test.maxMarks,
+    published: test.isPublished === false ? "draft" : "published",
+    configured: test.configured === false ? "no" : "yes",
+    sourceUrl: test.sourceUrl || "",
+  }))));
+  return (
+    <div className="fade-in">
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ color: "#E2E8F0", fontSize: 15, fontWeight: 800 }}>Data Export</div>
+        <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>Download CSV snapshots for admin review, backups, and reporting.</div>
+      </div>
+      <div className="responsive-grid">
+        {[
+          { title: "Users", count: allUsers.length, icon: "users", action: () => downloadCsv("rankbooster-users.csv", allUsers.map(u => ({ email: u.email, name: u.name, role: u.role, pass: u.pass?.planName || "", passExpires: u.pass?.expiresAt || "", courses: (u.enrollments || u.coursesOpted || []).map(c => c.title || c.id).join("; "), attempts: u.attemptCount || 0, bestScore: u.bestScore || 0 }))) },
+          { title: "Courses", count: allCourses.length, icon: "courses", action: () => downloadCsv("rankbooster-courses.csv", allCourses.map(c => ({ id: c.id, title: c.title, status: c.isPublished === false ? "draft" : "published", free: isCourseFree(c) ? "yes" : "no", tests: configuredTestCount(c), subjects: (c.subjects || []).join("; ") }))) },
+          { title: "Tests", count: tests.length, icon: "tests", action: () => downloadCsv("rankbooster-tests.csv", tests) },
+          { title: "Pass Plans", count: passPlans.length, icon: "price-tag", action: () => downloadCsv("rankbooster-pass-plans.csv", passPlans.map(p => ({ id: p.id, name: p.name, price: p.price, originalPrice: p.originalPrice, durationDays: p.durationDays, active: p.isActive !== false ? "yes" : "no" }))) },
+        ].map(card => (
+          <div key={card.title} className="card landing-hover-card" style={{ display: "grid", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div className="icon-tile" style={{ background: "rgba(124,58,237,.16)", color: "#A78BFA" }}><Icon n={card.icon} s={17} /></div>
+              <div>
+                <div style={{ color: "#F1F5F9", fontSize: 14, fontWeight: 850 }}>{card.title}</div>
+                <div style={{ color: "#64748B", fontSize: 12 }}>{card.count} rows</div>
+              </div>
+            </div>
+            <button className="btn-primary" onClick={card.action}><Icon n="file-text" s={13} />Download CSV</button>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -2795,7 +2866,7 @@ function AdminCourses({ allCourses, setAllCourses, notify, recordAdminEvent }) {
   const [editModal, setEditModal] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [addModal, setAddModal] = useState(false);
-  const [form, setForm] = useState({ title: "", subtitle: "", price: "", originalPrice: "", badge: "New", color: "#7C3AED", textColor: "#A78BFA", description: "", subjects: "Physics,Chemistry,Mathematics", freeAccess: false });
+  const [form, setForm] = useState({ title: "", subtitle: "", price: "", originalPrice: "", badge: "New", color: "#7C3AED", textColor: "#A78BFA", description: "", subjects: "Physics,Chemistry,Mathematics", freeAccess: false, isPublished: false });
   const [folderChoices, setFolderChoices] = useState({ full: true, part: true, chapter: false });
   const [extraFolders, setExtraFolders] = useState("");
 
@@ -2808,6 +2879,7 @@ function AdminCourses({ allCourses, setAllCourses, notify, recordAdminEvent }) {
         ? course.subjects
         : String(course.subjects || "").split(",").map(s => s.trim()).filter(Boolean),
       freeAccess: isCourseFree(course),
+      isPublished: course.isPublished !== false,
       config: { ...(course.config || {}), freeAccess: isCourseFree(course) },
     };
   }
@@ -2834,6 +2906,7 @@ function AdminCourses({ allCourses, setAllCourses, notify, recordAdminEvent }) {
           ...cleaned,
           previousTitle: original?.folderName || original?.title || cleaned.folderName || cleaned.title,
           testFolders: cleaned.testFolders || original?.testFolders || [],
+          isPublished: cleaned.isPublished !== false,
           freeAccess: !!cleaned.freeAccess,
           config: { ...(cleaned.config || {}), freeAccess: !!cleaned.freeAccess },
         }),
@@ -2887,6 +2960,7 @@ function AdminCourses({ allCourses, setAllCourses, notify, recordAdminEvent }) {
       badge: form.badge, color: form.color, textColor: form.textColor, description: form.description,
       subjects: form.subjects.split(",").map(s => s.trim()).filter(Boolean),
       freeAccess: !!form.freeAccess,
+      isPublished: !!form.isPublished,
       config: { freeAccess: !!form.freeAccess },
       enrolledCount: 0, rating: 4.5,
       testFolders: uniqueFolders.map((name, idx) => ({
@@ -2913,7 +2987,7 @@ function AdminCourses({ allCourses, setAllCourses, notify, recordAdminEvent }) {
       return;
     }
     setAddModal(false);
-    setForm({ title: "", subtitle: "", price: "", originalPrice: "", badge: "New", color: "#7C3AED", textColor: "#A78BFA", description: "", subjects: "Physics,Chemistry,Mathematics", freeAccess: false });
+    setForm({ title: "", subtitle: "", price: "", originalPrice: "", badge: "New", color: "#7C3AED", textColor: "#A78BFA", description: "", subjects: "Physics,Chemistry,Mathematics", freeAccess: false, isPublished: false });
     setFolderChoices({ full: true, part: true, chapter: false });
     setExtraFolders("");
   }
@@ -2936,6 +3010,7 @@ function AdminCourses({ allCourses, setAllCourses, notify, recordAdminEvent }) {
                 <span style={{ fontSize: 14, fontWeight: 700, color: "#E2E8F0", overflowWrap: "anywhere" }}>{course.title}</span>
                 <span className="tag" style={{ background: course.color + "25", color: course.textColor }}>{course.badge}</span>
                 {isCourseFree(course) && <span className="tag tag-green">Free</span>}
+                <span className={`tag ${course.isPublished === false ? "tag-amber" : "tag-green"}`}>{course.isPublished === false ? "Draft" : "Published"}</span>
               </div>
               <div style={{ fontSize: 12, color: "#64748B", marginBottom: 6 }}>{course.subtitle}</div>
               <div className="admin-course-meta" style={{ display: "flex", gap: 16, fontSize: 12, color: "#475569" }}>
@@ -3050,6 +3125,13 @@ function CourseForm({ form, setForm, onSave, saveLabel = "Save Changes", childre
             <span style={{ display: "block", color: "#94A3B8", fontSize: 12, marginTop: 2 }}>Students can enroll and access this course without an active pass. Paid courses stay locked when the pass expires or is removed.</span>
           </span>
         </label>
+        <label style={{ gridColumn: "1/-1", display: "flex", gap: 10, alignItems: "flex-start", padding: 12, borderRadius: 12, background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.18)", cursor: "pointer" }}>
+          <input type="checkbox" checked={form.isPublished !== false} onChange={e => F("isPublished", e.target.checked)} style={{ marginTop: 2 }} />
+          <span>
+            <span style={{ display: "block", color: "#EDE9FE", fontSize: 13, fontWeight: 800 }}>Published</span>
+            <span style={{ display: "block", color: "#94A3B8", fontSize: 12, marginTop: 2 }}>Draft courses stay visible in admin but are hidden from students.</span>
+          </span>
+        </label>
         <div style={{ gridColumn: "1/-1" }}>
           <label style={{ fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" }}>Description</label>
           <textarea className="input-field" rows={3} style={{ resize: "vertical" }} value={form.description || ""} onChange={e => F("description", e.target.value)} placeholder="Course description..." />
@@ -3075,6 +3157,8 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
   const [configBusy, setConfigBusy] = useState(false);
   const [scheduleModal, setScheduleModal] = useState(null);
   const [scheduleBusy, setScheduleBusy] = useState(false);
+  const [validatorModal, setValidatorModal] = useState(null);
+  const [validatorBusy, setValidatorBusy] = useState("");
 
   const course = allCourses.find(c => c.id === selectedCourse);
 
@@ -3180,6 +3264,7 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
       bitsatHasBonus: cfg.bitsatHasBonus !== false,
       scheduledAt: test.scheduledAt || "",
       scheduledUntil: test.scheduledUntil || "",
+      isPublished: test.isPublished !== false,
     });
   }
 
@@ -3220,6 +3305,7 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
             duration: configModal.duration || 180,
             maxMarks: configModal.maxMarks || 0,
             configured: true,
+            isPublished: configModal.isPublished !== false,
             examConfig: {
               examType: configModal.examType,
               customExamName: configModal.customExamName,
@@ -3353,6 +3439,44 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
     setDeleteTestConfirm(null);
   }
 
+  function inspectTestPayload(payload) {
+    const sections = Array.isArray(payload?.sections) ? payload.sections : Array.isArray(payload?.subjects) ? payload.subjects : [];
+    const questions = sections.flatMap(section => Array.isArray(section.questions) ? section.questions : []);
+    const hasAnswers = questions.filter(q => q.answer !== undefined || q.correctAnswer !== undefined || q.correct !== undefined).length;
+    const issues = [];
+    if (!sections.length) issues.push("No sections/subjects found.");
+    if (!questions.length) issues.push("No questions found.");
+    if (questions.length && hasAnswers < questions.length) issues.push(`${questions.length - hasAnswers} question(s) missing answer key.`);
+    if (!payload?.title && !payload?.name) issues.push("Missing test title in JSON.");
+    return {
+      ok: issues.length === 0,
+      sections: sections.length,
+      questions: questions.length,
+      answers: hasAnswers,
+      issues,
+    };
+  }
+
+  async function validateTest(folder, test) {
+    const sourceUrl = normalizeExternalTestUrl(test.sourceUrl || "");
+    if (!sourceUrl) {
+      setValidatorModal({ test, folder, result: { ok: false, sections: 0, questions: 0, answers: 0, issues: ["No GitHub/source URL found."] } });
+      return;
+    }
+    setValidatorBusy(test.id);
+    try {
+      const res = await fetch(`${IMPORTER_API}/test?sourceUrl=${encodeURIComponent(sourceUrl)}`, { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Could not fetch test JSON.");
+      setValidatorModal({ test, folder, sourceUrl, result: inspectTestPayload(data.test || data) });
+      recordAdminEvent?.("test.validated", `Validated test ${test.name}`, { courseId: course?.id, testId: test.id });
+    } catch (err) {
+      setValidatorModal({ test, folder, sourceUrl, result: { ok: false, sections: 0, questions: 0, answers: 0, issues: [err.message || "Validation failed."] } });
+    } finally {
+      setValidatorBusy("");
+    }
+  }
+
   return (
     <div>
       {/* Course selector */}
@@ -3420,6 +3544,7 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
                               {test.configured ? `${(test.examConfig?.examType || "configured").replace("_", " ").toUpperCase()}` : "Not configured"}
                             </span>
                           )}
+                          <span className={`tag ${test.isPublished === false ? "tag-amber" : "tag-green"}`} style={{ fontSize: 10 }}>{test.isPublished === false ? "Draft" : "Published"}</span>
                         </div>
                         <div style={{ fontSize: 11, color: "#475569", marginTop: 2, display: "flex", gap: 10, flexWrap: "wrap" }}>
                           <span>{test.duration} min</span>
@@ -3438,6 +3563,11 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
                       {(test.sourceZip || test.sourceUrl) && (
                         <button className="btn-ghost" style={{ padding: "8px 14px", fontSize: 12, minHeight: 36 }} onClick={() => openConfig(folder, test)}>
                           <Icon n="settings" s={11} />Configure
+                        </button>
+                      )}
+                      {test.sourceUrl && (
+                        <button className="btn-ghost" style={{ padding: "8px 14px", fontSize: 12, minHeight: 36 }} disabled={validatorBusy === test.id} onClick={() => validateTest(folder, test)}>
+                          <Icon n="check-circle" s={11} />{validatorBusy === test.id ? "Checking" : "Validate"}
                         </button>
                       )}
                       <button className="btn-danger" style={{ padding: "8px 14px", fontSize: 12, minHeight: 36 }} onClick={() => setDeleteTestConfirm({ folderId: folder.id, testId: test.id, folderName: folder.name, testName: test.name, sourceZip: test.sourceZip })}>
@@ -3610,10 +3740,44 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
                   JEE Main mode: the last 5 questions of each subject become numerical answer questions with keyboard and on-screen numpad support.
                 </div>
               )}
+              <label style={{ display: "flex", alignItems: "center", gap: 10, padding: 12, borderRadius: 10, background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.18)", color: "#CBD5E1", fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={configModal.isPublished !== false} onChange={e => setConfigModal(p => ({ ...p, isPublished: e.target.checked }))} />
+                Published. Draft tests are hidden from students but remain visible here.
+              </label>
             </div>
             <button className="btn-primary" style={{ width: "100%", marginTop: 16 }} disabled={configBusy} onClick={saveConfig}>
               {configBusy ? "Saving..." : "Save Configuration"}
             </button>
+          </div>
+        )}
+      </Modal>
+      <Modal open={!!validatorModal} onClose={() => setValidatorModal(null)} title="Test Validator" width={520}>
+        {validatorModal && (
+          <div>
+            <div className="card" style={{ marginBottom: 12, borderColor: validatorModal.result.ok ? "rgba(16,185,129,.28)" : "rgba(251,191,36,.28)", background: validatorModal.result.ok ? "rgba(16,185,129,.06)" : "rgba(251,191,36,.06)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Icon n={validatorModal.result.ok ? "check-circle" : "alert-tri"} s={20} c={validatorModal.result.ok ? "#34D399" : "#FCD34D"} />
+                <div>
+                  <div style={{ color: "#F1F5F9", fontSize: 14, fontWeight: 850 }}>{validatorModal.result.ok ? "Ready to publish" : "Needs attention"}</div>
+                  <div style={{ color: "#64748B", fontSize: 12 }}>{validatorModal.test?.name}</div>
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 12 }}>
+              {[["Sections", validatorModal.result.sections], ["Questions", validatorModal.result.questions], ["Answers", validatorModal.result.answers]].map(([k, v]) => (
+                <div key={k} style={{ padding: 12, borderRadius: 12, background: "rgba(255,255,255,.035)", border: "1px solid rgba(255,255,255,.07)", textAlign: "center" }}>
+                  <div style={{ color: "#A78BFA", fontSize: 18, fontWeight: 900 }}>{v}</div>
+                  <div style={{ color: "#64748B", fontSize: 11 }}>{k}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "grid", gap: 8 }}>
+              {(validatorModal.result.issues || []).length ? validatorModal.result.issues.map(issue => (
+                <div key={issue} style={{ padding: 10, borderRadius: 11, background: "rgba(251,191,36,.08)", border: "1px solid rgba(251,191,36,.16)", color: "#FCD34D", fontSize: 12 }}>{issue}</div>
+              )) : (
+                <div style={{ padding: 10, borderRadius: 11, background: "rgba(16,185,129,.08)", border: "1px solid rgba(16,185,129,.16)", color: "#6EE7B7", fontSize: 12 }}>Source JSON is reachable and has sections, questions, and answer keys.</div>
+              )}
+            </div>
           </div>
         )}
       </Modal>
@@ -4228,7 +4392,7 @@ function AdminPayments({ appSettings, setAppSettings, notify, recordAdminEvent, 
   );
 }
 
-function AdminAnnouncements({ appSettings, setAppSettings, notify, recordAdminEvent }) {
+function AdminAnnouncements({ appSettings, setAppSettings, notify, recordAdminEvent, courses = [] }) {
   const [draft, setDraft] = useState({ ...DEFAULT_SETTINGS, ...(appSettings || {}) });
   const [saving, setSaving] = useState(false);
 
@@ -4298,6 +4462,18 @@ function AdminAnnouncements({ appSettings, setAppSettings, notify, recordAdminEv
             </label>
           </div>
           <input className="input-field" value={draft.homeAnnouncement?.title || ""} onChange={e => patch("homeAnnouncement", { title: e.target.value })} placeholder="Title" style={{ marginBottom: 10 }} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+            <select className="select-field" value={draft.homeAnnouncement?.target || "all"} onChange={e => patch("homeAnnouncement", { target: e.target.value })}>
+              <option value="all">Show to everyone</option>
+              <option value="paid">Only active pass users</option>
+              <option value="free">Only users without active pass</option>
+              <option value="course">Only one course</option>
+            </select>
+            <select className="select-field" disabled={(draft.homeAnnouncement?.target || "all") !== "course"} value={draft.homeAnnouncement?.courseId || ""} onChange={e => patch("homeAnnouncement", { courseId: e.target.value })}>
+              <option value="">Select course</option>
+              {courses.map(course => <option key={course.id} value={course.id}>{course.title}</option>)}
+            </select>
+          </div>
           <textarea className="input-field" rows={5} value={draft.homeAnnouncement?.body || ""} onChange={e => patch("homeAnnouncement", { body: e.target.value })} placeholder="Longer announcement for students..." />
         </div>
       </div>
@@ -4422,7 +4598,7 @@ function AdminDataRetention({ appSettings, setAppSettings, notify, recordAdminEv
   );
 }
 
-function AdminUsers({ allUsers, allUC, allCourses, passPlans = PASS_PLANS, onRefresh, notify, recordAdminEvent, currentAdmin }) {
+function AdminUsers({ allUsers, allUC, allCourses, passPlans = PASS_PLANS, onRefresh, notify, recordAdminEvent, currentAdmin, onImpersonate }) {
   const users = useMemo(() => allUsers || [], [allUsers]);
   const [query, setQuery] = useState("");
   const [selectedUserId, setSelectedUserId] = useState(users.find(u => u.role !== "admin")?.id || users[0]?.id || "");
@@ -4638,6 +4814,7 @@ function AdminUsers({ allUsers, allUC, allCourses, passPlans = PASS_PLANS, onRef
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button className="btn-ghost" onClick={refreshSelectedHistory} disabled={historyLoading}><Icon n="repeat" s={13} />Refresh History</button>
+              <button className="btn-ghost" onClick={() => onImpersonate?.(selectedUser)} disabled={selectedUser.role === "admin"}><Icon n="eye" s={13} />Preview as User</button>
               <button className="btn-danger" onClick={deleteAllForUser} disabled={deleteBusy === "user" || history.length === 0}><Icon n="trash" s={13} />{deleteBusy === "user" ? "Deleting..." : "Delete User Attempts"}</button>
               <button className="btn-danger" onClick={deleteUserAccount} disabled={deleteBusy === "account" || selectedUser.role === "admin"} title={selectedUser.role === "admin" ? "Admin account cannot be deleted here" : "Delete account and all user data"}>
                 <Icon n="trash" s={13} />{deleteBusy === "account" ? "Deleting..." : "Delete Account"}
@@ -4914,6 +5091,25 @@ function AppLoadingSkeleton() {
   );
 }
 
+function BrandedNotice({ icon = "alert-tri", title, body, actionLabel, onAction }) {
+  return (
+    <div className="fade-in" style={{ minHeight: "58vh", display: "grid", placeItems: "center", padding: 18 }}>
+      <div className="card" style={{ width: "min(520px,100%)", textAlign: "center", padding: 30 }}>
+        <div style={{ width: 52, height: 52, borderRadius: 16, margin: "0 auto 16px", background: "rgba(124,58,237,0.16)", color: "#A78BFA", display: "grid", placeItems: "center" }}>
+          <Icon n={icon} s={24} />
+        </div>
+        <h2 style={{ margin: 0, color: "#F8FAFC", fontSize: 22, fontWeight: 850 }}>{title}</h2>
+        {body && <p style={{ margin: "8px auto 20px", maxWidth: 420, color: "#64748B", fontSize: 14, lineHeight: 1.6 }}>{body}</p>}
+        {actionLabel && (
+          <button className="btn-primary" onClick={onAction} style={{ minWidth: 160 }}>
+            <Icon n="arrow-left" s={14} />{actionLabel}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── DASHBOARD (user home) ────────────────────────────────────────────────────
 function DashboardPage({ user, courses, userCourseIds, wrongQuestions, setPage, announcement }) {
   const myCourses = courses.filter(c => userCourseIds.includes(c.id));
@@ -4921,6 +5117,13 @@ function DashboardPage({ user, courses, userCourseIds, wrongQuestions, setPage, 
   const [notebooks, setNotebooks] = useState([]);
   const totalTests = myCourses.reduce((a, c) => a + configuredTestCount(c), 0);
   const currentPass = passStatus(user?.pass);
+  const announcementVisible = announcement?.enabled && (
+    !announcement.target ||
+    announcement.target === "all" ||
+    (announcement.target === "paid" && currentPass.active) ||
+    (announcement.target === "free" && !currentPass.active) ||
+    (announcement.target === "course" && userCourseIds.includes(announcement.courseId))
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -4963,7 +5166,7 @@ function DashboardPage({ user, courses, userCourseIds, wrongQuestions, setPage, 
 
   return (
     <div className="fade-in">
-      {announcement?.enabled && (announcement.title || announcement.body) && (
+      {announcementVisible && (announcement.title || announcement.body) && (
         <div className="card landing-hover-card" style={{ marginBottom: 16, borderColor: "rgba(167,139,250,0.22)", background: "linear-gradient(135deg,rgba(124,58,237,0.14),rgba(255,255,255,0.035))" }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(124,58,237,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -5719,6 +5922,7 @@ function TestAttemptReport({ report, user, onBack }) {
 // ─── ROOT APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null);
+  const [previewAdmin, setPreviewAdmin] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [page, setPage] = useState("courses");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -5744,11 +5948,11 @@ export default function App() {
   }, []);
 
   const syncFolderLibrary = useCallback(async () => {
-    const res = await fetch(`${IMPORTER_API}/library`).catch(() => null);
+    const res = await fetch(`${IMPORTER_API}/library${user?.role === "admin" ? "?admin=1" : ""}`).catch(() => null);
     if (!res?.ok) return;
     const data = await res.json();
     setCourses(data.courses || []);
-  }, []);
+  }, [user?.role]);
 
   const syncAdminConfig = useCallback(async () => {
     const [planRes, settingsRes] = await Promise.all([
@@ -5763,6 +5967,16 @@ export default function App() {
 
   const refreshCurrentUser = useCallback(async () => {
     const res = await fetch(`${IMPORTER_API}/auth`, { cache: "no-store" }).catch(() => null);
+    if (res?.status === 409) {
+      await fetch(`${IMPORTER_API}/auth`, { method: "DELETE" }).catch(() => null);
+      setUser(null);
+      setUserCourseIds([]);
+      setActiveTest(null);
+      setActiveReport(null);
+      setPage("courses");
+      notify("Logged out because this account was opened on another device.", "info");
+      return null;
+    }
     const data = res?.ok ? await res.json().catch(() => null) : null;
     if (!data?.user) return null;
     const syncedCourseIds = (data.coursesOpted || []).map(c => c.id).filter(Boolean);
@@ -5770,7 +5984,7 @@ export default function App() {
     setUser(nextUser);
     setUserCourseIds(syncedCourseIds);
     return nextUser;
-  }, []);
+  }, [notify]);
 
   useEffect(() => {
     initStore();
@@ -5782,7 +5996,14 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     fetch(`${IMPORTER_API}/auth`, { cache: "no-store" })
-      .then(res => res.ok ? res.json() : null)
+      .then(async res => {
+        if (res?.status === 409) {
+          await fetch(`${IMPORTER_API}/auth`, { method: "DELETE" }).catch(() => null);
+          notify("Logged out because this account was opened on another device.", "info");
+          return null;
+        }
+        return res?.ok ? res.json() : null;
+      })
       .then(data => {
         if (cancelled) return;
         if (data?.user) {
@@ -5796,7 +6017,7 @@ export default function App() {
       .catch(() => null)
       .finally(() => { if (!cancelled) setAuthChecked(true); });
     return () => { cancelled = true; };
-  }, []);
+  }, [notify]);
 
   useEffect(() => {
     const id = setInterval(syncFolderLibrary, 60000);
@@ -5804,7 +6025,7 @@ export default function App() {
   }, [syncFolderLibrary]);
 
   useEffect(() => {
-    if (!user) return undefined;
+    if (!user || user.impersonating) return undefined;
     const refreshAndLock = async () => {
       const latest = await refreshCurrentUser();
       const activeCourseFree = activeTest && courses.some(c => c.id === activeTest.courseId && isCourseFree(c));
@@ -5880,11 +6101,39 @@ export default function App() {
   }
 
   async function handleLogout() {
+    if (user?.impersonating && previewAdmin) {
+      setUser(previewAdmin);
+      setPreviewAdmin(null);
+      setActiveTest(null);
+      setActiveReport(null);
+      setPage("admin");
+      notify("Returned to admin account.", "info");
+      return;
+    }
     await fetch(`${IMPORTER_API}/auth`, { method: "DELETE" }).catch(() => null);
     setUser(null);
+    setPreviewAdmin(null);
     setUserCourseIds([]);
     setPage("courses");
     window.location.hash = "";
+  }
+
+  function handleImpersonate(targetUser) {
+    if (!targetUser || targetUser.role === "admin") return;
+    const syncedCourseIds = (targetUser.enrollments || targetUser.coursesOpted || []).map(c => c.id).filter(Boolean);
+    setPreviewAdmin(user);
+    setUser(ensureOfflineUser({
+      ...targetUser,
+      role: "user",
+      impersonating: true,
+      syncedCourseIds,
+      pass: targetUser.pass,
+    }));
+    setUserCourseIds(syncedCourseIds);
+    setActiveTest(null);
+    setActiveReport(null);
+    setPage("dashboard");
+    notify(`Previewing ${targetUser.email}.`, "info");
   }
 
   if (!authChecked) return (
@@ -5932,9 +6181,11 @@ export default function App() {
       case "tests": return <TestsPage courses={courses} setCoursesView={setCourses} userCourseIds={accessibleCourseIds} onStartTest={setActiveTest} onSetPage={setPage} onViewAnalysis={setActiveReport} user={user} />;
       case "analysis": return <AnalysisPage courses={courses} userCourseIds={accessibleCourseIds} user={user} />;
       case "notebook": return <NotebookPage user={user} />;
-      case "admin": return user.role === "admin" ? <AdminPage allCourses={courses} setAllCourses={setCourses} passPlans={passPlans} setPassPlans={setPassPlans} appSettings={appSettings} setAppSettings={setAppSettings} user={user} notify={notify} /> : null;
+      case "admin": return user.role === "admin"
+        ? <AdminPage allCourses={courses} setAllCourses={setCourses} passPlans={passPlans} setPassPlans={setPassPlans} appSettings={appSettings} setAppSettings={setAppSettings} user={user} notify={notify} onImpersonate={handleImpersonate} />
+        : <BrandedNotice icon="admin" title="Admin access required" body="This page is only available from an admin account." actionLabel="Back to Dashboard" onAction={() => setPage("dashboard")} />;
       case "settings": return <SettingsPage user={user} courses={courses} userCourseIds={accessibleCourseIds} onUserUpdate={setUser} onLogout={handleLogout} />;
-      default: return null;
+      default: return <BrandedNotice title="Page not found" body="The page you opened is not available." actionLabel="Back to Dashboard" onAction={() => setPage("dashboard")} />;
     }
   };
 
@@ -5953,6 +6204,16 @@ export default function App() {
             <div className={`site-banner banner-${appSettings.banner.variant || "info"}`}>
               <Icon n={appSettings.banner.variant === "success" ? "check-circle" : appSettings.banner.variant === "warning" ? "alert-tri" : "zap"} s={15} />
               <span>{appSettings.banner.text}</span>
+            </div>
+          )}
+          {!activeReport && user.impersonating && (
+            <div className="site-banner banner-warning" style={{ justifyContent: "space-between", gap: 12 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <Icon n="eye" s={15} /> Previewing {user.email}
+              </span>
+              <button className="btn-ghost" onClick={handleLogout} style={{ minHeight: 30, padding: "6px 10px", fontSize: 12 }}>
+                Return to Admin
+              </button>
             </div>
           )}
           {/* Top bar */}

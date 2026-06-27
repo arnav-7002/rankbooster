@@ -3,12 +3,14 @@ import { json, staticJson, supabaseRequest } from "./_shared.js";
 export async function onRequestOptions() { return json({ ok: true }); }
 
 export async function onRequestGet({ request, env }) {
+  const url = new URL(request.url);
+  const admin = url.searchParams.get("admin") === "1";
   const data = await staticJson(request, ["data", "library.json"], { courses: [] }).catch(() => ({ courses: [] }));
   let courses = [...(data.courses || [])];
   try {
     const [courseRows, testRows] = await Promise.all([
-      supabaseRequest(env, "courses?select=*&is_published=eq.true&order=created_at.asc"),
-      supabaseRequest(env, "tests?select=*&is_published=eq.true&order=created_at.asc"),
+      supabaseRequest(env, `courses?select=*&${admin ? "" : "is_published=eq.true&"}order=created_at.asc`),
+      supabaseRequest(env, `tests?select=*&${admin ? "" : "is_published=eq.true&"}order=created_at.asc`),
     ]);
     const byCourse = new Map();
     for (const row of courseRows || []) {
@@ -25,6 +27,7 @@ export async function onRequestGet({ request, env }) {
         subjects: row.subjects_json || [],
         freeAccess: !!row.config_json?.freeAccess,
         config: row.config_json || {},
+        isPublished: row.is_published !== false,
         testFolders: (row.folders_json || []).map(f => ({ id: f.id || f.name, name: f.name, icon: f.icon || "folder", tests: [] })),
       });
     }
@@ -49,6 +52,7 @@ export async function onRequestGet({ request, env }) {
         totalQuestions: row.total_questions || 0,
         sourceUrl: row.source_url || "",
         configured: !!row.is_configured,
+        isPublished: row.is_published !== false,
         examConfig: row.config_json || {},
         scheduledAt: row.scheduled_at || "",
         scheduledUntil: row.scheduled_until || "",

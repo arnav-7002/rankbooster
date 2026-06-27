@@ -69,6 +69,7 @@ export async function onRequestPost({ request, env }) {
       sourceUrl,
       configured,
       examConfig,
+      isPublished: row.is_published !== false,
       scheduledAt: body.scheduledAt || "",
       scheduledUntil: body.scheduledUntil || "",
     },

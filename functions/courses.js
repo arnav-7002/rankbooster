@@ -22,7 +22,7 @@ function courseRow(input = {}) {
     subjects_json: Array.isArray(input.subjects) ? input.subjects : String(input.subjects || "").split(",").map(s => s.trim()).filter(Boolean),
     folders_json: folders.map(f => ({ id: f.id, name: f.name, icon: f.icon || "folder" })),
     config_json: config,
-    is_published: input.is_published !== false,
+    is_published: input.isPublished !== false && input.is_published !== false,
     updated_at: new Date().toISOString(),
   };
 }
@@ -45,6 +45,7 @@ export async function onRequestPost({ request, env }) {
       textColor: row.text_color,
       subjects: row.subjects_json,
       freeAccess: !!row.config_json?.freeAccess,
+      isPublished: row.is_published !== false,
       config: row.config_json || {},
       testFolders: body.testFolders || row.folders_json.map(f => ({ ...f, tests: [] })),
     },

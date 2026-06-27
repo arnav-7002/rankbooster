@@ -5,15 +5,37 @@ export async function onRequestOptions() { return json({ ok: true }); }
 const ADMIN_EMAIL = "admin@rankbooster.com";
 const ADMIN_PASSWORD = "Admin@123";
 
-function withCookie(data, userId, status = 200) {
+function makeSessionToken() {
+  return `sess_${Date.now()}_${Math.random().toString(36).slice(2)}_${Math.random().toString(36).slice(2)}`;
+}
+
+async function saveSession(env, userId) {
+  const token = makeSessionToken();
+  await upsertRows(env, "user_blobs", {
+    user_id: userId,
+    blob_key: "session",
+    value_json: { token, updatedAt: new Date().toISOString() },
+    updated_at: new Date().toISOString(),
+  }, "user_id,blob_key");
+  return token;
+}
+
+async function loadSession(env, userId) {
+  const rows = await supabaseRequest(env, `user_blobs?select=value_json&user_id=${eq(userId)}&blob_key=${eq("session")}&limit=1`).catch(() => []);
+  return rows[0]?.value_json?.token || "";
+}
+
+function withCookie(data, userId, sessionToken, status = 200) {
   const res = json(data, status);
   res.headers.append("set-cookie", `rb_user=${encodeURIComponent(userId || "")}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`);
+  if (sessionToken) res.headers.append("set-cookie", `rb_session=${encodeURIComponent(sessionToken)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`);
   return res;
 }
 
 function clearCookie(data = { success: true }) {
   const res = json(data);
   res.headers.append("set-cookie", "rb_user=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+  res.headers.append("set-cookie", "rb_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
   return res;
 }
 
@@ -74,8 +96,14 @@ async function logEvent(env, type, message, actor = {}, metadata = {}) {
 
 export async function onRequestGet({ request, env }) {
   const userId = cookieValue(request, "rb_user");
+  const sessionToken = cookieValue(request, "rb_session");
   const loaded = await userById(env, userId);
   if (!loaded) return json({ success: false, user: null }, 401);
+  const activeSession = await loadSession(env, userId);
+  if (activeSession && activeSession !== sessionToken) {
+    const res = clearCookie({ success: false, user: null, error: "This account was opened on another device." });
+    return new Response(res.body, { status: 409, headers: res.headers });
+  }
   return json({
     success: true,
     user: publicUser(loaded.row, loaded.profile),
@@ -108,8 +136,9 @@ export async function onRequestPost({ request, env }) {
       const repaired = await supabaseRequest(env, `users?select=*&id=${eq(existingRow.id)}&limit=1`);
       const row = repaired?.[0] || existingRow;
       const profile = await loadProfile(env, row.id);
+      const sessionToken = await saveSession(env, row.id);
       await logEvent(env, "user.signup", `${displayName} signed up`, { id: row.id, email: row.email }, { repaired: true });
-      return withCookie({ success: true, user: publicUser(row, profile), coursesOpted: profile.coursesOpted || [], pass: profile.pass || null }, row.id);
+      return withCookie({ success: true, user: publicUser(row, profile), coursesOpted: profile.coursesOpted || [], pass: profile.pass || null }, row.id, sessionToken);
     }
     const user = await saveUser(env, {
       email,
@@ -118,8 +147,9 @@ export async function onRequestPost({ request, env }) {
       role: "user",
       avatar: (name || email).split(/\s+|@/).filter(Boolean).map(part => part[0]).join("").toUpperCase().slice(0, 2),
     });
+    const sessionToken = await saveSession(env, user.id);
     await logEvent(env, "user.signup", `${user.name || user.email} signed up`, user, {});
-    return withCookie({ success: true, user }, user.id);
+    return withCookie({ success: true, user }, user.id, sessionToken);
   }
 
   const rows = await supabaseRequest(env, `users?select=*&email=${eq(email)}&limit=1`);
@@ -138,7 +168,8 @@ export async function onRequestPost({ request, env }) {
     return json({ success: false, error: "Invalid email or password." }, 401);
   }
   const profile = await loadProfile(env, row.id || userIdFrom({ email }));
-  return withCookie({ success: true, user: publicUser(row, profile), coursesOpted: profile.coursesOpted || [], pass: profile.pass || null }, row.id);
+  const sessionToken = await saveSession(env, row.id);
+  return withCookie({ success: true, user: publicUser(row, profile), coursesOpted: profile.coursesOpted || [], pass: profile.pass || null }, row.id, sessionToken);
 }
 
 export async function onRequestDelete() {

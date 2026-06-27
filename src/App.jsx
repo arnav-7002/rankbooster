@@ -64,6 +64,8 @@ button{touch-action:manipulation}
 .tag-amber{background:rgba(251,191,36,0.2);color:#FCD34D}
 .tag-red{background:rgba(239,68,68,0.2);color:#F87171}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
+.payment-modal-overlay{align-items:center!important;justify-content:center!important;padding:18px!important;background:rgba(4,4,12,.76);backdrop-filter:blur(13px) saturate(120%)}
+.payment-modal-card{width:min(700px,calc(100vw - 36px))!important;min-width:0!important;max-width:min(700px,calc(100vw - 36px))!important;max-height:calc(100svh - 36px);overflow:auto;border-radius:22px!important;box-shadow:0 36px 100px rgba(0,0,0,.55),0 0 0 1px rgba(167,139,250,.08)}
 .modal{background:#0F0F1A;border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:28px;min-width:480px;max-width:600px;width:90vw;max-height:85vh;overflow-y:auto;animation:modalPop .18s cubic-bezier(.2,.8,.2,1)}
 .modal::-webkit-scrollbar{width:3px}
 .table-head th{font-size:11px;color:#475569;font-weight:600;text-align:left;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.06);text-transform:uppercase;letter-spacing:0.5px}
@@ -201,6 +203,8 @@ button{touch-action:manipulation}
 .upi-qr-loading{position:absolute;inset:12px;border-radius:10px;background:linear-gradient(135deg,#F8FAFC,#EDE9FE);display:grid;place-items:center;color:#7C3AED;transition:opacity .18s ease,visibility .18s ease}
 .upi-qr-loading.is-hidden{opacity:0;visibility:hidden}
 .upi-spinner{width:34px;height:34px;border-radius:50%;border:3px solid rgba(124,58,237,.16);border-top-color:#7C3AED;animation:rbSpin .75s linear infinite}
+.upi-timer-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:rgba(124,58,237,.12);border:1px solid rgba(167,139,250,.22);color:#C4B5FD;font-size:12px;font-weight:800}
+.upi-pulse-dot{width:8px;height:8px;border-radius:50%;background:#22C55E;box-shadow:0 0 0 0 rgba(34,197,94,.42);animation:upiPulse 1.35s ease-out infinite}
 .upi-submit-overlay{position:absolute;inset:0;z-index:4;background:rgba(8,8,18,.72);backdrop-filter:blur(5px);display:grid;place-items:center;border-radius:18px;animation:fadeIn .16s ease}
 .upi-submit-box{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:#11111D;border:1px solid rgba(167,139,250,.24);color:#C4B5FD;font-size:13px;font-weight:750;box-shadow:0 18px 45px rgba(0,0,0,.28)}
 .leaderboard-row{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)}
@@ -234,6 +238,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 @keyframes fadeIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pageRise{from{opacity:.55;transform:translateY(10px) scale(.997)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes buttonSheen{from{transform:translateX(0) skewX(-18deg)}to{transform:translateX(420%) skewX(-18deg)}}
+@keyframes upiPulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.42)}70%{box-shadow:0 0 0 9px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
 @keyframes dropdownIn{from{opacity:0;transform:translateY(-6px) scale(.995)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes treeSlide{from{opacity:0;transform:translateY(-4px) translateX(-4px);max-height:0}to{opacity:1;transform:translateY(0) translateX(0);max-height:680px}}
 @keyframes panelSwitch{from{opacity:0;transform:translateY(8px) scale(.995)}to{opacity:1;transform:translateY(0) scale(1)}}
@@ -428,7 +433,7 @@ const PASS_PLANS = [
 const DEFAULT_SETTINGS = {
   banner: { enabled: false, text: "", variant: "info" },
   homeAnnouncement: { enabled: false, title: "", body: "" },
-  payments: { enabled: false, upiId: "", payeeName: "RankBooster", note: "Pay using UPI, then submit the UTR/reference ID for manual approval." },
+  payments: { enabled: false, upiId: "", payeeName: "RankBooster", note: "Scan the QR, complete payment, then enter the UTR/reference ID." },
   resumes: { expiryHours: 24 },
   cleanup: { noPassInactiveDays: "never", freeCourseInactiveDays: "never" },
 };
@@ -778,11 +783,11 @@ function SupportButton({ compact = false }) {
 }
 
 // ─── MODAL WRAPPER ────────────────────────────────────────────────────────────
-function Modal({ open, onClose, title, children, width = 560 }) {
+function Modal({ open, onClose, title, children, width = 560, overlayClassName = "", modalClassName = "" }) {
   if (!open) return null;
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal fade-in" style={{ minWidth: width, maxWidth: width }}>
+    <div className={`modal-overlay ${overlayClassName}`} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className={`modal fade-in ${modalClassName}`} style={{ minWidth: width, maxWidth: width }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h3 style={{ fontSize: 17, fontWeight: 700, color: "#F1F5F9" }}>{title}</h3>
           <button onClick={onClose} style={{ background: "none", border: "none", color: "#64748B", cursor: "pointer" }}><Icon n="x" s={18} /></button>
@@ -1374,6 +1379,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
   const [paymentModal, setPaymentModal] = useState(null);
   const [paymentStep, setPaymentStep] = useState("qr");
   const [qrLoaded, setQrLoaded] = useState(false);
+  const [paymentSecondsLeft, setPaymentSecondsLeft] = useState(300);
   const [utr, setUtr] = useState("");
   const [pendingOrders, setPendingOrders] = useState([]);
   const [couponCode, setCouponCode] = useState("");
@@ -1382,6 +1388,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
   const currentPass = user?.pass;
   const currentPassStatus = passStatus(currentPass);
   const paymentSettings = { ...DEFAULT_SETTINGS.payments, ...(appSettings.payments || {}) };
+  const paymentModalId = paymentModal?.id || "";
 
   useEffect(() => {
     let cancelled = false;
@@ -1406,6 +1413,14 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
     return () => { cancelled = true; };
   }, [user?.offlineId, passBusy]);
 
+  useEffect(() => {
+    if (!paymentModalId || paymentStep !== "qr") return undefined;
+    const timer = setInterval(() => {
+      setPaymentSecondsLeft(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [paymentModalId, paymentStep]);
+
   async function activatePlan(plan) {
     const isFreePlan = Number(plan.price || 0) <= 0;
     if (paymentSettings.enabled && !isFreePlan) {
@@ -1417,6 +1432,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
       setQrLoaded(false);
       setUtr("");
       setPaymentStep("qr");
+      setPaymentSecondsLeft(300);
       return;
     }
     setPassBusy(plan.id);
@@ -1452,7 +1468,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data?.error) throw new Error(data?.error || "Payment submission failed.");
-      notify?.("Payment submitted. Your pass will activate after admin approval.", "success");
+      notify?.("Payment submitted. Your pass will activate shortly.", "success");
       setPendingOrders(prev => [data.order, ...prev.filter(o => o.id !== data.order?.id)].filter(Boolean));
       setPaymentModal(null);
       setUtr("");
@@ -1612,7 +1628,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
         </>
       )}
       {paymentModal && (
-        <Modal open={!!paymentModal} onClose={() => setPaymentModal(null)} title="Complete UPI Payment">
+        <Modal open={!!paymentModal} onClose={() => setPaymentModal(null)} title="Complete UPI Payment" width={700} overlayClassName="payment-modal-overlay" modalClassName="payment-modal-card">
           <div style={{ display: "grid", gap: 14, position: "relative" }}>
             {passBusy === paymentModal.id && (
               <div className="upi-submit-overlay">
@@ -1646,7 +1662,14 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
                 />
               </div>
               <div>
-                <div style={{ color: "#CBD5E1", fontSize: 13, lineHeight: 1.6, marginBottom: 10 }}>{paymentSettings.note}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+                  <div className="upi-timer-pill">
+                    <span className="upi-pulse-dot" />
+                    QR active for {String(Math.floor(paymentSecondsLeft / 60)).padStart(2, "0")}:{String(paymentSecondsLeft % 60).padStart(2, "0")}
+                  </div>
+                  {!qrLoaded && <div style={{ display: "inline-flex", alignItems: "center", gap: 7, color: "#94A3B8", fontSize: 12, fontWeight: 750 }}><span className="upi-spinner" style={{ width: 15, height: 15, borderWidth: 2 }} />Preparing QR</div>}
+                </div>
+                <div style={{ color: "#CBD5E1", fontSize: 13, lineHeight: 1.6, marginBottom: 10 }}>Scan the QR, complete the payment, then enter the UTR/reference ID from your payment app.</div>
                 <div style={{ padding: 12, borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.18)", color: "#6EE7B7", fontSize: 12, lineHeight: 1.55, marginBottom: 12 }}>
                   UPI details are embedded in the QR. Scan and pay the exact amount shown here.
                 </div>
@@ -1671,7 +1694,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
                 <button className="btn-ghost" onClick={() => setPaymentStep("qr")}><Icon n="chevleft" s={14} />Back to QR</button>
                 <button className="btn-primary" disabled={passBusy === paymentModal.id} onClick={submitPaymentOrder}>
-                  <Icon n="check" s={14} />{passBusy === paymentModal.id ? "Submitting..." : "Submit for Approval"}
+                  <Icon n="check" s={14} />{passBusy === paymentModal.id ? "Submitting..." : "Submit Payment"}
                 </button>
               </div>
             )}

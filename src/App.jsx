@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import TestInterface from "./TestInterface";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
-const VALID_PAGES = ["dashboard", "courses", "tests", "analysis", "notebook", "admin", "settings"];
+const VALID_PAGES = ["dashboard", "courses", "tests", "analysis", "notebook", "pass", "admin", "settings"];
 
 // ─── GLOBAL STYLES ───────────────────────────────────────────────────────────
 const GS = `
@@ -123,6 +123,11 @@ button{touch-action:manipulation}
 .site-banner.banner-success{background:rgba(16,185,129,.12);border:1px solid rgba(52,211,153,.24);color:#6EE7B7}
 .site-banner.banner-warning{background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.25);color:#FCD34D}
 .mobile-bottom-nav{display:none}
+.notification-panel{position:absolute;right:0;top:42px;width:min(340px,calc(100vw - 26px));padding:14px;border-radius:16px;background:#11111D;border:1px solid rgba(255,255,255,.1);box-shadow:0 24px 60px rgba(0,0,0,.38);z-index:250}
+.notification-btn{white-space:nowrap}
+.admin-command-card{max-width:1040px;background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(255,255,255,.035))}
+.admin-command-input{width:100%;border:0;outline:0;background:transparent;color:#E2E8F0;font-size:13px;font-weight:650}
+.admin-command-input::placeholder{color:#475569}
 .toast-stack{position:fixed;right:18px;bottom:18px;z-index:2500;display:grid;gap:10px;width:min(360px,calc(100vw - 28px));pointer-events:none}
 .toast-card{pointer-events:auto;display:flex;align-items:flex-start;gap:10px;padding:12px 13px;border-radius:14px;background:#11111D;border:1px solid rgba(255,255,255,.1);box-shadow:0 18px 45px rgba(0,0,0,.32);animation:toastIn .22s cubic-bezier(.2,.8,.2,1);font-size:13px;color:#CBD5E1}
 .toast-card.success{border-color:rgba(16,185,129,.3);background:linear-gradient(135deg,rgba(16,185,129,.12),#11111D)}
@@ -238,6 +243,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 @media (max-width:640px){.landing-wrap{padding:16px 14px calc(38px + env(safe-area-inset-bottom))}.landing-wrap header{align-items:flex-start!important;margin-bottom:28px!important}.landing-wrap header>div:nth-child(2){order:3;flex-basis:100%;justify-content:flex-start!important}.landing-wrap header>div:nth-child(3){width:100%;display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}.landing-wrap header>div:nth-child(3) .support-link{grid-column:1/-1;justify-content:center}.landing-wrap header>div:nth-child(3) button{width:100%;justify-content:center}.landing-main{gap:22px!important}.landing-pass-stage{width:100%;max-width:none;perspective:900px}.landing-pass-card{min-height:0;border-radius:22px;padding:20px 18px;transition:transform .12s ease-out,box-shadow .18s ease}.landing-pass-card:active{box-shadow:0 18px 48px rgba(49,46,129,.3),0 12px 28px rgba(0,0,0,.24)}.landing-hover-card:hover{transform:none}.landing-hover-card:active{transform:scale(.985);border-color:rgba(124,58,237,.3)}.landing-pass-card::after{right:-94px;top:38px;width:190px;height:190px;box-shadow:inset 0 0 0 32px rgba(255,255,255,.045)}.landing-pass-card::before{background:radial-gradient(circle at var(--mx,40%) var(--my,12%),rgba(255,255,255,.2),transparent 34%)}.pass-content{min-height:178px!important}.pass-brand-row{gap:8px!important;margin-bottom:20px!important}.pass-brand-logo{width:32px!important;height:32px!important;border-radius:9px!important}.pass-brand-title{font-size:19px!important}.pass-brand-title span{font-size:11px!important;padding:2px 6px!important}.pass-title{font-size:18px!important}.pass-meta-row{align-items:flex-start!important;flex-direction:column;gap:14px!important;margin-top:28px!important}.pass-exam-row{padding-left:0!important}.pass-mini-chip{width:31px;height:31px;margin-left:-5px}.pass-mini-chip:hover{transform:translateY(-2px) scale(1.08)}.pass-validity{text-align:left!important}.pass-validity>div:last-child{justify-content:flex-start!important;max-width:100%!important}.pass-validity-pill{height:22px;padding:0 8px;font-size:9px}.landing-stat-grid{gap:10px!important}.admin-tabs{width:100%;overflow-x:auto}.admin-tab.active{background:transparent}.site-banner{font-size:12px;line-height:1.45;margin-bottom:12px}.solution-layout{grid-template-columns:1fr;padding:14px}.solution-palette{position:static;max-height:none}.solution-grid{display:flex;overflow-x:auto;gap:8px;padding-bottom:3px}.solution-qbtn{min-width:40px}.report-top{padding:13px 14px;align-items:flex-start}.report-top>div:last-child{flex-wrap:wrap;justify-content:flex-end}.subject-strip{top:65px;padding:9px 14px}.notebook-layout{display:grid!important;grid-template-columns:1fr!important;gap:14px!important}.notebook-list{width:100%!important;display:grid!important;grid-template-columns:1fr!important;gap:10px!important;overflow:visible!important;padding:0!important}.notebook-list .btn-primary{width:100%!important;min-height:52px!important;margin-bottom:0!important;scroll-snap-align:unset!important}.notebook-create-btn{background:linear-gradient(135deg,#7C3AED,#6D28D9)!important;border-radius:14px!important}.notebook-list-item{min-width:0!important;margin-bottom:0!important;scroll-snap-align:unset!important}.notebook-main{min-width:0;width:100%}.notebook-main .card{padding:22px!important;text-align:center}.notebook-empty-state{min-height:150px!important;display:grid!important;place-items:center!important}.notebook-question-card{padding:14px!important;text-align:left!important}.notebook-question-card .btn-primary,.notebook-question-card .btn-ghost{flex:1;min-width:132px}.modal{min-width:0;width:94vw;padding:20px;border-radius:16px}.responsive-two-col,.tests-layout{grid-template-columns:1fr!important;display:grid}.tests-course-rail{width:100%}.card{border-radius:13px}.btn-primary,.btn-ghost,.btn-danger,.btn-success{min-height:42px}.scroll-top-btn{right:14px;bottom:calc(86px + env(safe-area-inset-bottom));width:40px;height:40px}}
 @media (hover:none){.card:hover,.card-hover:hover,.landing-hover-card:hover,.test-item-row:hover,.course-switch-card:hover,.nav-item:hover,.btn-primary:hover,.btn-ghost:hover,.btn-danger:hover,.btn-success:hover,.tag:hover,.card:hover .icon-tile,.test-item-row:hover .icon-tile{transform:none;box-shadow:none}.btn-primary:active,.btn-ghost:active,.btn-danger:active,.btn-success:active,.tap-card:active,.course-switch-card:active,.landing-hover-card:active{transform:scale(.985)}}
 @media (max-width:390px){.landing-pass-card{padding:18px 15px;border-radius:20px}.pass-content{min-height:176px!important}.pass-brand-title{font-size:17px!important}.pass-title{font-size:17px!important}.pass-mini-chip{width:29px;height:29px;margin-left:-4px}.pass-validity-pill{height:21px;padding:0 7px}.mobile-top-actions .support-link{width:40px!important;padding:8px!important}.mobile-top-actions .support-link span{display:none!important}}
+@media print{body{background:#fff!important;color:#111!important}.sidebar-shell,.app-topbar,.site-banner,.report-top button,.scroll-top-btn,.toast-stack{display:none!important}.report-shell{background:#fff!important;color:#111!important}.card{background:#fff!important;border-color:#ddd!important;box-shadow:none!important}.report-title,.report-section-title,h1,h2,h3{color:#111!important}.report-subtitle,.report-metric-label{color:#555!important}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pageRise{from{opacity:.55;transform:translateY(10px) scale(.997)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes buttonSheen{from{transform:translateX(0) skewX(-18deg)}to{transform:translateX(420%) skewX(-18deg)}}
@@ -435,8 +441,8 @@ const PASS_PLANS = [
 ];
 
 const DEFAULT_SETTINGS = {
-  banner: { enabled: false, text: "", variant: "info" },
-  homeAnnouncement: { enabled: false, title: "", body: "", target: "all", courseId: "" },
+  banner: { enabled: false, text: "", variant: "info", startsAt: "", endsAt: "" },
+  homeAnnouncement: { enabled: false, title: "", body: "", target: "all", courseId: "", startsAt: "", endsAt: "" },
   payments: { enabled: false, upiId: "", payeeName: "RankBooster", note: "Scan the QR, complete payment, then enter the UTR/reference ID." },
   resumes: { expiryHours: 24 },
   cleanup: { noPassInactiveDays: "never", freeCourseInactiveDays: "never" },
@@ -493,6 +499,16 @@ function formatDateTime(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function isWindowLive(item = {}) {
+  if (!item?.enabled) return false;
+  const now = Date.now();
+  const start = item.startsAt ? new Date(item.startsAt).getTime() : 0;
+  const end = item.endsAt ? new Date(item.endsAt).getTime() : 0;
+  if (start && !Number.isNaN(start) && start > now) return false;
+  if (end && !Number.isNaN(end) && end < now) return false;
+  return true;
 }
 
 function testScheduleState(test) {
@@ -1220,6 +1236,7 @@ function Sidebar({ user, page, setPage, courses, userCourseIds, collapsed, setCo
     { id: "tests", label: "Tests", icon: "tests", hasSub: true },
     { id: "analysis", label: "Analysis", icon: "analysis" },
     { id: "notebook", label: "Notebook", icon: "notebook" },
+    { id: "pass", label: "My Pass", icon: "tag" },
   ];
 
   return (
@@ -2519,13 +2536,15 @@ function NotebookPage({ user }) {
 
 // ─── ADMIN PAGE ───────────────────────────────────────────────────────────────
 function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSettings, setAppSettings, user, notify, onImpersonate }) {
-  const [tab, setTab] = useState("courses");
+  const [tab, setTab] = useState("health");
   const [dbStatus, setDbStatus] = useState({ state: "checking", label: "Checking Database", detail: "Pinging database..." });
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminEvents, setAdminEvents] = useState([]);
   const [eventRange, setEventRange] = useState("7");
+  const [adminSearch, setAdminSearch] = useState("");
+  const [changelogItems, setChangelogItems] = useState([]);
   const allUC = {};
-  const adminTabs = [["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["coupons", "Coupons"], ["payments", "Payments"], ["resumes", "Resumes"], ["announcements", "Announcements"], ["cleanup", "Data Rules"], ["users", "Users"], ["exports", "Exports"], ["activity", "Activity"], ["checklist", "Publish Checklist"], ["reset", "Reset"]];
+  const adminTabs = [["health", "System Health"], ["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["coupons", "Coupons"], ["payments", "Payments"], ["resumes", "Resumes"], ["announcements", "Announcements"], ["cleanup", "Data Rules"], ["users", "Users"], ["exports", "Exports"], ["activity", "Activity"], ["changelog", "Changelog"], ["checklist", "Publish Checklist"], ["reset", "Reset"]];
   const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
   const adminTabWidth = 148;
   const adminTrackWidth = (adminTabs.length * adminTabWidth) + ((adminTabs.length - 1) * 4);
@@ -2570,6 +2589,14 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
   }, [user]);
 
   useEffect(() => { loadAdminEvents(); }, [loadAdminEvents]);
+
+  const loadChangelog = useCallback(async () => {
+    const res = await fetch(`${IMPORTER_API}/changelog`, { cache: "no-store" }).catch(() => null);
+    const data = res?.ok ? await res.json().catch(() => null) : null;
+    if (data?.items) setChangelogItems(data.items);
+  }, []);
+
+  useEffect(() => { loadChangelog(); }, [loadChangelog]);
 
   const totalEnrollments = adminUsers.reduce((sum, u) => sum + (u.enrollments || u.coursesOpted || []).length, 0);
   const todayStart = new Date();
@@ -2629,6 +2656,26 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
       </div>
 
       {/* Tabs */}
+      <div className="card admin-command-card" style={{ marginBottom: 14, padding: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Icon n="search" s={16} c="#A78BFA" />
+          <input className="admin-command-input" value={adminSearch} onChange={e => setAdminSearch(e.target.value)} placeholder="Search admin pages, users, courses, tests..." />
+        </div>
+        {adminSearch.trim() && (
+          <div className="dropdown-panel" style={{ display: "grid", gap: 6, marginTop: 10 }}>
+            {[
+              ...adminTabs.map(([id, label]) => ({ type: "Page", label, tab: id })),
+              ...allCourses.map(c => ({ type: "Course", label: c.title, tab: "courses" })),
+              ...allCourses.flatMap(c => (c.testFolders || []).flatMap(f => (f.tests || []).map(t => ({ type: "Test", label: `${t.name} · ${c.title}`, tab: "tests" })))),
+              ...adminUsers.map(u => ({ type: "User", label: `${u.name || u.email} · ${u.email}`, tab: "users" })),
+            ].filter(item => `${item.type} ${item.label}`.toLowerCase().includes(adminSearch.trim().toLowerCase())).slice(0, 8).map((item, idx) => (
+              <button key={`${item.type}_${item.label}_${idx}`} className="btn-ghost" style={{ justifyContent: "space-between", minHeight: 34, padding: "7px 10px", fontSize: 12 }} onClick={() => { setTab(item.tab); setAdminSearch(""); }}>
+                <span>{item.label}</span><span className="tag tag-purple">{item.type}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <div className="admin-tabs">
         <div className="admin-tabs-track" style={{ "--tab-index": tabIndex, "--tab-count": adminTabs.length, minWidth: adminTrackWidth }}>
           {adminTabs.map(([k, v]) => (
@@ -2638,6 +2685,7 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
       </div>
 
       <div key={tab} className="tab-panel">
+        {tab === "health" && <AdminSystemHealth dbStatus={dbStatus} onCheckDatabase={checkDatabase} allCourses={allCourses} passPlans={passPlans} appSettings={appSettings} adminUsers={adminUsers} adminEvents={adminEvents} changelogItems={changelogItems} setTab={setTab} />}
         {tab === "courses" && <AdminCourses allCourses={allCourses} setAllCourses={setAllCourses} notify={toast} recordAdminEvent={recordAdminEvent} />}
         {tab === "tests" && <AdminTests allCourses={allCourses} setAllCourses={setAllCourses} notify={toast} recordAdminEvent={recordAdminEvent} />}
         {tab === "plans" && <AdminPlans passPlans={passPlans} setPassPlans={setPassPlans} notify={toast} recordAdminEvent={recordAdminEvent} />}
@@ -2649,8 +2697,151 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
         {tab === "users" && <AdminUsers allUsers={adminUsers} allUC={allUC} allCourses={allCourses} passPlans={passPlans} onRefresh={loadAdminUsers} notify={toast} recordAdminEvent={recordAdminEvent} currentAdmin={user} onImpersonate={onImpersonate} />}
         {tab === "exports" && <AdminExports allUsers={adminUsers} allCourses={allCourses} passPlans={passPlans} appSettings={appSettings} adminEvents={adminEvents} currentAdmin={user} notify={toast} />}
         {tab === "activity" && <AdminActivity events={adminEvents} onRefresh={loadAdminEvents} range={eventRange} setRange={setEventRange} />}
+        {tab === "changelog" && <AdminChangelog items={changelogItems} onRefresh={loadChangelog} notify={toast} currentAdmin={user} />}
         {tab === "checklist" && <AdminPublishChecklist dbStatus={dbStatus} allCourses={allCourses} passPlans={passPlans} appSettings={appSettings} adminUsers={adminUsers} />}
         {tab === "reset" && <AdminReset setAllCourses={setAllCourses} setPassPlans={setPassPlans} setAppSettings={setAppSettings} loadAdminUsers={loadAdminUsers} checkDatabase={checkDatabase} notify={toast} currentAdmin={user} />}
+      </div>
+    </div>
+  );
+}
+
+function AdminSystemHealth({ dbStatus, onCheckDatabase, allCourses = [], passPlans = [], appSettings = {}, adminUsers = [], adminEvents = [], changelogItems = [], setTab }) {
+  const totalTests = allCourses.reduce((a, c) => a + (c.testFolders || []).reduce((b, f) => b + (f.tests || []).length, 0), 0);
+  const configuredTests = allCourses.reduce((a, c) => a + (c.testFolders || []).reduce((b, f) => b + (f.tests || []).filter(t => t.configured !== false && (t.sourceUrl || t.sourceZip || t.subjects)).length, 0), 0);
+  const activePlans = passPlans.filter(p => p.isActive !== false);
+  const activeBanner = isWindowLive(appSettings.banner);
+  const activeHome = isWindowLive(appSettings.homeAnnouncement);
+  const lastBackup = adminEvents.find(e => String(e.event_type || "").startsWith("backup."));
+  const checks = [
+    { label: "Database", ok: dbStatus.state === "connected", detail: dbStatus.detail, tab: "health" },
+    { label: "Courses", ok: allCourses.length > 0, detail: `${allCourses.length} course${allCourses.length === 1 ? "" : "s"}`, tab: "courses" },
+    { label: "Tests configured", ok: configuredTests > 0 && configuredTests === totalTests, detail: `${configuredTests}/${totalTests || 0} ready`, tab: "tests" },
+    { label: "Pass plans", ok: activePlans.length > 0, detail: `${activePlans.length} active`, tab: "plans" },
+    { label: "Announcements", ok: activeBanner || activeHome, detail: activeBanner || activeHome ? "One message is live" : "No live message", tab: "announcements" },
+    { label: "Backup", ok: !!lastBackup, detail: lastBackup ? formatDateTime(lastBackup.created_at) : "No backup event yet", tab: "exports" },
+  ];
+  return (
+    <div className="fade-in">
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 14 }}>
+        <div>
+          <div style={{ color: "#F1F5F9", fontSize: 18, fontWeight: 900 }}>System Health</div>
+          <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>Fast checklist before publishing or sharing the site.</div>
+        </div>
+        <button className="btn-ghost" onClick={onCheckDatabase}><Icon n="repeat" s={13} />Refresh</button>
+      </div>
+      <div className="responsive-stats-grid" style={{ marginBottom: 16 }}>
+        {[
+          ["Courses", allCourses.length, "courses", "#7C3AED"],
+          ["Tests", totalTests, "tests", "#38BDF8"],
+          ["Users", adminUsers.length, "users", "#34D399"],
+          ["Changelog", changelogItems.length, "file-text", "#F59E0B"],
+        ].map(([label, value, icon, color]) => (
+          <div className="card surface-lift" key={label}>
+            <div className="icon-tile" style={{ background: `${color}22`, color, marginBottom: 12 }}><Icon n={icon} s={18} /></div>
+            <div style={{ color: "#F8FAFC", fontSize: 24, fontWeight: 900 }}>{value}</div>
+            <div style={{ color: "#64748B", fontSize: 12 }}>{label}</div>
+          </div>
+        ))}
+      </div>
+      <div className="responsive-two-col">
+        <div className="card">
+          <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 850, marginBottom: 12 }}>Publish Checklist</div>
+          <div style={{ display: "grid", gap: 9 }}>
+            {checks.map(check => (
+              <button key={check.label} className="btn-ghost" style={{ justifyContent: "space-between", minHeight: 46 }} onClick={() => setTab(check.tab)}>
+                <span style={{ display: "flex", alignItems: "center", gap: 9 }}><Icon n={check.ok ? "check-circle" : "alert-tri"} s={15} c={check.ok ? "#34D399" : "#FCD34D"} />{check.label}</span>
+                <span style={{ color: "#64748B", fontSize: 12 }}>{check.detail}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="card">
+          <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 850, marginBottom: 12 }}>Recent Admin Activity</div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {adminEvents.slice(0, 6).map(evt => (
+              <div key={evt.id} style={{ padding: 10, borderRadius: 11, background: "rgba(255,255,255,.035)", border: "1px solid rgba(255,255,255,.06)" }}>
+                <div style={{ color: "#CBD5E1", fontSize: 12, fontWeight: 750 }}>{evt.payload_json?.message || evt.event_type}</div>
+                <div style={{ color: "#475569", fontSize: 11, marginTop: 3 }}>{formatDateTime(evt.created_at)} · {evt.event_type}</div>
+              </div>
+            ))}
+            {!adminEvents.length && <div style={{ color: "#64748B", fontSize: 12 }}>No admin events yet.</div>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminChangelog({ items = [], onRefresh, notify, currentAdmin }) {
+  const emptyDraft = { title: "", version: "", body: "", published: true };
+  const [draft, setDraft] = useState(emptyDraft);
+  const [busy, setBusy] = useState("");
+  async function saveItem() {
+    if (!draft.title.trim()) return notify?.("Title is required.", "error");
+    setBusy("save");
+    try {
+      const res = await fetch(`${IMPORTER_API}/changelog`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item: draft, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Could not save changelog.");
+      setDraft(emptyDraft);
+      await onRefresh?.();
+      notify?.("Changelog saved.", "success");
+    } catch (err) {
+      notify?.(err.message || "Could not save changelog.", "error");
+    } finally {
+      setBusy("");
+    }
+  }
+  async function deleteItem(id) {
+    if (!window.confirm("Delete this changelog item?")) return;
+    setBusy(id);
+    try {
+      const res = await fetch(`${IMPORTER_API}/changelog`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Could not delete item.");
+      await onRefresh?.();
+      notify?.("Changelog item deleted.", "success");
+    } catch (err) {
+      notify?.(err.message || "Could not delete item.", "error");
+    } finally {
+      setBusy("");
+    }
+  }
+  return (
+    <div className="fade-in">
+      <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 850, marginBottom: 12 }}>Version Changelog</div>
+      <div className="responsive-two-col">
+        <div className="card">
+          <input className="input-field" value={draft.title} onChange={e => setDraft(p => ({ ...p, title: e.target.value }))} placeholder="Update title" style={{ marginBottom: 10 }} />
+          <input className="input-field" value={draft.version} onChange={e => setDraft(p => ({ ...p, version: e.target.value }))} placeholder="Version, e.g. v1.4" style={{ marginBottom: 10 }} />
+          <textarea className="input-field" rows={5} value={draft.body} onChange={e => setDraft(p => ({ ...p, body: e.target.value }))} placeholder="What changed?" style={{ marginBottom: 10 }} />
+          <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#94A3B8", fontSize: 12, marginBottom: 12 }}>
+            <input type="checkbox" checked={draft.published} onChange={e => setDraft(p => ({ ...p, published: e.target.checked }))} /> Show to students
+          </label>
+          <button className="btn-primary" disabled={busy === "save"} onClick={saveItem}><Icon n="plus" s={13} />{busy === "save" ? "Saving..." : "Add Changelog"}</button>
+        </div>
+        <div className="card" style={{ display: "grid", gap: 10 }}>
+          {items.length ? items.map(item => (
+            <div key={item.id} style={{ padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,.07)", background: "rgba(255,255,255,.035)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                <div>
+                  <div style={{ color: "#F1F5F9", fontSize: 13, fontWeight: 850 }}>{item.title}</div>
+                  <div style={{ color: "#64748B", fontSize: 11 }}>{item.version || "No version"} · {formatDateTime(item.createdAt)}</div>
+                </div>
+                <button className="btn-danger" style={{ minHeight: 30, padding: "6px 10px", fontSize: 11 }} disabled={busy === item.id} onClick={() => deleteItem(item.id)}><Icon n="trash" s={11} />Delete</button>
+              </div>
+              {item.body && <div style={{ color: "#94A3B8", fontSize: 12, lineHeight: 1.55, marginTop: 8 }}>{item.body}</div>}
+            </div>
+          )) : <div style={{ color: "#64748B", fontSize: 12 }}>No changelog items yet.</div>}
+        </div>
       </div>
     </div>
   );
@@ -2659,6 +2850,8 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
 function AdminExports({ allUsers = [], allCourses = [], passPlans = [], appSettings = {}, adminEvents = [], currentAdmin, notify }) {
   const [backupBusy, setBackupBusy] = useState("");
   const [wipeBeforeRestore, setWipeBeforeRestore] = useState(true);
+  const [restoreReview, setRestoreReview] = useState(null);
+  const [restoreConfirm, setRestoreConfirm] = useState("");
   const restoreInputRef = useRef(null);
   function csvCell(value) {
     return `"${String(value ?? "").replace(/"/g, '""')}"`;
@@ -2704,17 +2897,28 @@ function AdminExports({ allUsers = [], allCourses = [], passPlans = [], appSetti
   }
   async function restoreDatabaseBackup(file) {
     if (!file) return;
-    if (!window.confirm(`${wipeBeforeRestore ? "Wipe current database and restore this backup?" : "Merge this backup into the current database?"} Run the schema SQL on the new Supabase project before restoring.`)) {
+    try {
+      const backup = JSON.parse(await file.text());
+      if (backup?.format !== "rankbooster.supabase.backup.v1" || !backup?.tables) throw new Error("Invalid RankBooster backup file.");
+      setRestoreReview({ backup, filename: file.name, counts: backup.counts || Object.fromEntries(Object.entries(backup.tables || {}).map(([k, v]) => [k, Array.isArray(v) ? v.length : 0])) });
+      setRestoreConfirm("");
+    } catch (err) {
+      notify?.(err.message || "Could not read backup file.", "error");
       if (restoreInputRef.current) restoreInputRef.current.value = "";
+    }
+  }
+  async function confirmRestoreBackup() {
+    if (!restoreReview?.backup) return;
+    if (wipeBeforeRestore && restoreConfirm !== "RESTORE") {
+      notify?.("Type RESTORE to confirm destructive restore.", "error");
       return;
     }
     setBackupBusy("restore");
     try {
-      const backup = JSON.parse(await file.text());
       const res = await fetch(`${IMPORTER_API}/backup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ backup, wipeFirst: wipeBeforeRestore, actor: currentAdmin }),
+        body: JSON.stringify({ backup: restoreReview.backup, wipeFirst: wipeBeforeRestore, confirmText: restoreConfirm, actor: currentAdmin }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || data?.error) throw new Error(data?.error || "Restore failed.");
@@ -2724,6 +2928,7 @@ function AdminExports({ allUsers = [], allCourses = [], passPlans = [], appSetti
       notify?.(err.message || "Restore failed. Check that this is a valid RankBooster backup.", "error");
     } finally {
       setBackupBusy("");
+      setRestoreReview(null);
       if (restoreInputRef.current) restoreInputRef.current.value = "";
     }
   }
@@ -2766,6 +2971,36 @@ function AdminExports({ allUsers = [], allCourses = [], passPlans = [], appSetti
           </button>
         </div>
       </div>
+      <Modal open={!!restoreReview} onClose={() => !backupBusy && setRestoreReview(null)} title="Review Backup Restore" width={560}>
+        {restoreReview && (
+          <div>
+            <div className="card" style={{ marginBottom: 12, borderColor: "rgba(251,191,36,.24)", background: "rgba(251,191,36,.06)" }}>
+              <div style={{ color: "#FCD34D", fontSize: 13, fontWeight: 850, marginBottom: 5 }}>Backup file loaded</div>
+              <div style={{ color: "#94A3B8", fontSize: 12, lineHeight: 1.55 }}>{restoreReview.filename} · exported {formatDateTime(restoreReview.backup.exportedAt)}</div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 12 }}>
+              {Object.entries(restoreReview.counts || {}).slice(0, 12).map(([table, count]) => (
+                <div key={table} style={{ padding: 10, borderRadius: 11, background: "rgba(255,255,255,.035)", border: "1px solid rgba(255,255,255,.07)" }}>
+                  <div style={{ color: "#E2E8F0", fontSize: 14, fontWeight: 850 }}>{count}</div>
+                  <div style={{ color: "#64748B", fontSize: 10, overflow: "hidden", textOverflow: "ellipsis" }}>{table}</div>
+                </div>
+              ))}
+            </div>
+            {wipeBeforeRestore && (
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: "block", color: "#FCA5A5", fontSize: 12, fontWeight: 800, marginBottom: 5 }}>Type RESTORE to wipe current data first</label>
+                <input className="input-field" value={restoreConfirm} onChange={e => setRestoreConfirm(e.target.value)} placeholder="RESTORE" />
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 10 }}>
+              <button className="btn-ghost" style={{ flex: 1 }} disabled={backupBusy === "restore"} onClick={() => setRestoreReview(null)}>Cancel</button>
+              <button className="btn-danger" style={{ flex: 1 }} disabled={backupBusy === "restore" || (wipeBeforeRestore && restoreConfirm !== "RESTORE")} onClick={confirmRestoreBackup}>
+                <Icon n="upload" s={13} />{backupBusy === "restore" ? "Restoring..." : "Restore Backup"}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
       <div className="responsive-grid">
         {[
           { title: "Users", count: allUsers.length, icon: "users", action: () => downloadCsv("rankbooster-users.csv", allUsers.map(u => ({ email: u.email, name: u.name, role: u.role, pass: u.pass?.planName || "", passExpires: u.pass?.expiresAt || "", courses: (u.enrollments || u.coursesOpted || []).map(c => c.title || c.id).join("; "), attempts: u.attemptCount || 0, bestScore: u.bestScore || 0 }))) },
@@ -3626,7 +3861,8 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
       const res = await fetch(`${IMPORTER_API}/test?sourceUrl=${encodeURIComponent(sourceUrl)}`, { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data?.error) throw new Error(data?.error || "Could not fetch test JSON.");
-      setValidatorModal({ test, folder, sourceUrl, result: inspectTestPayload(data.test || data) });
+      const payload = data.test || data;
+      setValidatorModal({ test, folder, sourceUrl, payload, result: inspectTestPayload(payload) });
       recordAdminEvent?.("test.validated", `Validated test ${test.name}`, { courseId: course?.id, testId: test.id });
     } catch (err) {
       setValidatorModal({ test, folder, sourceUrl, result: { ok: false, sections: 0, questions: 0, answers: 0, issues: [err.message || "Validation failed."] } });
@@ -3948,6 +4184,28 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
                 <div style={{ padding: 10, borderRadius: 11, background: "rgba(16,185,129,.08)", border: "1px solid rgba(16,185,129,.16)", color: "#6EE7B7", fontSize: 12 }}>Source JSON is reachable and has sections, questions, and answer keys.</div>
               )}
             </div>
+            {(() => {
+              const sections = Array.isArray(validatorModal.payload?.subjects) ? validatorModal.payload.subjects : (Array.isArray(validatorModal.payload?.sections) ? validatorModal.payload.sections : []);
+              const preview = sections.flatMap(section => (section.questions || []).slice(0, 2).map(q => ({ section: section.name || section.title || "Subject", q }))).slice(0, 4);
+              return preview.length ? (
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ color: "#F1F5F9", fontSize: 13, fontWeight: 850, marginBottom: 8 }}>Question preview</div>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {preview.map(({ section, q }, idx) => (
+                      <div key={`${section}_${q.id || idx}`} style={{ display: "grid", gridTemplateColumns: "52px minmax(0,1fr)", gap: 10, alignItems: "center", padding: 10, borderRadius: 12, background: "rgba(255,255,255,.035)", border: "1px solid rgba(255,255,255,.06)" }}>
+                        <div style={{ height: 42, borderRadius: 10, background: "rgba(124,58,237,.16)", color: "#A78BFA", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}>Q{idx + 1}</div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ color: "#CBD5E1", fontSize: 12, fontWeight: 800 }}>{section}</div>
+                          <div style={{ color: "#64748B", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {q.images?.length ? `${q.images.length} image(s)` : q.text || q.question || q.id || "Question item"}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null;
+            })()}
           </div>
         )}
       </Modal>
@@ -4619,6 +4877,10 @@ function AdminAnnouncements({ appSettings, setAppSettings, notify, recordAdminEv
             <option value="success">Success green</option>
             <option value="warning">Warning amber</option>
           </select>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
+            <input className="input-field" type="datetime-local" value={draft.banner?.startsAt || ""} onChange={e => patch("banner", { startsAt: e.target.value })} />
+            <input className="input-field" type="datetime-local" value={draft.banner?.endsAt || ""} onChange={e => patch("banner", { endsAt: e.target.value })} />
+          </div>
         </div>
         <div className="card landing-hover-card">
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
@@ -4645,6 +4907,10 @@ function AdminAnnouncements({ appSettings, setAppSettings, notify, recordAdminEv
             </select>
           </div>
           <textarea className="input-field" rows={5} value={draft.homeAnnouncement?.body || ""} onChange={e => patch("homeAnnouncement", { body: e.target.value })} placeholder="Longer announcement for students..." />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
+            <input className="input-field" type="datetime-local" value={draft.homeAnnouncement?.startsAt || ""} onChange={e => patch("homeAnnouncement", { startsAt: e.target.value })} />
+            <input className="input-field" type="datetime-local" value={draft.homeAnnouncement?.endsAt || ""} onChange={e => patch("homeAnnouncement", { endsAt: e.target.value })} />
+          </div>
         </div>
         <div className="card landing-hover-card" style={{ borderColor: draft.maintenance?.enabled ? "rgba(251,191,36,0.24)" : undefined }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
@@ -4792,6 +5058,9 @@ function AdminUsers({ allUsers, allUC, allCourses, passPlans = PASS_PLANS, onRef
   const [selectedTestIds, setSelectedTestIds] = useState([]);
   const activePlans = (passPlans?.length ? passPlans : PASS_PLANS).filter(p => p.isActive !== false);
   const [manualPlanId, setManualPlanId] = useState(activePlans[0]?.id || "");
+  const [notes, setNotes] = useState([]);
+  const [noteText, setNoteText] = useState("");
+  const [notesBusy, setNotesBusy] = useState("");
 
   useEffect(() => {
     if (!selectedUserId && users.length) setSelectedUserId(users.find(u => u.role !== "admin")?.id || users[0]?.id || "");
@@ -4827,6 +5096,60 @@ function AdminUsers({ allUsers, allUC, allCourses, passPlans = PASS_PLANS, onRef
     loadHistory();
     return () => { cancelled = true; };
   }, [selectedUser?.id]);
+
+  const loadUserNotes = useCallback(async () => {
+    if (!selectedUser?.id) {
+      setNotes([]);
+      return;
+    }
+    setNotesBusy("load");
+    const res = await fetch(`${IMPORTER_API}/user-notes?userId=${encodeURIComponent(selectedUser.id)}`, { cache: "no-store" }).catch(() => null);
+    const data = res?.ok ? await res.json().catch(() => null) : null;
+    setNotes(data?.notes || []);
+    setNotesBusy("");
+  }, [selectedUser?.id]);
+
+  useEffect(() => { loadUserNotes(); }, [loadUserNotes]);
+
+  async function addUserNote() {
+    if (!selectedUser?.id || !noteText.trim()) return;
+    setNotesBusy("add");
+    try {
+      const res = await fetch(`${IMPORTER_API}/user-notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: selectedUser.id, text: noteText.trim(), actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Could not add note.");
+      setNotes(data.notes || []);
+      setNoteText("");
+      notify?.("Note saved.", "success");
+    } catch (err) {
+      notify?.(err.message || "Could not add note.", "error");
+    } finally {
+      setNotesBusy("");
+    }
+  }
+
+  async function deleteUserNote(noteId) {
+    setNotesBusy(noteId);
+    try {
+      const res = await fetch(`${IMPORTER_API}/user-notes`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: selectedUser.id, noteId, actor: currentAdmin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || "Could not delete note.");
+      setNotes(data.notes || []);
+      notify?.("Note deleted.", "success");
+    } catch (err) {
+      notify?.(err.message || "Could not delete note.", "error");
+    } finally {
+      setNotesBusy("");
+    }
+  }
 
   async function refreshSelectedHistory() {
     if (!selectedUser?.id) return;
@@ -5049,6 +5372,29 @@ function AdminUsers({ allUsers, allUC, allCourses, passPlans = PASS_PLANS, onRef
             ) : (
               <div style={{ color: "#64748B", fontSize: 12 }}>No active login metadata saved yet.</div>
             )}
+          </div>
+          <div style={{ padding: 12, borderRadius: 12, background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.16)", marginBottom: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#C4B5FD", fontSize: 13, fontWeight: 850 }}>
+                <Icon n="notebook" s={15} /> Admin Notes
+              </div>
+              <button className="btn-ghost" style={{ minHeight: 30, padding: "6px 10px", fontSize: 11 }} onClick={loadUserNotes} disabled={notesBusy === "load"}>Refresh</button>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              <input className="input-field" value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && addUserNote()} placeholder="Add a private admin note..." />
+              <button className="btn-primary" disabled={notesBusy === "add" || !noteText.trim()} onClick={addUserNote}><Icon n="plus" s={13} />Add</button>
+            </div>
+            <div style={{ display: "grid", gap: 8 }}>
+              {notes.length ? notes.map(note => (
+                <div key={note.id} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 10, alignItems: "start", padding: 10, borderRadius: 11, background: "rgba(255,255,255,.035)", border: "1px solid rgba(255,255,255,.06)" }}>
+                  <div>
+                    <div style={{ color: "#CBD5E1", fontSize: 12, lineHeight: 1.5 }}>{note.text}</div>
+                    <div style={{ color: "#475569", fontSize: 10, marginTop: 4 }}>{formatDateTime(note.createdAt)} · {note.actorEmail || "admin"}</div>
+                  </div>
+                  <button className="btn-danger" style={{ minHeight: 28, padding: "5px 8px", fontSize: 10 }} disabled={notesBusy === note.id} onClick={() => deleteUserNote(note.id)}><Icon n="trash" s={10} /></button>
+                </div>
+              )) : <div style={{ color: "#64748B", fontSize: 12 }}>No notes for this user.</div>}
+            </div>
           </div>
           <div style={{ display: "grid", gap: 8 }}>
             {historyLoading ? [1,2,3].map(i => <div key={i} className="skeleton-card" style={{ minHeight: 58 }} />) : history.length ? history.map(attempt => (
@@ -5325,7 +5671,7 @@ function DashboardPage({ user, courses, userCourseIds, wrongQuestions, setPage, 
   const [notebooks, setNotebooks] = useState([]);
   const totalTests = myCourses.reduce((a, c) => a + configuredTestCount(c), 0);
   const currentPass = passStatus(user?.pass);
-  const announcementVisible = announcement?.enabled && (
+  const announcementVisible = isWindowLive(announcement) && (
     !announcement.target ||
     announcement.target === "all" ||
     (announcement.target === "paid" && currentPass.active) ||
@@ -5512,6 +5858,76 @@ function DashboardPage({ user, courses, userCourseIds, wrongQuestions, setPage, 
   );
 }
 
+function StudentPassPage({ user, courses, userCourseIds, passPlans = PASS_PLANS, setPage }) {
+  const status = passStatus(user.pass);
+  const optedCourses = courses.filter(c => userCourseIds.includes(c.id));
+  const activePlan = passPlans.find(p => p.id === user.pass?.planId);
+  return (
+    <div className="fade-in">
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 18 }}>
+        <div>
+          <h1 style={{ color: "#F8FAFC", fontSize: 24, fontWeight: 900, margin: 0 }}>My Pass</h1>
+          <p style={{ color: "#64748B", fontSize: 13, marginTop: 4 }}>Access, expiry, and enrolled course summary.</p>
+        </div>
+        <button className="btn-ghost" onClick={() => setPage("courses")}><Icon n="courses" s={14} />Browse Courses</button>
+      </div>
+      <div className="responsive-two-col">
+        <div className="card surface-lift" style={{ borderColor: status.active ? "rgba(16,185,129,.22)" : "rgba(251,191,36,.2)", background: status.active ? "linear-gradient(135deg,rgba(16,185,129,.08),rgba(124,58,237,.05))" : "linear-gradient(135deg,rgba(251,191,36,.08),rgba(124,58,237,.05))" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", marginBottom: 18 }}>
+            <div>
+              <div className={`tag ${status.active ? "tag-green" : "tag-amber"}`} style={{ marginBottom: 10 }}>{status.active ? "Active" : "No active pass"}</div>
+              <div style={{ color: "#F8FAFC", fontSize: 24, fontWeight: 900 }}>{user.pass?.planName || activePlan?.name || "Choose a pass"}</div>
+              <div style={{ color: "#94A3B8", fontSize: 13, marginTop: 5 }}>{status.active ? `${status.daysLeft} days left · expires ${formatDateTime(status.expiresAt)}` : "Activate a pass to unlock paid courses."}</div>
+            </div>
+            <div className="icon-tile" style={{ width: 48, height: 48, background: "rgba(124,58,237,.18)", color: "#A78BFA" }}><Icon n="tag" s={22} /></div>
+          </div>
+          <div className="progress-bar" style={{ height: 7, marginBottom: 14 }}>
+            <div className="progress-fill" style={{ width: status.active ? `${Math.min(100, Math.max(8, Math.round((status.daysLeft / Number(user.pass?.durationDays || activePlan?.durationDays || status.daysLeft || 1)) * 100)))}%` : "0%", background: "linear-gradient(90deg,#7C3AED,#34D399)" }} />
+          </div>
+          <button className={status.active ? "btn-ghost" : "btn-primary"} onClick={() => setPage("courses")}><Icon n={status.active ? "courses" : "rupee"} s={14} />{status.active ? "Manage Courses" : "Activate Pass"}</button>
+        </div>
+        <div className="card">
+          <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 850, marginBottom: 12 }}>Account Access</div>
+          <div style={{ display: "grid", gap: 10 }}>
+            {[
+              ["Email", user.email],
+              ["Role", user.role === "admin" ? "Admin" : "Student"],
+              ["Payment", user.pass?.paymentMode || "Not active"],
+              ["Reference", user.pass?.paymentRef || user.pass?.orderId || "—"],
+            ].map(([label, value]) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 12, paddingBottom: 9, borderBottom: "1px solid rgba(255,255,255,.055)" }}>
+                <span style={{ color: "#64748B", fontSize: 12 }}>{label}</span>
+                <span style={{ color: "#CBD5E1", fontSize: 12, fontWeight: 750, textAlign: "right", overflowWrap: "anywhere" }}>{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="card" style={{ marginTop: 16 }}>
+        <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 850, marginBottom: 12 }}>Enrolled Courses</div>
+        {optedCourses.length ? (
+          <div style={{ display: "grid", gap: 9 }}>
+            {optedCourses.map(course => {
+              const total = configuredTestCount(course);
+              return (
+                <div key={course.id} className="tap-card" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", padding: 12, borderRadius: 12, background: "rgba(255,255,255,.035)", border: "1px solid rgba(255,255,255,.07)" }}>
+                  <div>
+                    <div style={{ color: "#F8FAFC", fontSize: 13, fontWeight: 850 }}>{course.title}</div>
+                    <div style={{ color: "#64748B", fontSize: 12, marginTop: 3 }}>{total} test{total === 1 ? "" : "s"} · {isCourseFree(course) ? "free course" : "pass course"}</div>
+                  </div>
+                  <button className="btn-ghost" style={{ minHeight: 34, padding: "7px 12px", fontSize: 12 }} onClick={() => setPage("tests")}>Open</button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ color: "#64748B", fontSize: 13 }}>No courses enrolled yet.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── TEST ATTEMPT REPORT ─────────────────────────────────────────────────────
 function TestAttemptReport({ report, user, onBack }) {
   const [mode, setMode] = useState("report");
@@ -5623,6 +6039,7 @@ function TestAttemptReport({ report, user, onBack }) {
   const timeSpentMin = timeSpentSec ? Math.round(timeSpentSec / 60) : 0;
   const avgTimePerAttempt = attemptedCount && timeSpentSec ? Math.round(timeSpentSec / attemptedCount) : 0;
   const marksPerMinute = timeSpentMin ? (Number(summary.score || 0) / timeSpentMin).toFixed(1) : "—";
+  const riskEvents = Array.isArray(summary.riskEvents) ? summary.riskEvents : [];
   const subjectRows = summary.subjects?.length ? summary.subjects : subjects.map(s => ({ name: s.name, totalQuestions: s.questions.length, attempted: 0, correct: 0, wrong: 0, score: 0, maxMarks: s.questions.reduce((a, q) => a + (q.marks?.cm || 0), 0), timeSpentSec: 0 }));
   const momentumData = (summary.attemptedQuestions || []).map((q, i, arr) => ({
     name: `Q${q.globalQNum || i + 1}`,
@@ -6025,6 +6442,7 @@ function TestAttemptReport({ report, user, onBack }) {
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button className="report-tab active"><span className="tab-icon"><Icon n="bar" s={13} /></span> Scorecard</button>
+          <button className="report-tab" onClick={() => window.print()}><span className="tab-icon"><Icon n="download" s={13} /></span> Export PDF</button>
           <button className="report-tab" onClick={() => setMode("solution")}><span className="tab-icon"><Icon n="eye" s={13} /></span> Solutions</button>
           <button className="report-tab close-tab" onClick={onBack}><span className="tab-icon"><Icon n="x" s={13} /></span> Close</button>
         </div>
@@ -6036,6 +6454,7 @@ function TestAttemptReport({ report, user, onBack }) {
             ["Score", `${summary.score}/${summary.maxMarks}`, "#A78BFA", "target"],
             ["Percentage", `${summary.percentage}%`, "#38BDF8", "percent"],
             ["Leaderboard", leaderboardLabel, "#F59E0B", "award"],
+            ["Focus Events", riskEvents.length, riskEvents.length ? "#F87171" : "#34D399", riskEvents.length ? "alert-tri" : "check-circle"],
             ["Accuracy", `${accuracy}%`, "#34D399", "check-circle"],
             ["Attempt Rate", `${attemptRate}%`, "#FCD34D", "zap"],
             ["Paper Time", timeSpentSec ? `${timeSpentMin} min` : "—", "#94A3B8", "clock"],
@@ -6085,6 +6504,11 @@ function TestAttemptReport({ report, user, onBack }) {
                   {text}
                 </div>
               ))}
+              {riskEvents.length > 0 && (
+                <div className="insight-card" style={{ color: "#FCA5A5", fontSize: 13, lineHeight: 1.5 }}>
+                  {riskEvents.length} focus/fullscreen event{riskEvents.length === 1 ? "" : "s"} recorded. Review attempt discipline before ranking decisions.
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -6187,6 +6611,8 @@ export default function App() {
   const [activeReport, setActiveReport] = useState(null);
   const [passPlans, setPassPlans] = useState(PASS_PLANS);
   const [appSettings, setAppSettings] = useState(DEFAULT_SETTINGS);
+  const [changelogItems, setChangelogItems] = useState([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const appMainRef = useRef(null);
@@ -6209,14 +6635,17 @@ export default function App() {
   }, [user?.role]);
 
   const syncAdminConfig = useCallback(async () => {
-    const [planRes, settingsRes] = await Promise.all([
+    const [planRes, settingsRes, changelogRes] = await Promise.all([
       fetch(`${IMPORTER_API}/pass-plans`, { cache: "no-store" }).catch(() => null),
       fetch(`${IMPORTER_API}/settings`, { cache: "no-store" }).catch(() => null),
+      fetch(`${IMPORTER_API}/changelog`, { cache: "no-store" }).catch(() => null),
     ]);
     const planData = planRes?.ok ? await planRes.json().catch(() => null) : null;
     const settingsData = settingsRes?.ok ? await settingsRes.json().catch(() => null) : null;
+    const changelogData = changelogRes?.ok ? await changelogRes.json().catch(() => null) : null;
     if (planData?.plans?.length) setPassPlans(planData.plans);
     if (settingsData?.settings) setAppSettings({ ...DEFAULT_SETTINGS, ...settingsData.settings });
+    if (changelogData?.items) setChangelogItems(changelogData.items);
   }, []);
 
   const refreshCurrentUser = useCallback(async () => {
@@ -6441,6 +6870,12 @@ export default function App() {
     />
   );
 
+  const notifications = [
+    ...(isWindowLive(appSettings.banner) && appSettings.banner?.text ? [{ id: "banner", title: "Website update", body: appSettings.banner.text, icon: "zap" }] : []),
+    ...(isWindowLive(appSettings.homeAnnouncement) && appSettings.homeAnnouncement?.title ? [{ id: "home", title: appSettings.homeAnnouncement.title, body: appSettings.homeAnnouncement.body, icon: "file-text" }] : []),
+    ...changelogItems.filter(item => item.published !== false).slice(0, 4).map(item => ({ id: item.id, title: item.title, body: item.body || item.version || "New update", icon: "download" })),
+  ];
+
   const renderPage = () => {
     if (activeReport) return <TestAttemptReport report={activeReport} user={user} onBack={() => setActiveReport(null)} />;
     switch (page) {
@@ -6449,6 +6884,7 @@ export default function App() {
       case "tests": return <TestsPage courses={courses} setCoursesView={setCourses} userCourseIds={accessibleCourseIds} onStartTest={setActiveTest} onSetPage={setPage} onViewAnalysis={setActiveReport} user={user} />;
       case "analysis": return <AnalysisPage courses={courses} userCourseIds={accessibleCourseIds} user={user} />;
       case "notebook": return <NotebookPage user={user} />;
+      case "pass": return <StudentPassPage user={user} courses={courses} userCourseIds={accessibleCourseIds} passPlans={passPlans} setPage={setPage} />;
       case "admin": return user.role === "admin"
         ? <AdminPage allCourses={courses} setAllCourses={setCourses} passPlans={passPlans} setPassPlans={setPassPlans} appSettings={appSettings} setAppSettings={setAppSettings} user={user} notify={notify} onImpersonate={handleImpersonate} />
         : <BrandedNotice icon="admin" title="Admin access required" body="This page is only available from an admin account." actionLabel="Back to Dashboard" onAction={() => setPage("dashboard")} />;
@@ -6468,7 +6904,7 @@ export default function App() {
       <div className="app-shell">
         {!activeReport && <Sidebar user={user} page={page} setPage={setPage} courses={courses} userCourseIds={accessibleCourseIds} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} onLogout={handleLogout} />}
         <div ref={appMainRef} className="app-main" style={activeReport ? { padding: 0 } : undefined}>
-          {!activeReport && appSettings.banner?.enabled && appSettings.banner?.text && (
+          {!activeReport && isWindowLive(appSettings.banner) && appSettings.banner?.text && (
             <div className={`site-banner banner-${appSettings.banner.variant || "info"}`}>
               <Icon n={appSettings.banner.variant === "success" ? "check-circle" : appSettings.banner.variant === "warning" ? "alert-tri" : "zap"} s={15} />
               <span>{appSettings.banner.text}</span>
@@ -6496,6 +6932,26 @@ export default function App() {
               </div>
             </div>
             <div className="mobile-top-actions" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ position: "relative" }}>
+                <button className="btn-ghost notification-btn" onClick={() => setNotificationsOpen(v => !v)} style={{ minHeight: 32, padding: "7px 10px", fontSize: 12 }}>
+                  <Icon n="file-text" s={14} />Updates
+                  {notifications.length > 0 && <span className="tag tag-purple" style={{ padding: "2px 6px", fontSize: 10 }}>{notifications.length}</span>}
+                </button>
+                {notificationsOpen && (
+                  <div className="dropdown-panel notification-panel">
+                    <div style={{ color: "#F1F5F9", fontSize: 13, fontWeight: 850, marginBottom: 9 }}>Notifications</div>
+                    {notifications.length ? notifications.map(note => (
+                      <div key={note.id} style={{ display: "flex", gap: 9, padding: "10px 0", borderTop: "1px solid rgba(255,255,255,.055)" }}>
+                        <div className="icon-tile" style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(124,58,237,.15)", color: "#A78BFA" }}><Icon n={note.icon} s={14} /></div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ color: "#E2E8F0", fontSize: 12, fontWeight: 800 }}>{note.title}</div>
+                          <div style={{ color: "#64748B", fontSize: 11, lineHeight: 1.45, marginTop: 2 }}>{note.body}</div>
+                        </div>
+                      </div>
+                    )) : <div style={{ color: "#64748B", fontSize: 12 }}>No new notifications.</div>}
+                  </div>
+                )}
+              </div>
               <SupportButton compact />
               {user.role === "admin" && <span className="tag tag-amber" style={{ fontSize: 11 }}><Icon n="zap" s={10} /> Admin</span>}
               <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#7C3AED,#4F46E5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, cursor: "pointer" }} onClick={() => setPage("settings")}>{user.avatar}</div>

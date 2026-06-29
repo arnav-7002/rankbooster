@@ -3,8 +3,8 @@ import { json, readJson, supabaseRequest, upsertRows, eq } from "./_shared.js";
 export async function onRequestOptions() { return json({ ok: true }); }
 
 const DEFAULT_SETTINGS = {
-  banner: { enabled: false, text: "", variant: "info" },
-  homeAnnouncement: { enabled: false, title: "", body: "", target: "all", courseId: "" },
+  banner: { enabled: false, text: "", variant: "info", startsAt: "", endsAt: "" },
+  homeAnnouncement: { enabled: false, title: "", body: "", target: "all", courseId: "", startsAt: "", endsAt: "" },
   payments: { enabled: false, upiId: "", payeeName: "RankBooster", note: "Scan the QR, complete payment, then enter the UTR/reference ID." },
   resumes: { expiryHours: 24 },
   cleanup: { noPassInactiveDays: "never", freeCourseInactiveDays: "never" },

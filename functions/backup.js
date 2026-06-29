@@ -128,6 +128,9 @@ export async function onRequestPost({ request, env }) {
   }
 
   if (body.wipeFirst) {
+    if (body.confirmText !== "RESTORE") {
+      return json({ error: "Type RESTORE to wipe current data before restoring." }, 400);
+    }
     for (const table of [...TABLES].reverse()) await deleteTable(env, table);
   }
 

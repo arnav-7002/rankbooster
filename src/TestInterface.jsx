@@ -194,6 +194,7 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
   const [tip, setTip]                     = useState(null);
   const [guardPaused, setGuardPaused]     = useState(false);
   const [guardReason, setGuardReason]     = useState("");
+  const [riskEvents, setRiskEvents]       = useState(resumeState?.riskEvents || []);
   const examRootRef = useRef(null);
   const attemptSavedRef = useRef(false);
   const questionTimesRef = useRef(resumeState?.questionTimes || {});
@@ -234,9 +235,10 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
 
   const pauseFor = useCallback((reason) => {
     if (showInstructions || showResults) return;
+    setRiskEvents(prev => [...prev, { reason, at: new Date().toISOString(), qId: activeQId || "", qNum: globalQNum || 0 }].slice(-80));
     setGuardReason(reason);
     setGuardPaused(true);
-  }, [showInstructions, showResults]);
+  }, [activeQId, globalQNum, showInstructions, showResults]);
 
   async function resumeExam() {
     await enterFullscreen();
@@ -531,9 +533,10 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
       totalQuestions: totalQ,
       subjects: subjectRows,
       questionTimes,
+      riskEvents,
       attemptedQuestions,
     };
-  }, [responses, subjects, test, totalQ, flushQuestionTiming]);
+  }, [responses, riskEvents, subjects, test, totalQ, flushQuestionTiming]);
 
   const buildResumeState = useCallback(() => {
     const questionTimes = flushQuestionTiming();
@@ -545,6 +548,7 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
       draftResponses,
       statuses,
       questionTimes,
+      riskEvents,
       timerSecs: timer.secs,
       elapsedSecs,
       courseId: test.courseId || null,
@@ -557,7 +561,7 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
       sourceUrl: test.sourceUrl || "",
       savedAt: new Date().toISOString(),
     };
-  }, [bitsatBonusEntered, draftResponses, elapsedSecs, flushQuestionTiming, qIdx, responses, secIdx, statuses, test, timer.secs]);
+  }, [bitsatBonusEntered, draftResponses, elapsedSecs, flushQuestionTiming, qIdx, responses, riskEvents, secIdx, statuses, test, timer.secs]);
 
   const resumeStateFingerprint = useCallback(() => JSON.stringify({
     secIdx,
@@ -566,7 +570,8 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
     responses,
     draftResponses,
     statuses,
-  }), [bitsatBonusEntered, draftResponses, qIdx, responses, secIdx, statuses]);
+    riskEvents,
+  }), [bitsatBonusEntered, draftResponses, qIdx, responses, riskEvents, secIdx, statuses]);
 
   const saveResumeDraft = useCallback((keepalive = false) => {
     if (!user?.offlineId || showResults || submitting || attemptSavedRef.current) return;

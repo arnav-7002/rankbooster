@@ -6208,6 +6208,7 @@ function TestAttemptReport({ report, user, onBack }) {
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button className="report-tab" onClick={() => setMode("report")}><span className="tab-icon"><Icon n="chevleft" s={13} /></span> Scorecard</button>
+            <button className="report-tab" onClick={() => window.print()}><span className="tab-icon"><Icon n="download" s={13} /></span> Export PDF</button>
             <button className="report-tab" onClick={() => setMode("solution")}><span className="tab-icon"><Icon n="eye" s={13} /></span> Solutions</button>
             <button className="report-tab close-tab" onClick={onBack}><span className="tab-icon"><Icon n="x" s={13} /></span> Close</button>
           </div>
@@ -6443,6 +6444,7 @@ function TestAttemptReport({ report, user, onBack }) {
         <div style={{ display: "flex", gap: 10 }}>
           <button className="report-tab active"><span className="tab-icon"><Icon n="bar" s={13} /></span> Scorecard</button>
           <button className="report-tab" onClick={() => window.print()}><span className="tab-icon"><Icon n="download" s={13} /></span> Export PDF</button>
+          <button className="report-tab" onClick={() => { setLeaderboardPage(1); setMode("leaderboard"); }}><span className="tab-icon"><Icon n="award" s={13} /></span> Leaderboard</button>
           <button className="report-tab" onClick={() => setMode("solution")}><span className="tab-icon"><Icon n="eye" s={13} /></span> Solutions</button>
           <button className="report-tab close-tab" onClick={onBack}><span className="tab-icon"><Icon n="x" s={13} /></span> Close</button>
         </div>

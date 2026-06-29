@@ -756,13 +756,20 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
     .instruction-test-pill{font-size:12px;font-weight:600;color:#2563EB;background:#DBEAFE;padding:3px 12px;border-radius:20px;border:1px solid #93C5FD;white-space:nowrap}
     .instruction-meta{font-size:12px;color:#374151;text-align:right}
     .instruction-content{max-width:800px;margin:32px auto;padding:0 20px}
+    .preflight-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,#102A72,#1E40AF 58%,#2389C2);border:0;border-radius:14px;color:white;box-shadow:0 22px 70px rgba(30,64,175,.18)}
+    .preflight-hero::after{content:"";position:absolute;right:-70px;top:-70px;width:210px;height:210px;border-radius:50%;background:rgba(255,255,255,.10);box-shadow:inset 0 0 0 34px rgba(255,255,255,.06)}
+    .preflight-hero h3{position:relative;z-index:1;color:white!important;font-size:18px!important;margin-bottom:6px!important}
+    .preflight-hero-copy{position:relative;z-index:1;color:rgba(255,255,255,.72);font-size:12px;line-height:1.55;margin-bottom:14px}
     .instruction-card{background:white;border:1px solid #D1D5DB;border-radius:8px;padding:20px 24px;margin-bottom:20px}
     .instruction-card h3{font-size:15px;font-weight:700;color:#111827;margin-bottom:16px}
     .instruction-card ul{padding-left:20px;font-size:13px;color:#374151;line-height:2.2}
     .preflight-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:4px}
     .preflight-tile{border:1px solid #E5E7EB;border-radius:8px;padding:11px 12px;background:#F9FAFB}
+    .preflight-hero .preflight-tile{position:relative;z-index:1;background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.20);backdrop-filter:blur(8px)}
     .preflight-value{font-size:16px;font-weight:800;color:#111827}
+    .preflight-hero .preflight-value{color:white}
     .preflight-label{font-size:11px;color:#6B7280;margin-top:2px}
+    .preflight-hero .preflight-label{color:rgba(255,255,255,.68)}
     .preflight-warning{margin-top:12px;border:1px solid #FCD34D;background:#FFFBEB;color:#92400E;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.55}
     .instruction-legend{display:flex;gap:24px;flex-wrap:wrap}
     .instruction-start{padding:12px 40px;background:#2563EB;border:none;border-radius:6px;color:white;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif}
@@ -870,8 +877,11 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
           <span className="instruction-meta">Duration: <strong>{test.duration||180} min</strong> · Total Questions: <strong>{totalQ}</strong> · Max Marks: <strong>{test.maxMarks||subjects.reduce((a,s)=>a+s.questions.reduce((b,q)=>b+(q.marks?.cm||0),0),0)}</strong></span>
         </div>
         <div className="instruction-content">
-          <div className="instruction-card">
+          <div className="instruction-card preflight-hero">
             <h3>Test Start Check</h3>
+            <div className="preflight-hero-copy">
+              Confirm the paper details before starting. Once started, your progress is saved as you move through the test and fullscreen protection is enabled.
+            </div>
             <div className="preflight-grid">
               <div className="preflight-tile"><div className="preflight-value">{test.name}</div><div className="preflight-label">Paper</div></div>
               <div className="preflight-tile"><div className="preflight-value">{test.duration || 180} min</div><div className="preflight-label">Duration</div></div>

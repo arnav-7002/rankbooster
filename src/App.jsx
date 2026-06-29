@@ -215,6 +215,41 @@ button{touch-action:manipulation}
 .pass-plan-action .btn-primary,.pass-plan-action .btn-ghost{width:100%;min-height:40px;font-size:12px;display:inline-flex!important;visibility:visible!important}
 .pass-plan-action.is-renew .btn-ghost{border-color:rgba(52,211,153,.26);background:rgba(16,185,129,.08);color:#D1FAE5}
 .pass-renew-status{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;border-radius:10px;background:rgba(16,185,129,.10);border:1px solid rgba(52,211,153,.18);color:#6EE7B7;font-size:10px;font-weight:800}
+.subscription-panel{position:relative;overflow:hidden;margin-bottom:18px;border-color:rgba(124,58,237,.24)!important;background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(15,23,42,.28),rgba(255,255,255,.025))!important}
+.subscription-panel.is-active{border-color:rgba(52,211,153,.28)!important;background:linear-gradient(135deg,rgba(16,185,129,.09),rgba(124,58,237,.045),rgba(255,255,255,.025))!important}
+.subscription-panel::before{content:"";position:absolute;inset:-30% auto auto -16%;width:310px;height:310px;border-radius:50%;background:radial-gradient(circle,rgba(124,58,237,.18),transparent 62%);pointer-events:none}
+.subscription-head{position:relative;z-index:1;display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:14px}
+.subscription-title{display:flex;align-items:center;gap:10px;color:#F8FAFC;font-size:16px;font-weight:850}
+.subscription-icon{width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(124,58,237,.18);color:#C4B5FD;box-shadow:0 14px 32px rgba(124,58,237,.12)}
+.subscription-panel.is-active .subscription-icon{background:rgba(16,185,129,.14);color:#6EE7B7}
+.subscription-copy{color:#64748B;font-size:12px;margin-top:4px;line-height:1.45}
+.subscription-progress{height:6px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;margin:12px 0 4px}
+.subscription-progress span{display:block;height:100%;width:var(--pass-progress,0%);border-radius:999px;background:linear-gradient(90deg,#34D399,#A78BFA);animation:progressGrow .6s cubic-bezier(.2,.8,.2,1)}
+.empty-state-pro{position:relative;overflow:hidden;padding:34px 24px;text-align:center;border:1px solid rgba(255,255,255,.075);border-radius:18px;background:linear-gradient(135deg,rgba(124,58,237,.055),rgba(255,255,255,.028));min-height:180px;display:grid;place-items:center}
+.empty-state-pro::before{content:"";position:absolute;inset:auto auto -70px 50%;width:220px;height:150px;border-radius:50%;transform:translateX(-50%);background:radial-gradient(circle,rgba(124,58,237,.16),transparent 62%);pointer-events:none}
+.empty-state-inner{position:relative;z-index:1;display:grid;justify-items:center;gap:9px;max-width:420px}
+.empty-state-icon{width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:rgba(124,58,237,.16);color:#A78BFA;box-shadow:0 16px 36px rgba(124,58,237,.12)}
+.empty-state-title{color:#E2E8F0;font-size:15px;font-weight:850}
+.empty-state-body{color:#64748B;font-size:12px;line-height:1.55}
+.admin-groupbar{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 0 10px;max-width:1040px}
+.admin-groupbar::-webkit-scrollbar{display:none}
+.admin-group-btn{border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.035);color:#64748B;border-radius:999px;padding:8px 12px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:750;cursor:pointer;white-space:nowrap;transition:all .16s cubic-bezier(.2,.8,.2,1)}
+.admin-group-btn:hover{color:#CBD5E1;transform:translateY(-1px);border-color:rgba(167,139,250,.18)}
+.admin-group-btn.active{color:#EDE9FE;background:rgba(124,58,237,.24);border-color:rgba(167,139,250,.28);box-shadow:0 12px 28px rgba(124,58,237,.1)}
+.export-choice-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.export-choice{padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);color:#CBD5E1;text-align:left;font-family:'Outfit',sans-serif;cursor:pointer;transition:all .16s cubic-bezier(.2,.8,.2,1)}
+.export-choice:hover{transform:translateY(-2px);border-color:rgba(167,139,250,.3);background:rgba(124,58,237,.12);color:#F8FAFC}
+.export-choice strong{display:block;font-size:13px;margin:8px 0 3px}
+.export-choice span{display:block;color:#64748B;font-size:11px;line-height:1.45}
+.podium-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.podium-card{position:relative;overflow:hidden;border-radius:18px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(255,255,255,.035));padding:16px;min-height:142px}
+.podium-card::after{content:"";position:absolute;right:-30px;bottom:-42px;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,var(--podium-glow,rgba(167,139,250,.18)),transparent 65%)}
+.podium-card.rank-1{border-color:rgba(251,191,36,.28);--podium-glow:rgba(251,191,36,.24);transform:translateY(-8px)}
+.podium-rank{width:34px;height:34px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(124,58,237,.18);color:#C4B5FD;font-weight:900}
+.podium-card.rank-1 .podium-rank{background:rgba(251,191,36,.16);color:#FCD34D}
+.report-focus-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:18px}
+.report-focus-card{padding:14px;border-radius:15px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.035);display:flex;align-items:center;gap:11px}
+.report-focus-card .icon-tile{width:34px;height:34px}
 .skeleton-line{position:relative;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.06)}
 .skeleton-line::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);animation:skeletonSweep 1.1s infinite}
 .upi-qr-shell{position:relative;padding:12px;background:white;border-radius:14px;display:grid;place-items:center;min-height:220px;overflow:hidden}
@@ -251,6 +286,7 @@ button:disabled{cursor:not-allowed;opacity:.68}
 input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-text-fill-color:#E2E8F0!important;box-shadow:0 0 0 1000px #161622 inset!important;border:1px solid rgba(124,58,237,.34)!important;caret-color:#E2E8F0}
 @media (max-width:980px){.landing-wrap{padding:18px 18px 44px}.landing-main{grid-template-columns:1fr}.landing-auth-card{position:static!important}.landing-stat-grid{grid-template-columns:1fr!important}.landing-pass-stage{max-width:620px}.landing-pass-card{min-height:210px;border-radius:26px;padding:24px 28px}.landing-pass-card::after{right:-92px;top:28px;width:220px;height:220px}.pass-watermark{right:20px;bottom:24px;font-size:96px}.pass-brand-title{font-size:22px!important}.pass-title{font-size:20px!important}}
 @media (max-width:640px){.landing-wrap{padding:16px 14px calc(38px + env(safe-area-inset-bottom))}.landing-wrap header{align-items:flex-start!important;margin-bottom:28px!important}.landing-wrap header>div:nth-child(2){order:3;flex-basis:100%;justify-content:flex-start!important}.landing-wrap header>div:nth-child(3){width:100%;display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}.landing-wrap header>div:nth-child(3) .support-link{grid-column:1/-1;justify-content:center}.landing-wrap header>div:nth-child(3) button{width:100%;justify-content:center}.landing-main{gap:22px!important}.landing-pass-stage{width:100%;max-width:none;perspective:900px}.landing-pass-card{min-height:0;border-radius:22px;padding:20px 18px;transition:transform .12s ease-out,box-shadow .18s ease}.landing-pass-card:active{box-shadow:0 18px 48px rgba(49,46,129,.3),0 12px 28px rgba(0,0,0,.24)}.landing-hover-card:hover{transform:none}.landing-hover-card:active{transform:scale(.985);border-color:rgba(124,58,237,.3)}.landing-pass-card::after{right:-94px;top:38px;width:190px;height:190px;box-shadow:inset 0 0 0 32px rgba(255,255,255,.045)}.landing-pass-card::before{background:radial-gradient(circle at var(--mx,40%) var(--my,12%),rgba(255,255,255,.2),transparent 34%)}.pass-content{min-height:178px!important}.pass-brand-row{gap:8px!important;margin-bottom:20px!important}.pass-brand-logo{width:32px!important;height:32px!important;border-radius:9px!important}.pass-brand-title{font-size:19px!important}.pass-brand-title span{font-size:11px!important;padding:2px 6px!important}.pass-title{font-size:18px!important}.pass-meta-row{align-items:flex-start!important;flex-direction:column;gap:14px!important;margin-top:28px!important}.pass-exam-row{padding-left:0!important}.pass-mini-chip{width:31px;height:31px;margin-left:-5px}.pass-mini-chip:hover{transform:translateY(-2px) scale(1.08)}.pass-validity{text-align:left!important}.pass-validity>div:last-child{justify-content:flex-start!important;max-width:100%!important}.pass-validity-pill{height:22px;padding:0 8px;font-size:9px}.landing-stat-grid{gap:10px!important}.admin-tabs{width:100%;overflow-x:auto}.admin-tab.active{background:transparent}.site-banner{font-size:12px;line-height:1.45;margin-bottom:12px}.solution-layout{grid-template-columns:1fr;padding:14px}.solution-palette{position:static;max-height:none}.solution-grid{display:flex;overflow-x:auto;gap:8px;padding-bottom:3px}.solution-qbtn{min-width:40px}.report-top{padding:13px 14px;align-items:flex-start}.report-top>div:last-child{flex-wrap:wrap;justify-content:flex-end}.subject-strip{top:65px;padding:9px 14px}.notebook-layout{display:grid!important;grid-template-columns:1fr!important;gap:14px!important}.notebook-list{width:100%!important;display:grid!important;grid-template-columns:1fr!important;gap:10px!important;overflow:visible!important;padding:0!important}.notebook-list .btn-primary{width:100%!important;min-height:52px!important;margin-bottom:0!important;scroll-snap-align:unset!important}.notebook-create-btn{background:linear-gradient(135deg,#7C3AED,#6D28D9)!important;border-radius:14px!important}.notebook-list-item{min-width:0!important;margin-bottom:0!important;scroll-snap-align:unset!important}.notebook-main{min-width:0;width:100%}.notebook-main .card{padding:22px!important;text-align:center}.notebook-empty-state{min-height:150px!important;display:grid!important;place-items:center!important}.notebook-question-card{padding:14px!important;text-align:left!important}.notebook-question-card .btn-primary,.notebook-question-card .btn-ghost{flex:1;min-width:132px}.modal{min-width:0;width:94vw;padding:20px;border-radius:16px}.responsive-two-col,.tests-layout{grid-template-columns:1fr!important;display:grid}.tests-course-rail{width:100%}.card{border-radius:13px}.btn-primary,.btn-ghost,.btn-danger,.btn-success{min-height:42px}.scroll-top-btn{right:14px;bottom:calc(86px + env(safe-area-inset-bottom));width:40px;height:40px}}
+@media (max-width:760px){.subscription-head{align-items:flex-start;flex-direction:column}.subscription-title{font-size:14px}.subscription-icon{width:32px;height:32px}.pass-plan-grid{grid-template-columns:1fr!important}.empty-state-pro{min-height:142px;padding:24px 16px}.empty-state-icon{width:46px;height:46px}.podium-grid{grid-template-columns:1fr}.podium-card.rank-1{transform:none}.report-focus-strip{grid-template-columns:1fr}.export-choice-grid{grid-template-columns:1fr}.admin-groupbar{padding-bottom:2px}.admin-tabs-track{grid-template-columns:repeat(var(--tab-count,3),minmax(130px,1fr))}.payment-modal-grid{grid-template-columns:1fr}.upi-qr-shell{min-height:190px}.mobile-top-brand{display:flex!important}.mobile-top-actions{width:100%;justify-content:flex-start;overflow-x:auto;padding-bottom:2px}.notification-btn span:not(.tag){display:none}.course-card-grid{grid-template-columns:1fr!important}.responsive-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (hover:none){.card:hover,.card-hover:hover,.landing-hover-card:hover,.test-item-row:hover,.course-switch-card:hover,.nav-item:hover,.btn-primary:hover,.btn-ghost:hover,.btn-danger:hover,.btn-success:hover,.tag:hover,.card:hover .icon-tile,.test-item-row:hover .icon-tile{transform:none;box-shadow:none}.btn-primary:active,.btn-ghost:active,.btn-danger:active,.btn-success:active,.tap-card:active,.course-switch-card:active,.landing-hover-card:active{transform:scale(.985)}}
 @media (max-width:390px){.landing-pass-card{padding:18px 15px;border-radius:20px}.pass-content{min-height:176px!important}.pass-brand-title{font-size:17px!important}.pass-title{font-size:17px!important}.pass-mini-chip{width:29px;height:29px;margin-left:-4px}.pass-validity-pill{height:21px;padding:0 7px}.mobile-top-actions .support-link{width:40px!important;padding:8px!important}.mobile-top-actions .support-link span{display:none!important}}
 @page{size:A4 landscape;margin:10mm}
@@ -761,6 +797,7 @@ const Icon = ({ n, s = 16, c }) => {
     "x-circle":   <><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></>,
     search:       <><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>,
     star:         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>,
+    sparkles:     <><path d="M12 3l1.8 4.5L18 9.3l-4.2 1.8L12 15.6l-1.8-4.5L6 9.3l4.2-1.8L12 3z"/><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14z"/><path d="M5 14l.9 2.1L8 17l-2.1.9L5 20l-.9-2.1L2 17l2.1-.9L5 14z"/></>,
     users:        <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></>,
     book:         <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>,
     "book-open":  <><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>,
@@ -865,6 +902,42 @@ function Modal({ open, onClose, title, children, width = 560, overlayClassName =
       </div>
     </div>,
     document.body
+  );
+}
+
+function EmptyState({ icon = "sparkles", title, body, action }) {
+  return (
+    <div className="empty-state-pro">
+      <div className="empty-state-inner">
+        <div className="empty-state-icon"><Icon n={icon} s={24} /></div>
+        <div className="empty-state-title">{title}</div>
+        {body && <div className="empty-state-body">{body}</div>}
+        {action}
+      </div>
+    </div>
+  );
+}
+
+function ExportPdfModal({ open, onClose, onPick }) {
+  return (
+    <Modal open={open} onClose={onClose} title="Export PDF" width={520}>
+      <div className="export-choice-grid">
+        {[
+          ["report", "Scorecard", "Summary, graphs and insights", "bar"],
+          ["leaderboard", "Leaderboard", "Ranks and 50-entry pages", "award"],
+          ["solution", "Solutions", "Question review with answers", "eye"],
+        ].map(([key, title, body, icon]) => (
+          <button key={key} className="export-choice" onClick={() => onPick(key)}>
+            <Icon n={icon} s={18} c="#A78BFA" />
+            <strong>{title}</strong>
+            <span>{body}</span>
+          </button>
+        ))}
+      </div>
+      <div style={{ color: "#64748B", fontSize: 12, lineHeight: 1.5, marginTop: 12 }}>
+        Tip: choose Save as PDF in the print dialog for a dark themed copy.
+      </div>
+    </Modal>
   );
 }
 
@@ -1478,6 +1551,9 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
   const [couponBusy, setCouponBusy] = useState(false);
   const currentPass = user?.pass;
   const currentPassStatus = passStatus(currentPass);
+  const activePassPlan = passPlans.find(p => p.id === currentPass?.planId);
+  const activePassDuration = Math.max(1, Number(currentPass?.durationDays || activePassPlan?.durationDays || currentPassStatus.daysLeft || 1));
+  const passProgress = currentPassStatus.active ? Math.max(6, Math.min(100, Math.round((currentPassStatus.daysLeft / activePassDuration) * 100))) : 0;
   const paymentSettings = { ...DEFAULT_SETTINGS.payments, ...(appSettings.payments || {}) };
   const paymentModalId = paymentModal?.id || "";
 
@@ -1660,24 +1736,27 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
       <h2 style={{ fontSize: 20, fontWeight: 700, color: "#F1F5F9", marginBottom: 4 }}>My Courses</h2>
       <p style={{ fontSize: 13, color: "#475569", marginBottom: 24 }}>Activate a pass, then enroll into any course you want</p>
 
-      <div className="card" style={{ marginBottom: 18, borderColor: currentPassStatus.active ? "rgba(52,211,153,0.28)" : "rgba(124,58,237,0.2)" }}>
-        <div className="responsive-split" style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "center", marginBottom: 14 }}>
-          <div>
-            <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 800 }}>{currentPassStatus.active ? currentPassStatus.label : "Choose a pass to unlock courses"}</div>
-            <div style={{ color: "#64748B", fontSize: 12, marginTop: 3 }}>
-              {currentPassStatus.active ? `${currentPassStatus.daysLeft} days left · expires ${formatDateTime(currentPassStatus.expiresAt)}` : "Choose a pass duration to continue."}
+      <div className={`card subscription-panel${currentPassStatus.active ? " is-active" : ""}`} style={{ "--pass-progress": `${passProgress}%` }}>
+        <div className="subscription-head">
+          <div style={{ minWidth: 0 }}>
+            <div className="subscription-title">
+              <span className="subscription-icon"><Icon n={currentPassStatus.active ? "check-circle" : "price-tag"} s={18} /></span>
+              <span>{currentPassStatus.active ? currentPassStatus.label : "Choose a pass to unlock courses"}</span>
             </div>
+            <div className="subscription-copy">
+              {currentPassStatus.active ? `Access active until ${formatDateTime(currentPassStatus.expiresAt)}. Renewing adds days to this expiry.` : "Pick a duration once, then enroll into any paid course while your pass is active."}
+            </div>
+            {currentPassStatus.active && <div className="subscription-progress"><span /></div>}
           </div>
-          {currentPassStatus.active && <span className="tag tag-green">Pass Active</span>}
+          {currentPassStatus.active ? (
+            <span className="tag tag-green">{currentPassStatus.daysLeft} day{currentPassStatus.daysLeft === 1 ? "" : "s"} left</span>
+          ) : (
+            <span className="tag tag-purple">Pass required</span>
+          )}
         </div>
         <div style={{ opacity: passBusy ? 0.65 : 1, pointerEvents: passBusy ? "none" : "auto" }}>
           <PassPlanCards compact activePass={currentPass} onSelect={activatePlan} plans={passPlans} />
         </div>
-        {currentPassStatus.active && (
-          <div style={{ color: "#64748B", fontSize: 11, marginTop: 10, lineHeight: 1.5 }}>
-            Renew adds the selected pass duration to your current expiry.
-          </div>
-        )}
         {!currentPassStatus.active && pendingOrders.length > 0 && (
           <div style={{ marginTop: 12, padding: 14, borderRadius: 14, background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.22)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9, color: "#FCD34D", fontSize: 13, fontWeight: 850, marginBottom: 8 }}>
@@ -1708,11 +1787,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
       </div>
 
       {myCourses.length === 0 && (
-        <div className="card" style={{ textAlign: "center", padding: 40 }}>
-          <div style={{ marginBottom: 12, display:"flex", justifyContent:"center" }}><Icon n="books" s={36} c="#475569" /></div>
-          <div style={{ fontSize: 15, color: "#94A3B8" }}>No courses enrolled yet</div>
-          <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>Browse available courses below</div>
-        </div>
+        <EmptyState icon="books" title="No courses enrolled yet" body="Your enrolled test series will appear here with progress, attempts, and resume shortcuts." />
       )}
 
       {myCourses.length > 0 && (
@@ -2255,7 +2330,7 @@ function AnalysisPage({ courses, userCourseIds, user }) {
       <h2 style={{ fontSize: 20, fontWeight: 700, color: "#F1F5F9", marginBottom: 4 }}>Analysis</h2>
       <p style={{ fontSize: 13, color: "#475569", marginBottom: 20 }}>Performance breakdown by course</p>
 
-      {myCourses.length === 0 && <div className="card" style={{ padding: 40, textAlign: "center", color: "#475569" }}>No courses enrolled.</div>}
+      {myCourses.length === 0 && <EmptyState icon="courses" title="No courses enrolled" body="Activate a pass or join a free course to see tests here." />}
 
       {myCourses.length > 0 && (
         <>
@@ -2475,7 +2550,7 @@ function NotebookPage({ user }) {
             <Icon n="plus" s={14} /> New Notebook
           </button>
           {loadingNotebooks && <div style={{ fontSize: 12, color: "#64748B", textAlign: "center", padding: 16 }}>Loading notebooks...</div>}
-          {!loadingNotebooks && notebooks.length === 0 && <div style={{ fontSize: 12, color: "#334155", textAlign: "center", padding: 16 }}>No notebooks yet</div>}
+          {!loadingNotebooks && notebooks.length === 0 && <EmptyState icon="notebook" title="No notebooks yet" body="Create one, then save questions from solution review." />}
           {notebooks.map(n => (
             <div key={n.id} className={`notebook-list-item tap-card ${selectedNb === n.id ? "active" : ""}`} onClick={() => setSelectedNb(n.id)}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2498,17 +2573,9 @@ function NotebookPage({ user }) {
         {/* Questions in selected notebook */}
         <div className="notebook-main">
           {!nb ? (
-            <div className="card notebook-empty-state" style={{ textAlign: "center", padding: 48 }}>
-              <div style={{ marginBottom: 12, display:"flex", justifyContent:"center" }}><Icon n="notebook" s={32} c="#475569" /></div>
-              <div style={{ color: "#94A3B8", fontSize: 14, fontWeight: 750 }}>Select a notebook</div>
-              <div style={{ color: "#475569", fontSize: 12, marginTop: 4 }}>Saved questions and practice controls will appear here.</div>
-            </div>
+            <EmptyState icon="notebook" title="Select a notebook" body="Saved questions and practice controls will appear here." />
           ) : nbQuestions.length === 0 ? (
-            <div className="card notebook-empty-state" style={{ textAlign: "center", padding: 48 }}>
-              <div style={{ marginBottom: 12, display:"flex", justifyContent:"center" }}><Icon n="file-text" s={32} c="#475569" /></div>
-              <div style={{ fontSize: 14, color: "#94A3B8", marginBottom: 6 }}>{nb.name}</div>
-              <div style={{ color: "#475569", fontSize: 12 }}>No questions added yet. Add questions from the solution review page.</div>
-            </div>
+            <EmptyState icon="file-text" title={nb.name} body="No questions added yet. Add questions from the solution review page." />
           ) : (
             <>
               <div style={{ fontSize: 14, fontWeight: 600, color: "#E2E8F0", marginBottom: 12 }}>{nb.name} <span style={{ fontSize: 12, color: "#475569", fontWeight: 400 }}>({nbQuestions.length} questions)</span></div>
@@ -2605,9 +2672,18 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
   const [changelogItems, setChangelogItems] = useState([]);
   const allUC = {};
   const adminTabs = [["health", "System Health"], ["courses", "Courses"], ["tests", "Test Management"], ["plans", "Pass Pricing"], ["coupons", "Coupons"], ["payments", "Payments"], ["resumes", "Resumes"], ["announcements", "Announcements"], ["cleanup", "Data Rules"], ["users", "Users"], ["exports", "Exports"], ["activity", "Activity"], ["changelog", "Changelog"], ["checklist", "Publish Checklist"], ["reset", "Reset"]];
-  const tabIndex = Math.max(0, adminTabs.findIndex(([k]) => k === tab));
+  const adminGroups = [
+    { id: "overview", label: "Overview", tabs: ["health", "checklist", "changelog"] },
+    { id: "content", label: "Content", tabs: ["courses", "tests", "announcements"] },
+    { id: "access", label: "Access", tabs: ["plans", "coupons", "payments"] },
+    { id: "users", label: "Users", tabs: ["users", "resumes", "cleanup"] },
+    { id: "ops", label: "Ops", tabs: ["exports", "activity", "reset"] },
+  ];
+  const activeGroup = adminGroups.find(g => g.tabs.includes(tab)) || adminGroups[0];
+  const visibleAdminTabs = adminTabs.filter(([k]) => activeGroup.tabs.includes(k));
+  const tabIndex = Math.max(0, visibleAdminTabs.findIndex(([k]) => k === tab));
   const adminTabWidth = 148;
-  const adminTrackWidth = (adminTabs.length * adminTabWidth) + ((adminTabs.length - 1) * 4);
+  const adminTrackWidth = (visibleAdminTabs.length * adminTabWidth) + ((visibleAdminTabs.length - 1) * 4);
   const toast = useCallback((message, type = "info") => notify?.(message, type), [notify]);
 
   const checkDatabase = useCallback(async () => {
@@ -2737,8 +2813,20 @@ function AdminPage({ allCourses, setAllCourses, passPlans, setPassPlans, appSett
         )}
       </div>
       <div className="admin-tabs">
-        <div className="admin-tabs-track" style={{ "--tab-index": tabIndex, "--tab-count": adminTabs.length, minWidth: adminTrackWidth }}>
-          {adminTabs.map(([k, v]) => (
+        <div className="admin-groupbar">
+          {adminGroups.map(group => (
+            <button
+              key={group.id}
+              type="button"
+              className={`admin-group-btn ${activeGroup.id === group.id ? "active" : ""}`}
+              onClick={() => setTab(group.tabs[0])}
+            >
+              {group.label}
+            </button>
+          ))}
+        </div>
+        <div className="admin-tabs-track" style={{ "--tab-index": tabIndex, "--tab-count": visibleAdminTabs.length, minWidth: adminTrackWidth }}>
+          {visibleAdminTabs.map(([k, v]) => (
             <button key={k} className={`admin-tab ${tab === k ? "active" : ""}`} onClick={() => setTab(k)}>{v}</button>
           ))}
         </div>
@@ -6005,6 +6093,7 @@ function TestAttemptReport({ report, user, onBack }) {
   const [leaderboard, setLeaderboard] = useState({ loading: true, entries: [], myRank: null, total: 0 });
   const [leaderboardPage, setLeaderboardPage] = useState(1);
   const [leaderboardFull, setLeaderboardFull] = useState({ loading: false, entries: [], total: 0 });
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
 
   const { course, folder, test, attempt } = report || {};
   const attemptHasDetails = !!(
@@ -6111,7 +6200,16 @@ function TestAttemptReport({ report, user, onBack }) {
     timeSpentSec ? `Average time per attempted question: ${avgTimePerAttempt}s.` : "Timing data starts from new attempts after this update.",
     Number(summary.wrong || 0) > Number(summary.correct || 0) * 0.35 ? "Negative marking risk is high. Mark fewer guesses for review." : "Wrong-answer pressure is under control.",
   ];
+  const attemptedSubjects = subjectRows.filter(s => Number(s.attempted || 0) > 0);
+  const bestSubject = attemptedSubjects.slice().sort((a, b) => ((Number(b.correct || 0) / Math.max(1, Number(b.attempted || 0))) - (Number(a.correct || 0) / Math.max(1, Number(a.attempted || 0)))))[0];
+  const focusSubject = subjectRows.slice().sort((a, b) => (Number(b.wrong || 0) - Number(a.wrong || 0)) || (Number(b.totalQuestions || 0) - Number(b.attempted || 0)) - (Number(a.totalQuestions || 0) - Number(a.attempted || 0)))[0];
   const leaderboardLabel = leaderboard.loading ? "..." : leaderboard.myRank ? `#${leaderboard.myRank}/${leaderboard.total || leaderboard.myRank}` : "New";
+  const focusCards = [
+    { label: "Strongest", value: bestSubject?.name || "Pending", hint: bestSubject ? `${Math.round((Number(bestSubject.correct || 0) / Math.max(1, Number(bestSubject.attempted || 0))) * 100)}% accuracy` : "Attempt more questions", icon: "check-circle", color: "#34D399" },
+    { label: "Focus Area", value: focusSubject?.name || "Pending", hint: focusSubject ? `${Number(focusSubject.wrong || 0)} wrong · ${Math.max(0, Number(focusSubject.totalQuestions || 0) - Number(focusSubject.attempted || 0))} skipped` : "No subject data", icon: "target", color: "#F59E0B" },
+    { label: "Speed", value: avgTimePerAttempt ? `${avgTimePerAttempt}s/Q` : "—", hint: timeSpentSec ? `${timeSpentMin} min active paper time` : "Timing starts on new attempts", icon: "clock", color: "#38BDF8" },
+    { label: "Rank", value: leaderboardLabel, hint: leaderboard.total ? `${leaderboard.total} ranked attempts` : "Submit more to compare", icon: "award", color: "#A78BFA" },
+  ];
   const formatLeaderboardTime = sec => {
     const n = Number(sec || 0);
     if (!n) return "time not recorded";
@@ -6119,6 +6217,12 @@ function TestAttemptReport({ report, user, onBack }) {
     const rem = n % 60;
     return min ? `${min}m ${rem}s` : `${rem}s`;
   };
+  function exportReportPdf(targetMode = mode) {
+    setPdfModalOpen(false);
+    setMode(targetMode);
+    if (targetMode === "leaderboard") setLeaderboardPage(1);
+    setTimeout(() => window.print(), 140);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -6257,6 +6361,7 @@ function TestAttemptReport({ report, user, onBack }) {
     const totalPages = Math.max(1, Math.ceil(Number(leaderboardFull.total || 0) / 50));
     const from = leaderboardFull.total ? ((leaderboardPage - 1) * 50) + 1 : 0;
     const to = Math.min(leaderboardPage * 50, Number(leaderboardFull.total || 0));
+    const podiumEntries = leaderboardFull.entries.slice(0, 3);
     return (
       <div className="report-shell fade-in">
         <div className="report-top">
@@ -6268,12 +6373,32 @@ function TestAttemptReport({ report, user, onBack }) {
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button className="report-tab" onClick={() => setMode("report")}><span className="tab-icon"><Icon n="chevleft" s={13} /></span> Scorecard</button>
-            <button className="report-tab" onClick={() => window.print()}><span className="tab-icon"><Icon n="download" s={13} /></span> Export PDF</button>
+            <button className="report-tab" onClick={() => setPdfModalOpen(true)}><span className="tab-icon"><Icon n="download" s={13} /></span> Export PDF</button>
             <button className="report-tab" onClick={() => setMode("solution")}><span className="tab-icon"><Icon n="eye" s={13} /></span> Solutions</button>
             <button className="report-tab close-tab" onClick={onBack}><span className="tab-icon"><Icon n="x" s={13} /></span> Close</button>
           </div>
         </div>
         <div style={{ padding: "24px", maxWidth: 1180, margin: "0 auto" }}>
+          <ExportPdfModal open={pdfModalOpen} onClose={() => setPdfModalOpen(false)} onPick={exportReportPdf} />
+          {podiumEntries.length > 0 && (
+            <div className="podium-grid">
+              {podiumEntries.map(entry => (
+                <div key={`podium_${entry.rank}_${entry.attemptId || entry.name}`} className={`podium-card rank-${entry.rank}`}>
+                  <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", marginBottom: 14 }}>
+                    <div className="podium-rank">#{entry.rank}</div>
+                    <span className={entry.isMe ? "tag tag-purple" : "tag tag-amber"}>{entry.isMe ? "You" : entry.rank === 1 ? "Topper" : "Top 3"}</span>
+                  </div>
+                  <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 10 }}>
+                    <div className="leaderboard-avatar" style={{ width: 40, height: 40 }}>{entry.avatar || "ST"}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="leaderboard-name" style={{ fontSize: 14 }}>{entry.name}{entry.isMe ? " · You" : ""}</div>
+                      <div className="leaderboard-meta">{entry.score}/{entry.maxMarks} · {formatLeaderboardTime(entry.timeSpentSec)}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="card" style={{ padding: 0, overflow: "hidden" }}>
             <div style={{ padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
               <div>
@@ -6503,7 +6628,7 @@ function TestAttemptReport({ report, user, onBack }) {
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button className="report-tab active"><span className="tab-icon"><Icon n="bar" s={13} /></span> Scorecard</button>
-          <button className="report-tab" onClick={() => window.print()}><span className="tab-icon"><Icon n="download" s={13} /></span> Export PDF</button>
+          <button className="report-tab" onClick={() => setPdfModalOpen(true)}><span className="tab-icon"><Icon n="download" s={13} /></span> Export PDF</button>
           <button className="report-tab" onClick={() => { setLeaderboardPage(1); setMode("leaderboard"); }}><span className="tab-icon"><Icon n="award" s={13} /></span> Leaderboard</button>
           <button className="report-tab" onClick={() => setMode("solution")}><span className="tab-icon"><Icon n="eye" s={13} /></span> Solutions</button>
           <button className="report-tab close-tab" onClick={onBack}><span className="tab-icon"><Icon n="x" s={13} /></span> Close</button>
@@ -6511,6 +6636,7 @@ function TestAttemptReport({ report, user, onBack }) {
       </div>
 
       <div style={{ padding: "24px", maxWidth: 1420, margin: "0 auto" }}>
+        <ExportPdfModal open={pdfModalOpen} onClose={() => setPdfModalOpen(false)} onPick={exportReportPdf} />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(145px,1fr))", gap: 12, marginBottom: 18 }}>
           {[
             ["Score", `${summary.score}/${summary.maxMarks}`, "#A78BFA", "target"],
@@ -6527,6 +6653,19 @@ function TestAttemptReport({ report, user, onBack }) {
               <div>
                 <div className="report-metric-value" style={{ color }}>{value}</div>
                 <div className="report-metric-label">{label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="report-focus-strip">
+          {focusCards.map(card => (
+            <div key={card.label} className="report-focus-card">
+              <div className="icon-tile" style={{ background: `${card.color}1F`, color: card.color }}><Icon n={card.icon} s={16} /></div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ color: "#64748B", fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".5px" }}>{card.label}</div>
+                <div style={{ color: "#F1F5F9", fontSize: 14, fontWeight: 850, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{card.value}</div>
+                <div style={{ color: "#64748B", fontSize: 11, marginTop: 2 }}>{card.hint}</div>
               </div>
             </div>
           ))}

@@ -208,8 +208,13 @@ button{touch-action:manipulation}
 .landing-hover-card:hover{transform:translateY(-7px) rotateX(1.4deg) rotateY(-1.8deg);border-color:rgba(124,58,237,.34);background:rgba(255,255,255,.055);box-shadow:0 24px 70px rgba(0,0,0,.3),0 12px 32px rgba(124,58,237,.08)}
 .pass-plan-grid{display:grid;gap:12px}
 .pass-plan-card{display:flex;flex-direction:column;min-height:222px;overflow:visible}
+.pass-plan-card.is-compact{min-height:168px}
+.pass-plan-card.is-active{background:linear-gradient(135deg,rgba(16,185,129,.095),rgba(255,255,255,.035))!important}
 .pass-plan-action{margin-top:auto;padding-top:12px;min-height:50px;display:flex;align-items:flex-end}
+.pass-plan-action.is-renew{display:grid;grid-template-columns:1fr;gap:8px;align-items:stretch}
 .pass-plan-action .btn-primary,.pass-plan-action .btn-ghost{width:100%;min-height:40px;font-size:12px;display:inline-flex!important;visibility:visible!important}
+.pass-plan-action.is-renew .btn-ghost{border-color:rgba(52,211,153,.26);background:rgba(16,185,129,.08);color:#D1FAE5}
+.pass-renew-status{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;border-radius:10px;background:rgba(16,185,129,.10);border:1px solid rgba(52,211,153,.18);color:#6EE7B7;font-size:10px;font-weight:800}
 .skeleton-line{position:relative;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.06)}
 .skeleton-line::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);animation:skeletonSweep 1.1s infinite}
 .upi-qr-shell{position:relative;padding:12px;background:white;border-radius:14px;display:grid;place-items:center;min-height:220px;overflow:hidden}
@@ -973,7 +978,7 @@ function PassPlanCards({ compact = false, activePass, onSelect, plans = PASS_PLA
           ? `Renew +${Number(plan.durationDays || 1)} day${Number(plan.durationDays || 1) === 1 ? "" : "s"}`
           : canActivate ? "Activate pass" : "Log in to activate";
         return (
-          <div key={plan.id} className="card landing-hover-card pass-plan-card" style={{ padding: compact ? 14 : 16, borderColor: isActive ? "rgba(52,211,153,0.45)" : "rgba(255,255,255,0.08)", background: isActive ? "rgba(16,185,129,0.08)" : undefined }}>
+          <div key={plan.id} className={`card landing-hover-card pass-plan-card${compact ? " is-compact" : ""}${isActive ? " is-active" : ""}`} style={{ padding: compact ? 14 : 16, borderColor: isActive ? "rgba(52,211,153,0.45)" : "rgba(255,255,255,0.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
               <div>
                 <div style={{ color: "#F1F5F9", fontSize: compact ? 13 : 15, fontWeight: 800 }}>{plan.name}</div>
@@ -986,11 +991,16 @@ function PassPlanCards({ compact = false, activePass, onSelect, plans = PASS_PLA
               <span style={{ color: "#475569", fontSize: 12, textDecoration: "line-through", marginBottom: 4 }}>₹{plan.originalPrice}</span>
             </div>
             <div style={{ color: "#64748B", fontSize: 11, lineHeight: 1.5, minHeight: compact ? 0 : 34 }}>{plan.note}</div>
-            <div className="pass-plan-action">
+            <div className={`pass-plan-action${status.active ? " is-renew" : ""}`}>
               <button type="button" className={status.active ? "btn-ghost" : "btn-primary"} onClick={() => canActivate && onSelect(plan)} disabled={disabled}>
                 {buttonLabel}
               </button>
-              {isActive && <div style={{ color: "#34D399", fontSize: 10, fontWeight: 750, marginTop: 7 }}>{status.daysLeft} day{status.daysLeft === 1 ? "" : "s"} left now</div>}
+              {isActive && (
+                <div className="pass-renew-status">
+                  <span>Current pass</span>
+                  <span>{status.daysLeft} day{status.daysLeft === 1 ? "" : "s"} left</span>
+                </div>
+              )}
             </div>
           </div>
         );

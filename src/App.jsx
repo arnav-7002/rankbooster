@@ -494,17 +494,23 @@ function passStatus(pass) {
   if (Number.isNaN(expires.getTime())) return { active: false, label: "No active pass", daysLeft: 0 };
   const msLeft = expires.getTime() - Date.now();
   if (msLeft <= 0) return { active: false, label: "Expired", daysLeft: 0, expiresAt: pass.expiresAt };
-  const daysLeft = Math.max(1, Math.ceil(msLeft / 86400000));
+  const rawDaysLeft = Math.max(1, Math.ceil(msLeft / 86400000));
+  const durationCap = Number(pass.durationDays || 0);
+  const daysLeft = durationCap > 0 ? Math.min(rawDaysLeft, durationCap) : rawDaysLeft;
   return { active: true, label: `${pass.planName || "Pass"} active`, daysLeft, expiresAt: pass.expiresAt };
 }
 
-function createPass(plan, payment = {}) {
+function createPass(plan, payment = {}, existingPass = null) {
   const now = new Date();
-  const expires = new Date(now.getTime() + Number(plan.durationDays || 1) * 86400000);
+  const addDays = Number(plan.durationDays || 1);
+  const existingExpiry = existingPass?.expiresAt ? new Date(existingPass.expiresAt) : null;
+  const base = existingExpiry && existingExpiry.getTime() > now.getTime() ? existingExpiry : now;
+  const expires = new Date(base.getTime() + addDays * 86400000);
+  const effectiveDays = base === now ? addDays : Math.max(addDays, Math.ceil((expires.getTime() - now.getTime()) / 86400000));
   return {
     planId: plan.id,
     planName: plan.name,
-    durationDays: plan.durationDays,
+    durationDays: effectiveDays,
     price: plan.price,
     activatedAt: now.toISOString(),
     expiresAt: expires.toISOString(),
@@ -962,7 +968,10 @@ function PassPlanCards({ compact = false, activePass, onSelect, plans = PASS_PLA
     <div className="pass-plan-grid" style={gridStyle}>
       {visiblePlans.map(plan => {
         const isActive = status.active && activePass?.planId === plan.id;
-        const disabled = isActive || !canActivate;
+        const disabled = !canActivate;
+        const buttonLabel = status.active
+          ? `Renew +${Number(plan.durationDays || 1)} day${Number(plan.durationDays || 1) === 1 ? "" : "s"}`
+          : canActivate ? "Activate pass" : "Log in to activate";
         return (
           <div key={plan.id} className="card landing-hover-card pass-plan-card" style={{ padding: compact ? 14 : 16, borderColor: isActive ? "rgba(52,211,153,0.45)" : "rgba(255,255,255,0.08)", background: isActive ? "rgba(16,185,129,0.08)" : undefined }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
@@ -978,9 +987,10 @@ function PassPlanCards({ compact = false, activePass, onSelect, plans = PASS_PLA
             </div>
             <div style={{ color: "#64748B", fontSize: 11, lineHeight: 1.5, minHeight: compact ? 0 : 34 }}>{plan.note}</div>
             <div className="pass-plan-action">
-              <button type="button" className={isActive || !canActivate ? "btn-ghost" : "btn-primary"} onClick={() => canActivate && onSelect(plan)} disabled={disabled}>
-                {isActive ? `${status.daysLeft} days left` : canActivate ? "Activate pass" : "Log in to activate"}
+              <button type="button" className={status.active ? "btn-ghost" : "btn-primary"} onClick={() => canActivate && onSelect(plan)} disabled={disabled}>
+                {buttonLabel}
               </button>
+              {isActive && <div style={{ color: "#34D399", fontSize: 10, fontWeight: 750, marginTop: 7 }}>{status.daysLeft} day{status.daysLeft === 1 ? "" : "s"} left now</div>}
             </div>
           </div>
         );
@@ -1507,7 +1517,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
       return;
     }
     setPassBusy(plan.id);
-    const updatedUser = { ...user, pass: createPass(plan) };
+    const updatedUser = { ...user, pass: createPass(plan, {}, currentPassStatus.active ? currentPass : null) };
     onUserUpdate?.(updatedUser);
     const res = await fetch(`${IMPORTER_API}/users`, {
       method: "POST",
@@ -1641,7 +1651,7 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
       <p style={{ fontSize: 13, color: "#475569", marginBottom: 24 }}>Activate a pass, then enroll into any course you want</p>
 
       <div className="card" style={{ marginBottom: 18, borderColor: currentPassStatus.active ? "rgba(52,211,153,0.28)" : "rgba(124,58,237,0.2)" }}>
-        <div className="responsive-split" style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "center", marginBottom: currentPassStatus.active ? 0 : 14 }}>
+        <div className="responsive-split" style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "center", marginBottom: 14 }}>
           <div>
             <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 800 }}>{currentPassStatus.active ? currentPassStatus.label : "Choose a pass to unlock courses"}</div>
             <div style={{ color: "#64748B", fontSize: 12, marginTop: 3 }}>
@@ -1650,9 +1660,12 @@ function CoursesPage({ courses, userCourseIds, setUserCourseIds, userId, user, o
           </div>
           {currentPassStatus.active && <span className="tag tag-green">Pass Active</span>}
         </div>
-        {!currentPassStatus.active && (
-          <div style={{ opacity: passBusy ? 0.65 : 1, pointerEvents: passBusy ? "none" : "auto" }}>
-            <PassPlanCards compact activePass={currentPass} onSelect={activatePlan} plans={passPlans} />
+        <div style={{ opacity: passBusy ? 0.65 : 1, pointerEvents: passBusy ? "none" : "auto" }}>
+          <PassPlanCards compact activePass={currentPass} onSelect={activatePlan} plans={passPlans} />
+        </div>
+        {currentPassStatus.active && (
+          <div style={{ color: "#64748B", fontSize: 11, marginTop: 10, lineHeight: 1.5 }}>
+            Renew adds the selected pass duration to your current expiry.
           </div>
         )}
         {!currentPassStatus.active && pendingOrders.length > 0 && (
@@ -5797,7 +5810,7 @@ function DashboardPage({ user, courses, userCourseIds, wrongQuestions, setPage, 
                 <div style={{ color: "#94A3B8", fontSize: 12, marginTop: 2 }}>{currentPass.daysLeft} day{currentPass.daysLeft === 1 ? "" : "s"} left. Renew before it ends to keep course access.</div>
               </div>
             </div>
-            <button className="btn-ghost" onClick={() => setPage("courses")}><Icon n="price-tag" s={13} />View Passes</button>
+            <button className="btn-ghost" onClick={() => setPage("courses")}><Icon n="price-tag" s={13} />Renew Pass</button>
           </div>
         </div>
       )}

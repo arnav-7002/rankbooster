@@ -23,13 +23,18 @@ function mapOrder(row = {}) {
   };
 }
 
-function createPass(plan, orderId, utr) {
+function createPass(plan, orderId, utr, existingPass = null) {
   const now = new Date();
-  const expires = new Date(now.getTime() + Number(plan.durationDays || plan.duration_days || 1) * 86400000);
+  const addDays = Number(plan.durationDays || plan.duration_days || 1);
+  const existingExpiry = existingPass?.expiresAt ? new Date(existingPass.expiresAt) : null;
+  const base = existingExpiry && existingExpiry.getTime() > now.getTime() ? existingExpiry : now;
+  const expires = new Date(base.getTime() + addDays * 86400000);
+  const effectiveDays = base === now ? addDays : Math.max(addDays, Math.ceil((expires.getTime() - now.getTime()) / 86400000));
   return {
     planId: plan.id,
     planName: plan.name,
-    durationDays: Number(plan.durationDays || plan.duration_days || 1),
+    durationDays: effectiveDays,
+    addedDays: addDays,
     price: Number(plan.price || plan.price_inr || 0),
     activatedAt: now.toISOString(),
     expiresAt: expires.toISOString(),
@@ -47,6 +52,14 @@ async function loadProfile(env, userId) {
 
 async function saveProfile(env, userId, profile) {
   await upsertRows(env, "user_blobs", { user_id: userId, blob_key: "profile", value_json: profile, updated_at: new Date().toISOString() }, "user_id,blob_key");
+}
+
+async function closeActiveSubscriptions(env, userId, reason = "renewed") {
+  await supabaseRequest(env, `subscriptions?user_id=${eq(userId)}&status=${eq("active")}`, {
+    method: "PATCH",
+    body: { status: reason, metadata_json: { closedAt: new Date().toISOString(), reason } },
+    headers: { Prefer: "return=minimal" },
+  }).catch(() => null);
 }
 
 async function logEvent(env, actor, type, message, metadata = {}) {
@@ -116,13 +129,14 @@ async function manualGrant({ body, env }) {
   if (!userId || !target.email) return json({ error: "Target user required." }, 400);
   if (!plan.id) return json({ error: "Pass plan required." }, 400);
   const orderId = cleanId(`manual_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
-  const pass = createPass(plan, orderId, "manual-admin");
+  const profile = await loadProfile(env, userId);
+  const pass = createPass(plan, orderId, "manual-admin", profile.pass);
   pass.paymentMode = "manual_admin";
   pass.paymentStatus = "paid";
-  const profile = await loadProfile(env, userId);
   await saveProfile(env, userId, { ...profile, pass, updatedAt: new Date().toISOString() });
+  await closeActiveSubscriptions(env, userId, "renewed");
   await upsertRows(env, "subscriptions", {
-    id: `${userId}_${pass.planId}`,
+    id: `${userId}_${orderId}`,
     user_id: userId,
     plan_id: pass.planId,
     status: "active",
@@ -211,13 +225,14 @@ export async function onRequestPatch({ request, env }) {
     return json({ success: true, status: "declined" });
   }
 
-  const plan = order.payload_json?.plan || { id: order.plan_id, name: order.plan_name, durationDays: 1, price: order.amount_inr };
-  const pass = createPass(plan, orderId, order.utr);
   const profile = await loadProfile(env, order.user_id);
+  const plan = order.payload_json?.plan || { id: order.plan_id, name: order.plan_name, durationDays: 1, price: order.amount_inr };
+  const pass = createPass(plan, orderId, order.utr, profile.pass);
   const nextProfile = { ...profile, pass, updatedAt: new Date().toISOString() };
   await saveProfile(env, order.user_id, nextProfile);
+  await closeActiveSubscriptions(env, order.user_id, "renewed");
   await upsertRows(env, "subscriptions", {
-    id: `${order.user_id}_${pass.planId}`,
+    id: `${order.user_id}_${orderId}`,
     user_id: order.user_id,
     plan_id: pass.planId,
     status: "active",

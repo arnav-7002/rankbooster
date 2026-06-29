@@ -5,6 +5,11 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "rec
 
 const VALID_PAGES = ["dashboard", "courses", "tests", "analysis", "notebook", "pass", "admin", "settings"];
 
+function blockProtectedImageAction(e) {
+  e.preventDefault();
+  e.stopPropagation();
+}
+
 // ─── GLOBAL STYLES ───────────────────────────────────────────────────────────
 const GS = `
 *{box-sizing:border-box;margin:0;padding:0}
@@ -363,6 +368,8 @@ svg{max-width:100%!important}
 .solution-qbtn.wrong{background:rgba(239,68,68,0.16);border-color:rgba(239,68,68,0.38);color:#FCA5A5}
 .solution-qbtn.blank{background:rgba(124,58,237,0.12);color:#A78BFA}
 .solution-qbtn.active{box-shadow:0 0 0 2px rgba(167,139,250,0.6)}
+.protected-image-wrap,.solution-image-watermark-wrap{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.protected-image,.protected-image-wrap img,.solution-image-watermark-wrap img{pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
 .solution-image-watermark-wrap{position:relative;display:inline-block;max-width:100%;background:#fff;border-radius:8px;border:1px solid rgba(255,255,255,0.08);overflow:hidden}
 .solution-image-watermark-wrap img{position:relative;z-index:1;display:block;max-width:100%;max-height:360px;object-fit:contain;object-position:left top;background:#fff}
 .solution-watermark-layer{position:absolute;z-index:2;inset:-22px;display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));grid-auto-rows:82px;pointer-events:none;overflow:hidden;mix-blend-mode:multiply}
@@ -2530,7 +2537,9 @@ function NotebookPage({ user }) {
             {!practiceLoading && practiceQuestion?.images?.length > 0 && (
               <div style={{ display: "grid", gap: 10, marginBottom: 14 }}>
                 {practiceQuestion.images.map((src, i) => (
-                  <img key={i} src={src} alt="" style={{ maxWidth: "100%", maxHeight: 380, objectFit: "contain", objectPosition: "left top", background: "white", borderRadius: 8 }} />
+                  <div key={i} className="protected-image-wrap" onContextMenu={blockProtectedImageAction} onDragStart={blockProtectedImageAction}>
+                    <img className="protected-image" src={src} alt="" draggable={false} style={{ maxWidth: "100%", maxHeight: 380, objectFit: "contain", objectPosition: "left top", background: "white", borderRadius: 8 }} />
+                  </div>
                 ))}
               </div>
             )}
@@ -6387,8 +6396,8 @@ function TestAttemptReport({ report, user, onBack }) {
                     {activeImages.length > 0 ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
                         {activeImages.map((src, i) => (
-                          <div key={i} className="solution-image-watermark-wrap">
-                            <img src={src} alt="" />
+                          <div key={i} className="solution-image-watermark-wrap" onContextMenu={blockProtectedImageAction} onDragStart={blockProtectedImageAction}>
+                            <img src={src} alt="" draggable={false} />
                             {watermarkEmail && (
                               <div className="solution-watermark-layer" aria-hidden="true">
                                 {watermarkTiles.map((_, wi) => <span key={wi}>{watermarkEmail}</span>)}

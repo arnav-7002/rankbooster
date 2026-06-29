@@ -51,7 +51,7 @@ export async function onRequestGet({ request, env }) {
       const detail = attempt.detail_json || {};
       const name = user.display_name || detail.userName || "Student";
       return {
-        userId,
+        _userId: userId,
         name,
         avatar: avatarFrom(user),
         isMe: currentUserId && currentUserId === userId,
@@ -80,7 +80,8 @@ export async function onRequestGet({ request, env }) {
       lastScore = entry.score;
       lastTime = tieTime;
     }
-    return { ...entry, rank };
+    const { _userId, ...safeEntry } = entry;
+    return { ...safeEntry, rank };
   });
 
   const mine = entries.find(e => e.isMe) || null;

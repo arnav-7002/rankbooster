@@ -6236,14 +6236,14 @@ function TestAttemptReport({ report, user, onBack }) {
                       </tr>
                     ))
                   ) : leaderboardFull.entries.length ? leaderboardFull.entries.map(entry => (
-                    <tr key={`${entry.userId}_${entry.attemptId}`} className="table-row" style={entry.isMe ? { background: "rgba(124,58,237,0.11)" } : undefined}>
+                    <tr key={entry.attemptId || `${entry.rank}_${entry.name}`} className="table-row" style={entry.isMe ? { background: "rgba(124,58,237,0.11)" } : undefined}>
                       <td style={{ color: "#A78BFA", fontWeight: 850 }}>#{entry.rank}</td>
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                           <div className="leaderboard-avatar">{entry.avatar || "ST"}</div>
                           <div style={{ minWidth: 0 }}>
                             <div className="leaderboard-name" style={{ fontSize: 13 }}>{entry.name}{entry.isMe ? " · You" : ""}</div>
-                            <div className="leaderboard-meta">{entry.userId}</div>
+                            <div className="leaderboard-meta">{entry.correct} correct · {entry.wrong} wrong</div>
                           </div>
                         </div>
                       </td>

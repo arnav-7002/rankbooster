@@ -282,6 +282,16 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
   }, [activeQId, responses]);
 
   useEffect(() => {
+    if (!activeQId) return;
+    const mathJax = window.MathJax;
+    if (!mathJax?.typesetPromise) return;
+    const timer = setTimeout(() => {
+      mathJax.typesetPromise().catch(() => {});
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [activeQId, activeQ?.html, activeQ?.questionHtml]);
+
+  useEffect(() => {
     flushQuestionTiming();
   }, [flushQuestionTiming]);
 
@@ -708,6 +718,13 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
     .question-area{flex:1;overflow-y:auto;background:#F7F7F7;padding:0 28px 95px}
     .question-image-wrap{position:relative;width:100%;max-width:980px;background:white;margin:0 0 22px;overflow:hidden;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
     .question-image{position:relative;z-index:1;width:100%;max-width:980px;max-height:430px;object-fit:contain;object-position:left top;border:none;border-radius:0;display:block;background:white;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
+    .question-text-fallback,.question-html-fallback{max-width:980px;background:white;color:#222;font-size:18px;line-height:1.65;margin:0 0 24px;padding:20px 22px;border:1px solid #d8d8d8;white-space:pre-wrap}
+    .question-html-fallback{white-space:normal}
+    .question-html-fallback table{border-collapse:collapse;max-width:100%;margin:8px 0}
+    .question-html-fallback td,.question-html-fallback th{border:1px solid #BBB;padding:6px 8px;vertical-align:top}
+    .question-html-fallback p{margin:0 0 10px}
+    .question-html-fallback sup,.question-html-fallback sub{font-size:.72em;line-height:0}
+    .question-html-fallback .MathJax,.question-html-fallback mjx-container{font-size:inherit!important}
     .test-lightbox-image-wrap{overflow:hidden;border-radius:8px;background:white}
     .test-lightbox-image-wrap img{pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
     .test-watermark-layer{position:absolute;z-index:2;inset:-22px;display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));grid-auto-rows:82px;pointer-events:none;overflow:hidden;mix-blend-mode:multiply}
@@ -715,6 +732,13 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
     .opt-btn{width:100%;padding:11px 4px;border:none;background:transparent;color:#333;cursor:pointer;font-family:Roboto,Arial,Helvetica,sans-serif;font-size:20px;text-align:left;display:flex;align-items:center;gap:12px}
     .opt-radio{width:18px;height:18px;border:1px solid #777;border-radius:50%;background:white;display:inline-flex;align-items:center;justify-content:center}
     .opt-radio.sel:after{content:'';width:9px;height:9px;border-radius:50%;background:#1E86C1;display:block}
+    .opt-content{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+    .opt-content-text{white-space:pre-wrap;line-height:1.45}
+    .opt-content-html{line-height:1.45}
+    .opt-content-html p{margin:0}
+    .opt-content-html table{border-collapse:collapse;max-width:100%}
+    .opt-content-html td,.opt-content-html th{border:1px solid #CCC;padding:4px 6px}
+    .opt-content-img{max-width:min(640px,100%);max-height:180px;object-fit:contain;background:#fff;border:1px solid #DDD;border-radius:3px;display:block}
     .numeric-entry{display:inline-block;margin-left:46px}
     .numeric-input{width:185px;height:20px;border:1px solid #9CA3AF;background:white;font-size:15px;padding:0 6px;margin-bottom:8px;font-family:Roboto,Arial,sans-serif}
     .numpad{width:150px;background:#F0F0F0;padding:8px 10px;display:grid;grid-template-columns:repeat(3,34px);gap:5px;justify-content:center}
@@ -1089,6 +1113,12 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
 
             {activeQ ? (
               <>
+                {activeQ?.html || activeQ?.questionHtml ? (
+                  <div className="question-html-fallback" dangerouslySetInnerHTML={{ __html: activeQ.html || activeQ.questionHtml }} />
+                ) : activeQ?.text ? (
+                  <div className="question-text-fallback">{activeQ.text}</div>
+                ) : null}
+
                 {currentImages.length>0 ? (
                   <div style={{marginBottom:24}}>
                     {currentImages.map((src,i)=>(
@@ -1102,11 +1132,11 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
                       </div>
                     ))}
                   </div>
-                ) : loadingImage ? (
+                ) : !activeQ?.html && !activeQ?.questionHtml && !activeQ?.text && loadingImage ? (
                   <div style={{fontSize:18,margin:"8px 0 28px",color:"#777"}}>Loading question image...</div>
-                ) : (
+                ) : !activeQ?.html && !activeQ?.questionHtml && !activeQ?.text ? (
                   <div style={{fontSize:21,margin:"8px 0 28px"}}>Choose the correct answer.</div>
-                )}
+                ) : null}
 
                 <div style={{display:"flex",flexDirection:"column",gap:2,maxWidth:900}}>
                   {activeQ.type==="integer" ? (
@@ -1132,10 +1162,22 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
                     Array.from({length:numOpts},(_,i)=>i+1).map(opt=>{
                       const label=String.fromCharCode(64+opt);
                       const sel=selectedOpts.includes(String(opt))||selectedOpts.includes(opt);
+                      const optData = (activeQ.options || []).find(o => String(o.id) === String(opt) || String(o.label || "").toUpperCase() === label);
+                      const optHtml = optData?.html || optData?.optionHtml || "";
+                      const optText = !optHtml && optData?.text && optData.text !== label ? optData.text : "";
                       return (
                         <button key={opt} className="opt-btn" onClick={()=>handleSelect(String(opt))}>
                           <span className={`opt-radio ${sel?"sel":""}`}></span>
                           <span>{label}</span>
+                          {(optText || optHtml || optData?.images?.length) && (
+                            <span className="opt-content">
+                              {optHtml && <span className="opt-content-html" dangerouslySetInnerHTML={{ __html: optHtml }} />}
+                              {optText && <span className="opt-content-text">{optText}</span>}
+                              {(optData.images || []).map((src, oi) => (
+                                <img key={oi} className="opt-content-img" src={src} alt="" draggable={false} onContextMenu={blockImageAction} onDragStart={blockImageAction} />
+                              ))}
+                            </span>
+                          )}
                         </button>
                       );
                     })
@@ -1210,7 +1252,10 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
 // ─── normalizeTest (moved to end so all functions are defined before use) ──────
 function normalizeTest(test) {
   if (test.subjects && Array.isArray(test.subjects) && test.subjects.length > 0 && test.subjects[0].questions) {
-    return test.subjects;
+    return test.subjects.map(subject => ({
+      ...subject,
+      questions: (subject.questions || []).map(normalizeQuestionBody),
+    }));
   }
   return [{
     id: "demo_subj",
@@ -1226,4 +1271,27 @@ function normalizeTest(test) {
       solutionImages: [],
     })),
   }];
+}
+
+function normalizeQuestionBody(question) {
+  const text = question?.text || question?.questionText || question?.question || question?.prompt || question?.body || "";
+  const html = question?.html || question?.questionHtml || "";
+  const solutionText = question?.solutionText || question?.solution || question?.explanation || "";
+  return {
+    ...question,
+    text,
+    html,
+    questionHtml: question?.questionHtml || html,
+    questionText: question?.questionText || text,
+    solutionText,
+    options: (question?.options || []).map((option, idx) => ({
+      ...option,
+      id: option.id || idx + 1,
+      label: option.label || String.fromCharCode(65 + idx),
+      text: option.text || option.optionText || option.value || option.labelText || "",
+      html: option.html || option.optionHtml || "",
+      optionHtml: option.optionHtml || option.html || "",
+      images: option.images || option.imageUrls || [],
+    })),
+  };
 }

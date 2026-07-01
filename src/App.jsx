@@ -417,9 +417,12 @@ svg{max-width:100%!important}
 .solution-watermark-layer span{align-self:center;justify-self:center;color:rgba(71,85,105,0.30);font-size:13px;font-weight:650;line-height:1;white-space:nowrap;transform:rotate(-48deg);user-select:none;text-shadow:0 0 1px rgba(255,255,255,0.25)}
 .insight-card{position:relative;background:rgba(255,255,255,0.035);border:1px solid rgba(255,255,255,0.065);border-radius:12px;padding:13px 13px 13px 36px}
 .insight-card::before{content:"";position:absolute;left:14px;top:16px;width:8px;height:8px;border-radius:50%;background:#A78BFA;box-shadow:0 0 0 4px rgba(124,58,237,0.16)}
-.review-option{padding:10px 12px;border-radius:9px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:#94A3B8;font-size:13px;font-weight:500}
+.review-option{padding:10px 12px;border-radius:9px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:#94A3B8;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .review-option.correct{border-color:rgba(52,211,153,0.42);background:rgba(16,185,129,0.09);color:#6EE7B7}
 .review-option.marked{border-color:rgba(248,113,113,0.42);background:rgba(239,68,68,0.09);color:#FCA5A5}
+.review-html-block{padding:18px;border-radius:10px;background:#fff;border:1px solid rgba(255,255,255,0.08);color:#111827;line-height:1.65;margin-bottom:14px;font-family:Arial,Helvetica,sans-serif;font-size:15px}
+.review-html-block p{margin:0 0 10px}.review-html-block table{border-collapse:collapse;max-width:100%;margin:8px 0}.review-html-block td,.review-html-block th{border:1px solid #BBB;padding:6px 8px;vertical-align:top}.review-html-block sup,.review-html-block sub{font-size:.72em;line-height:0}.review-html-block mjx-container,.review-html-block .MathJax{font-size:inherit!important}
+.review-option-html{line-height:1.45}.review-option-html p{margin:0}.review-option-html table{border-collapse:collapse;max-width:100%}.review-option-html td,.review-option-html th{border:1px solid rgba(255,255,255,.14);padding:4px 6px}
 @media (max-width: 1100px){.quiz-layout,.analysis-shell{grid-template-columns:1fr;gap:24px}.search-pill{min-width:0;width:100%}.quiz-toolbar{align-items:flex-start;flex-direction:column}.metric-strip{padding:12px 22px;flex-wrap:wrap}.metric-table{min-width:760px}.analysis-card{overflow-x:auto}}
 @media (max-width: 900px){.solution-layout{grid-template-columns:1fr}.solution-palette{position:relative;top:auto}.subject-strip{top:68px}}
 @media (max-width: 820px){
@@ -707,17 +710,92 @@ function sameExternalUrl(a, b) {
   return !!left && !!right && left === right;
 }
 
+function resolveExternalAssetUrl(src, sourceUrl) {
+  const raw = String(src || "").trim();
+  if (!raw || /^(data:|blob:|https?:\/\/)/i.test(raw)) return raw;
+  try {
+    return new URL(raw, sourceUrl).href;
+  } catch {
+    return raw;
+  }
+}
+
+function resolveExternalTestAssets(test, sourceUrl) {
+  if (!test?.subjects?.length || !sourceUrl) return test;
+  return {
+    ...test,
+    sourceUrl,
+    subjects: test.subjects.map(subject => ({
+      ...subject,
+      questions: (subject.questions || []).map((question) => {
+        const text = question?.text || question?.questionText || question?.question || question?.prompt || question?.body || "";
+        const html = question?.html || question?.questionHtml || "";
+        const solutionText = question?.solutionText || question?.solution || question?.explanation || "";
+        const solutionHtml = question?.solutionHtml || question?.solutionHTML || "";
+        return {
+          ...question,
+          text,
+          html,
+          questionHtml: question?.questionHtml || html,
+          questionText: question?.questionText || text,
+          solutionText,
+          solutionHtml,
+          images: (question.images || question.imageUrls || []).map(src => resolveExternalAssetUrl(src, sourceUrl)),
+          solutionImages: (question.solutionImages || question.solutionImageUrls || []).map(src => resolveExternalAssetUrl(src, sourceUrl)),
+          options: (question.options || []).map((option, idx) => ({
+            ...option,
+            id: option.id || idx + 1,
+            label: option.label || String.fromCharCode(65 + idx),
+            text: option.text || option.optionText || option.value || option.labelText || "",
+            html: option.html || option.optionHtml || "",
+            optionHtml: option.optionHtml || option.html || "",
+            images: (option.images || option.imageUrls || []).map(src => resolveExternalAssetUrl(src, sourceUrl)),
+          })),
+        };
+      }),
+    })),
+  };
+}
+
+function unwrapExternalTestPayload(payload) {
+  if (!payload) return null;
+  if (payload.subjects?.length) return payload;
+  if (payload.test?.subjects?.length) return payload.test;
+  if (payload.data?.subjects?.length) return payload.data;
+  if (payload.payload?.subjects?.length) return payload.payload;
+  return payload;
+}
+
+function hasRenderableQuestions(test) {
+  const questions = (test?.subjects || []).flatMap(subject => subject.questions || []);
+  if (!questions.length) return false;
+  return questions.some(q =>
+    String(q?.text || q?.questionText || q?.question || q?.prompt || q?.body || q?.html || q?.questionHtml || "").trim()
+    || (q?.images || q?.imageUrls || []).length
+    || (q?.options || []).some(o => String(o?.text || o?.optionText || o?.value || o?.html || o?.optionHtml || "").trim() || (o?.images || o?.imageUrls || []).length)
+  );
+}
+
 async function loadExternalTestJson(sourceUrl) {
   const url = normalizeExternalTestUrl(sourceUrl);
   if (!url) return null;
-  const proxied = await fetch(`${IMPORTER_API}/test?sourceUrl=${encodeURIComponent(url)}`).catch(() => null);
+  const freshUrl = `${url}${url.includes("?") ? "&" : "?"}_rb=${Date.now()}`;
+  const proxied = await fetch(`${IMPORTER_API}/test?sourceUrl=${encodeURIComponent(freshUrl)}`, { cache: "no-store" }).catch(() => null);
   if (proxied?.ok) {
     const data = await proxied.json().catch(() => null);
-    if (data?.test) return data.test;
+    const test = unwrapExternalTestPayload(data);
+    if (test?.subjects?.length) {
+      const resolved = resolveExternalTestAssets(test, url);
+      if (!hasRenderableQuestions(resolved)) throw new Error("Source test loaded, but questions have no text/images. Upload the latest converted .rbtest.json and update this test URL.");
+      return resolved;
+    }
   }
-  const direct = await fetch(url, { cache: "force-cache" }).catch(() => null);
+  const direct = await fetch(freshUrl, { cache: "no-store" }).catch(() => null);
   if (!direct?.ok) return null;
-  return direct.json().catch(() => null);
+  const data = unwrapExternalTestPayload(await direct.json().catch(() => null));
+  const resolved = resolveExternalTestAssets(data, url);
+  if (!hasRenderableQuestions(resolved)) throw new Error("Source test loaded, but questions have no text/images. Upload the latest converted .rbtest.json and update this test URL.");
+  return resolved;
 }
 
 function isConfiguredTest(test) {
@@ -2105,6 +2183,8 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
         },
         resume: resume?.state || resume?.detail || null,
       });
+    } catch (err) {
+      window.alert(err?.message || "Could not load this test. Check the JSON source URL.");
     } finally {
       setLoadingTestId(null);
     }
@@ -6175,6 +6255,17 @@ function TestAttemptReport({ report, user, onBack }) {
   const reportActiveQuestion = subjects[solutionSubjectIdx]?.questions?.[solutionQIdx];
   const reportActiveQId = reportActiveQuestion?.id;
   const reportLazyImages = reportActiveQId ? reportImages[reportActiveQId] : null;
+
+  useEffect(() => {
+    if (!reportActiveQId) return;
+    const mathJax = window.MathJax;
+    if (!mathJax?.typesetPromise) return;
+    const timer = setTimeout(() => {
+      mathJax.typesetPromise().catch(() => {});
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [reportActiveQId, reportActiveQuestion?.html, reportActiveQuestion?.questionHtml, reportActiveQuestion?.solutionHtml]);
+
   const totalQuestions = subjects.reduce((a, s) => a + (s.questions?.length || 0), 0) || summary.totalQuestions || 0;
   const attemptedMap = (summary.attemptedQuestions || []).reduce((acc, q) => {
     acc[q.qId] = q;
@@ -6466,6 +6557,7 @@ function TestAttemptReport({ report, user, onBack }) {
     const activeSubject = subjects[solutionSubjectIdx] || subjects[0];
     const activeQuestion = activeSubject?.questions?.[solutionQIdx];
     const activeImages = activeQuestion?.images?.length ? activeQuestion.images : ((activeQuestion?.id === reportActiveQId ? reportLazyImages : reportImages[activeQuestion?.id]) || []);
+    const activeSolutionImages = activeQuestion?.solutionImages || [];
     const qOffset = subjects.slice(0, solutionSubjectIdx).reduce((a, s) => a + (s.questions?.length || 0), 0);
     const row = activeQuestion ? attemptedMap[activeQuestion.id] : null;
     const correct = activeQuestion ? (Array.isArray(activeQuestion.correctAnswer) ? activeQuestion.correctAnswer : [activeQuestion.correctAnswer]).filter(v => v !== undefined && v !== null) : [];
@@ -6541,6 +6633,13 @@ function TestAttemptReport({ report, user, onBack }) {
                 <span style={{ marginLeft: "auto", color: row ? ok ? "#34D399" : "#F87171" : "#64748B", fontWeight: 650 }}>{marks > 0 ? `+${marks}` : marks}</span>
               </div>
               <div style={{ padding: 18 }}>
+                    {activeQuestion?.html || activeQuestion?.questionHtml ? (
+                      <div className="review-html-block" dangerouslySetInnerHTML={{ __html: activeQuestion.html || activeQuestion.questionHtml }} />
+                    ) : activeQuestion?.text ? (
+                      <div style={{ padding: 18, borderRadius: 10, background: "#fff", border: "1px solid rgba(255,255,255,0.08)", color: "#111827", lineHeight: 1.65, whiteSpace: "pre-wrap", marginBottom: 14 }}>
+                        {activeQuestion.text}
+                      </div>
+                    ) : null}
                     {activeImages.length > 0 ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
                         {activeImages.map((src, i) => (
@@ -6554,20 +6653,30 @@ function TestAttemptReport({ report, user, onBack }) {
                           </div>
                         ))}
                       </div>
-                    ) : (
+                    ) : !activeQuestion?.html && !activeQuestion?.questionHtml && !activeQuestion?.text ? (
                       <div style={{ padding: 18, borderRadius: 10, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.06)", color: "#64748B", marginBottom: 14 }}>
                         {loadingFullTest || loadingReportImage ? "Fetching the original question image..." : "Question image is not available for this saved attempt."}
                       </div>
-                    )}
+                    ) : null}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 8, marginBottom: 12 }}>
                       {activeQuestion?.type === "integer" ? (
                         <div style={{ padding: 12, borderRadius: 9, background: "rgba(255,255,255,0.04)", color: "#CBD5E1" }}>Numerical answer</div>
                       ) : Array.from({ length: numOpts }, (_, i) => String(i + 1)).map(opt => {
                         const isMarked = marked.map(String).includes(opt);
                         const isAns = correct.map(String).includes(opt);
+                        const optionLabel = optLabel(opt);
+                        const optData = (activeQuestion?.options || []).find(o => String(o.id) === opt || String(o.label || "").toUpperCase() === optionLabel);
+                        const optHtml = optData?.html || optData?.optionHtml || "";
+                        const optText = !optHtml && optData?.text && optData.text !== optionLabel ? optData.text : "";
                         return (
                           <div key={opt} className={`review-option ${isAns ? "correct" : isMarked ? "marked" : ""}`}>
-                            {optLabel(opt)} {isAns && <span style={{ fontSize: 11 }}>Correct</span>} {isMarked && !isAns && <span style={{ fontSize: 11 }}>Marked</span>}
+                            <span>{optionLabel}</span>
+                            {optHtml && <span className="review-option-html" dangerouslySetInnerHTML={{ __html: optHtml }} />}
+                            {optText && <span style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{optText}</span>}
+                            {(optData?.images || []).map((src, oi) => (
+                              <img key={oi} src={src} alt="" draggable={false} style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain", background: "#fff", borderRadius: 6 }} onContextMenu={blockProtectedImageAction} onDragStart={blockProtectedImageAction} />
+                            ))}
+                            {isAns && <span style={{ fontSize: 11 }}>Correct</span>} {isMarked && !isAns && <span style={{ fontSize: 11 }}>Marked</span>}
                           </div>
                         );
                       })}
@@ -6576,6 +6685,28 @@ function TestAttemptReport({ report, user, onBack }) {
                       <span>Your answer: <strong style={{ color: marked.length ? "#F8FAFC" : "#64748B" }}>{marked.length ? marked.map(optLabel).join(", ") : "Not attempted"}</strong></span>
                       <span>Correct: <strong style={{ color: "#34D399" }}>{correct.map(optLabel).join(", ") || "—"}</strong></span>
                     </div>
+                    {(activeSolutionImages.length > 0 || activeQuestion?.solutionText || activeQuestion?.solutionHtml) && (
+                      <div style={{ marginTop: 18, display: "grid", gap: 10 }}>
+                        <div style={{ color: "#F8FAFC", fontSize: 15, fontWeight: 850 }}>Solution</div>
+                        {activeSolutionImages.map((src, i) => (
+                          <div key={i} className="solution-image-watermark-wrap" onContextMenu={blockProtectedImageAction} onDragStart={blockProtectedImageAction}>
+                            <img src={src} alt="" draggable={false} />
+                            {watermarkEmail && (
+                              <div className="solution-watermark-layer" aria-hidden="true">
+                                {watermarkTiles.map((_, wi) => <span key={wi}>{watermarkEmail}</span>)}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {activeQuestion?.solutionHtml ? (
+                          <div className="review-html-block" dangerouslySetInnerHTML={{ __html: activeQuestion.solutionHtml }} />
+                        ) : !activeSolutionImages.length && activeQuestion?.solutionText && (
+                          <div style={{ padding: 16, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#CBD5E1", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>
+                            {activeQuestion.solutionText}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div style={{ display: "flex", justifyContent: "space-between", marginTop: 18 }}>
                       <button className="btn-ghost" disabled={solutionSubjectIdx === 0 && solutionQIdx === 0} onClick={() => {
                         if (solutionQIdx > 0) setSolutionQIdx(q => q - 1);

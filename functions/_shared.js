@@ -1,4 +1,4 @@
-export function json(data, status = 200) {
+export function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
@@ -6,6 +6,7 @@ export function json(data, status = 200) {
       "access-control-allow-origin": "*",
       "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS",
       "access-control-allow-headers": "content-type",
+      ...headers,
     },
   });
 }

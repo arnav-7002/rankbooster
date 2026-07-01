@@ -167,6 +167,12 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
   const subjects = normalizeTest(test);
   const resumeState = test.resume || null;
   const totalQ = subjects.reduce((a,s)=>a+s.questions.length,0);
+  const allQuestions = subjects.flatMap(s => s.questions || []);
+  const firstMarkedQuestion = allQuestions.find(q => q?.marks);
+  const correctMarks = Number(test.correctMarks ?? test.marks?.cm ?? firstMarkedQuestion?.marks?.cm ?? 4);
+  const wrongMarksRaw = Number(test.wrongMarks ?? test.negativeMarks ?? test.marks?.im ?? firstMarkedQuestion?.marks?.im ?? -1);
+  const wrongMarksAbs = Math.abs(wrongMarksRaw);
+  const maxMarks = Number(test.maxMarks || allQuestions.reduce((a, q) => a + Number(q?.marks?.cm ?? correctMarks ?? 0), 0));
   const examConfig = test.examConfig || test.config || {};
   const extraInstructions = String(examConfig.instructions || examConfig.instructionText || "").trim();
   const examType = String(examConfig.examType || test.examType || "other").trim().toLowerCase().replace(/\s+/g, "_");
@@ -810,7 +816,7 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
     .instruction-test-pill{font-size:12px;font-weight:600;color:#2563EB;background:#DBEAFE;padding:3px 12px;border-radius:20px;border:1px solid #93C5FD;white-space:nowrap}
     .instruction-meta{font-size:12px;color:#374151;text-align:right}
     .instruction-content{max-width:800px;margin:32px auto;padding:0 20px}
-    .preflight-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,#102A72,#1E40AF 58%,#2389C2);border:0;border-radius:14px;color:white;box-shadow:0 22px 70px rgba(30,64,175,.18)}
+    .instruction-card.preflight-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,#102A72,#1E40AF 58%,#2389C2);border:0;border-radius:14px;color:white;box-shadow:0 22px 70px rgba(30,64,175,.18)}
     .preflight-hero::after{content:"";position:absolute;right:-70px;top:-70px;width:210px;height:210px;border-radius:50%;background:rgba(255,255,255,.10);box-shadow:inset 0 0 0 34px rgba(255,255,255,.06)}
     .preflight-hero h3{position:relative;z-index:1;color:white!important;font-size:18px!important;margin-bottom:6px!important}
     .preflight-hero-copy{position:relative;z-index:1;color:rgba(255,255,255,.72);font-size:12px;line-height:1.55;margin-bottom:14px}
@@ -928,7 +934,7 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
         {/* Info bar */}
         <div className="instruction-info">
           <span className="instruction-test-pill">{test.name}</span>
-          <span className="instruction-meta">Duration: <strong>{test.duration||180} min</strong> · Total Questions: <strong>{totalQ}</strong> · Max Marks: <strong>{test.maxMarks||subjects.reduce((a,s)=>a+s.questions.reduce((b,q)=>b+(q.marks?.cm||0),0),0)}</strong></span>
+          <span className="instruction-meta">Duration: <strong>{test.duration||180} min</strong> · Total Questions: <strong>{totalQ}</strong> · Max Marks: <strong>{maxMarks}</strong></span>
         </div>
         <div className="instruction-content">
           <div className="instruction-card preflight-hero">
@@ -951,8 +957,8 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
             <h3>General Instructions</h3>
             <ul>
               <li>This Computer Based Test consists of <strong>{totalQ} questions</strong>.</li>
-              <li>Each question is of <strong>4 marks</strong>.</li>
-              <li>There is <strong>negative marking</strong> of <strong>1 mark</strong> for wrong answer.</li>
+              <li>Each question is of <strong>{correctMarks} marks</strong>.</li>
+              <li>There is <strong>negative marking</strong> of <strong>{wrongMarksAbs} mark{wrongMarksAbs === 1 ? "" : "s"}</strong> for wrong answer.</li>
               <li>To select your answer, click on the button of your choice and then click on <strong>Save & Next</strong>.</li>
               <li>To change your answer, click on another button and then click on <strong>Save & Next</strong>.</li>
               <li>You can view and edit your answers using the <strong>Question Palette</strong> before submitting.</li>

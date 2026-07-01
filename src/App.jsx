@@ -150,6 +150,13 @@ button{touch-action:manipulation}
 .responsive-grid{display:grid;gap:16px}
 .course-card-grid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
 .responsive-two-col{display:grid;grid-template-columns:minmax(0,0.95fr) minmax(0,1.05fr);gap:16px}
+.report-analysis-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(320px,.7fr);gap:18px;margin-bottom:18px;align-items:stretch}
+.report-momentum-card{min-height:290px}
+.report-momentum-card .recharts-responsive-container{min-height:225px}
+.report-compact-leaderboard{display:flex;flex-direction:column;min-height:290px}
+.report-compact-leaderboard .leaderboard-row{grid-template-columns:auto minmax(0,1fr);align-items:flex-start}
+.report-compact-leaderboard-score{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06)}
+.report-insights-card{margin-bottom:18px}
 .responsive-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .tests-layout{display:flex;gap:16px}
 .tests-course-rail{width:280px;flex-shrink:0}
@@ -286,7 +293,7 @@ button:disabled{cursor:not-allowed;opacity:.68}
 input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-text-fill-color:#E2E8F0!important;box-shadow:0 0 0 1000px #161622 inset!important;border:1px solid rgba(124,58,237,.34)!important;caret-color:#E2E8F0}
 @media (max-width:980px){.landing-wrap{padding:18px 18px 44px}.landing-main{grid-template-columns:1fr}.landing-auth-card{position:static!important}.landing-stat-grid{grid-template-columns:1fr!important}.landing-pass-stage{max-width:620px}.landing-pass-card{min-height:210px;border-radius:26px;padding:24px 28px}.landing-pass-card::after{right:-92px;top:28px;width:220px;height:220px}.pass-watermark{right:20px;bottom:24px;font-size:96px}.pass-brand-title{font-size:22px!important}.pass-title{font-size:20px!important}}
 @media (max-width:640px){.landing-wrap{padding:16px 14px calc(38px + env(safe-area-inset-bottom))}.landing-wrap header{align-items:flex-start!important;margin-bottom:28px!important}.landing-wrap header>div:nth-child(2){order:3;flex-basis:100%;justify-content:flex-start!important}.landing-wrap header>div:nth-child(3){width:100%;display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}.landing-wrap header>div:nth-child(3) .support-link{grid-column:1/-1;justify-content:center}.landing-wrap header>div:nth-child(3) button{width:100%;justify-content:center}.landing-main{gap:22px!important}.landing-pass-stage{width:100%;max-width:none;perspective:900px}.landing-pass-card{min-height:0;border-radius:22px;padding:20px 18px;transition:transform .12s ease-out,box-shadow .18s ease}.landing-pass-card:active{box-shadow:0 18px 48px rgba(49,46,129,.3),0 12px 28px rgba(0,0,0,.24)}.landing-hover-card:hover{transform:none}.landing-hover-card:active{transform:scale(.985);border-color:rgba(124,58,237,.3)}.landing-pass-card::after{right:-94px;top:38px;width:190px;height:190px;box-shadow:inset 0 0 0 32px rgba(255,255,255,.045)}.landing-pass-card::before{background:radial-gradient(circle at var(--mx,40%) var(--my,12%),rgba(255,255,255,.2),transparent 34%)}.pass-content{min-height:178px!important}.pass-brand-row{gap:8px!important;margin-bottom:20px!important}.pass-brand-logo{width:32px!important;height:32px!important;border-radius:9px!important}.pass-brand-title{font-size:19px!important}.pass-brand-title span{font-size:11px!important;padding:2px 6px!important}.pass-title{font-size:18px!important}.pass-meta-row{align-items:flex-start!important;flex-direction:column;gap:14px!important;margin-top:28px!important}.pass-exam-row{padding-left:0!important}.pass-mini-chip{width:31px;height:31px;margin-left:-5px}.pass-mini-chip:hover{transform:translateY(-2px) scale(1.08)}.pass-validity{text-align:left!important}.pass-validity>div:last-child{justify-content:flex-start!important;max-width:100%!important}.pass-validity-pill{height:22px;padding:0 8px;font-size:9px}.landing-stat-grid{gap:10px!important}.admin-tabs{width:100%;overflow-x:auto}.admin-tab.active{background:transparent}.site-banner{font-size:12px;line-height:1.45;margin-bottom:12px}.solution-layout{grid-template-columns:1fr;padding:14px}.solution-palette{position:static;max-height:none}.solution-grid{display:flex;overflow-x:auto;gap:8px;padding-bottom:3px}.solution-qbtn{min-width:40px}.report-top{padding:13px 14px;align-items:flex-start}.report-top>div:last-child{flex-wrap:wrap;justify-content:flex-end}.subject-strip{top:65px;padding:9px 14px}.notebook-layout{display:grid!important;grid-template-columns:1fr!important;gap:14px!important}.notebook-list{width:100%!important;display:grid!important;grid-template-columns:1fr!important;gap:10px!important;overflow:visible!important;padding:0!important}.notebook-list .btn-primary{width:100%!important;min-height:52px!important;margin-bottom:0!important;scroll-snap-align:unset!important}.notebook-create-btn{background:linear-gradient(135deg,#7C3AED,#6D28D9)!important;border-radius:14px!important}.notebook-list-item{min-width:0!important;margin-bottom:0!important;scroll-snap-align:unset!important}.notebook-main{min-width:0;width:100%}.notebook-main .card{padding:22px!important;text-align:center}.notebook-empty-state{min-height:150px!important;display:grid!important;place-items:center!important}.notebook-question-card{padding:14px!important;text-align:left!important}.notebook-question-card .btn-primary,.notebook-question-card .btn-ghost{flex:1;min-width:132px}.modal{min-width:0;width:94vw;padding:20px;border-radius:16px}.responsive-two-col,.tests-layout{grid-template-columns:1fr!important;display:grid}.tests-course-rail{width:100%}.card{border-radius:13px}.btn-primary,.btn-ghost,.btn-danger,.btn-success{min-height:42px}.scroll-top-btn{right:14px;bottom:calc(86px + env(safe-area-inset-bottom));width:40px;height:40px}}
-@media (max-width:760px){.subscription-head{align-items:flex-start;flex-direction:column}.subscription-title{font-size:14px}.subscription-icon{width:32px;height:32px}.pass-plan-grid{grid-template-columns:1fr!important}.empty-state-pro{min-height:142px;padding:24px 16px}.empty-state-icon{width:46px;height:46px}.podium-grid{grid-template-columns:1fr}.podium-card.rank-1{transform:none}.report-focus-strip{grid-template-columns:1fr}.export-choice-grid{grid-template-columns:1fr}.admin-groupbar{padding-bottom:2px}.admin-tabs-track{grid-template-columns:repeat(var(--tab-count,3),minmax(130px,1fr))}.payment-modal-grid{grid-template-columns:1fr}.upi-qr-shell{min-height:190px}.mobile-top-brand{display:flex!important}.mobile-top-actions{width:100%;justify-content:flex-start;overflow-x:auto;padding-bottom:2px}.notification-btn span:not(.tag){display:none}.course-card-grid{grid-template-columns:1fr!important}.responsive-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.subscription-head{align-items:flex-start;flex-direction:column}.subscription-title{font-size:14px}.subscription-icon{width:32px;height:32px}.pass-plan-grid{grid-template-columns:1fr!important}.empty-state-pro{min-height:142px;padding:24px 16px}.empty-state-icon{width:46px;height:46px}.podium-grid{grid-template-columns:1fr}.podium-card.rank-1{transform:none}.report-focus-strip{grid-template-columns:1fr}.report-analysis-layout{grid-template-columns:1fr}.report-momentum-card,.report-compact-leaderboard{min-height:0}.report-momentum-card .recharts-responsive-container{min-height:205px}.export-choice-grid{grid-template-columns:1fr}.admin-groupbar{padding-bottom:2px}.admin-tabs-track{grid-template-columns:repeat(var(--tab-count,3),minmax(130px,1fr))}.payment-modal-grid{grid-template-columns:1fr}.upi-qr-shell{min-height:190px}.mobile-top-brand{display:flex!important}.mobile-top-actions{width:100%;justify-content:flex-start;overflow-x:auto;padding-bottom:2px}.notification-btn span:not(.tag){display:none}.course-card-grid{grid-template-columns:1fr!important}.responsive-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (hover:none){.card:hover,.card-hover:hover,.landing-hover-card:hover,.test-item-row:hover,.course-switch-card:hover,.nav-item:hover,.btn-primary:hover,.btn-ghost:hover,.btn-danger:hover,.btn-success:hover,.tag:hover,.card:hover .icon-tile,.test-item-row:hover .icon-tile{transform:none;box-shadow:none}.btn-primary:active,.btn-ghost:active,.btn-danger:active,.btn-success:active,.tap-card:active,.course-switch-card:active,.landing-hover-card:active{transform:scale(.985)}}
 @media (max-width:390px){.landing-pass-card{padding:18px 15px;border-radius:20px}.pass-content{min-height:176px!important}.pass-brand-title{font-size:17px!important}.pass-title{font-size:17px!important}.pass-mini-chip{width:29px;height:29px;margin-left:-4px}.pass-validity-pill{height:21px;padding:0 7px}.mobile-top-actions .support-link{width:40px!important;padding:8px!important}.mobile-top-actions .support-link span{display:none!important}}
 @page{size:A4 landscape;margin:10mm}
@@ -6991,14 +6998,14 @@ function TestAttemptReport({ report, user, onBack }) {
           ))}
         </div>
 
-        <div className="responsive-two-col" style={{ marginBottom: 18 }}>
-          <div className="card" style={{ minHeight: 260 }}>
+        <div className="report-analysis-layout">
+          <div className="card report-momentum-card">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
               <div className="report-section-title">Score Momentum</div>
               <span className="tag tag-purple">{momentumData.length || 0} attempted Qs</span>
             </div>
             {momentumData.length ? (
-              <ResponsiveContainer width="100%" height={210}>
+              <ResponsiveContainer width="100%" height={235}>
                 <AreaChart data={momentumData}>
                   <defs>
                     <linearGradient id="attemptMomentum" x1="0" y1="0" x2="0" y2="1">
@@ -7017,53 +7024,63 @@ function TestAttemptReport({ report, user, onBack }) {
             )}
           </div>
 
-          <div className="card">
-            <div className="report-section-title" style={{ marginBottom: 12 }}>Useful Insights</div>
-            <div style={{ display: "grid", gap: 10 }}>
-              {insights.map(text => (
-                <div key={text} className="insight-card" style={{ color: "#CBD5E1", fontSize: 13, lineHeight: 1.5 }}>
-                  {text}
-                </div>
-              ))}
-              {riskEvents.length > 0 && (
-                <div className="insight-card" style={{ color: "#FCA5A5", fontSize: 13, lineHeight: 1.5 }}>
-                  {riskEvents.length} focus/fullscreen event{riskEvents.length === 1 ? "" : "s"} recorded. Review attempt discipline before ranking decisions.
-                </div>
-              )}
+          <div className="card report-compact-leaderboard">
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
+              <div>
+                <div className="report-section-title">Leaderboard</div>
+                <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>Best attempt for this test.</div>
+              </div>
+              <span className="tag tag-amber">{leaderboard.myRank ? `#${leaderboard.myRank}` : leaderboard.loading ? "Loading" : "No rank"}</span>
             </div>
+            {!leaderboard.loading && leaderboard.mine ? (
+              <>
+                <div className="leaderboard-row me" style={{ marginTop: 6 }}>
+                  <div className="leaderboard-rank">#{leaderboard.mine.rank}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                    <div className="leaderboard-avatar">{leaderboard.mine.avatar || "ME"}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="leaderboard-name">{leaderboard.mine.name || "You"} · You</div>
+                      <div className="leaderboard-meta">{leaderboard.mine.correct} correct · {leaderboard.mine.wrong} wrong · {formatLeaderboardTime(leaderboard.mine.timeSpentSec)}</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="report-compact-leaderboard-score">
+                  <span style={{ color: "#64748B", fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".5px" }}>Score</span>
+                  <span style={{ color: "#F8FAFC", fontSize: 22, fontWeight: 900 }}>
+                    {leaderboard.mine.score}<span style={{ color: "#64748B", fontSize: 12, fontWeight: 700 }}>/{leaderboard.mine.maxMarks}</span>
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div style={{ color: "#64748B", padding: "28px 0", textAlign: "center", fontSize: 13 }}>
+                {leaderboard.loading ? "Loading leaderboard..." : "No leaderboard entry yet."}
+              </div>
+            )}
+            <button className="btn-ghost" onClick={() => { setLeaderboardPage(1); setMode("leaderboard"); }} style={{ marginTop: "auto", width: "100%" }}>
+              <Icon n="award" s={14} />View Full Leaderboard
+            </button>
           </div>
         </div>
 
-        <div className="card" style={{ marginBottom: 18 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <div>
-              <div className="report-section-title">Leaderboard</div>
-              <div style={{ color: "#64748B", fontSize: 12, marginTop: 2 }}>
-                Best attempt per student for this test. Open full leaderboard for all ranks.
+        <div className="card report-insights-card">
+          <div className="report-section-title" style={{ marginBottom: 12 }}>Useful Insights</div>
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
+            {insights.map(text => (
+              <div key={text} className="insight-card" style={{ color: "#CBD5E1", fontSize: 13, lineHeight: 1.5 }}>
+                {text}
               </div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <span className="tag tag-amber">{leaderboard.myRank ? `Your Rank #${leaderboard.myRank}` : leaderboard.loading ? "Loading" : "No rank yet"}</span>
-              <button className="btn-ghost" onClick={() => { setLeaderboardPage(1); setMode("leaderboard"); }}>
-                <Icon n="award" s={14} />View Full Leaderboard
-              </button>
-            </div>
-          </div>
-          {!leaderboard.loading && leaderboard.mine && (
-            <div className="leaderboard-row me" style={{ marginTop: 14 }}>
-              <div className="leaderboard-rank">#{leaderboard.mine.rank}</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                <div className="leaderboard-avatar">{leaderboard.mine.avatar || "ME"}</div>
-                <div style={{ minWidth: 0 }}>
-                  <div className="leaderboard-name">{leaderboard.mine.name || "You"} · You</div>
-                  <div className="leaderboard-meta">{leaderboard.mine.correct} correct · {leaderboard.mine.wrong} wrong · {formatLeaderboardTime(leaderboard.mine.timeSpentSec)}</div>
-                </div>
+            ))}
+            {riskEvents.length > 0 && (
+              <div className="insight-card" style={{ color: "#FCA5A5", fontSize: 13, lineHeight: 1.5 }}>
+                {riskEvents.length} focus/fullscreen event{riskEvents.length === 1 ? "" : "s"} recorded. Review attempt discipline before ranking decisions.
               </div>
-              <div style={{ color: "#F8FAFC", fontWeight: 850, textAlign: "right" }}>
-                {leaderboard.mine.score}<span style={{ color: "#64748B", fontSize: 11, fontWeight: 700 }}>/{leaderboard.mine.maxMarks}</span>
+            )}
+            {!insights.length && !riskEvents.length && (
+              <div className="insight-card" style={{ color: "#64748B", fontSize: 13, lineHeight: 1.5 }}>
+                Complete more attempted questions to unlock richer insights.
               </div>
+            )}
             </div>
-          )}
         </div>
 
         <div className="responsive-two-col" style={{ marginBottom: 18 }}>

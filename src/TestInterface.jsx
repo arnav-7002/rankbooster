@@ -47,6 +47,8 @@ const I = ({ n, s=16, c }) => {
     submit:        <><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></>,
     solution:      <><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>,
     warning:       <><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>,
+    "wifi-off":    <><path d="m1 1 22 22"/><path d="M16.72 11.06A10.94 10.94 0 0 1 21 12.9"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a16 16 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></>,
+    "check-circle":<><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></>,
     user:          <><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>,
     accessibility: <><circle cx="12" cy="4" r="2"/><path d="M4 20h16M12 14v6M8 10h8"/></>,
     magnify:       <><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>,
@@ -197,6 +199,7 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
   const [rulesOpen, setRulesOpen]         = useState(true);
   const [sideOpen, setSideOpen]           = useState(true);
   const [tip, setTip]                     = useState(null);
+  const [isOnline, setIsOnline]           = useState(() => navigator.onLine !== false);
   const [guardPaused, setGuardPaused]     = useState(false);
   const [guardReason, setGuardReason]     = useState("");
   const [riskEvents, setRiskEvents]       = useState(resumeState?.riskEvents || []);
@@ -212,8 +215,8 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
   const activeQ       = activeSubject?.questions[qIdx];
   const activeQId     = activeQ?.id;
   const globalQNum    = subjects.slice(0,secIdx).reduce((a,s)=>a+s.questions.length,0) + qIdx + 1;
-  const timer         = useTimer(Number(resumeState?.timerSecs || resumeState?.remainingSeconds || ((test.duration||180)*60)), ()=>setShowResults(true), guardPaused || showInstructions || showResults || submitting);
-  const timingPaused  = guardPaused || showInstructions || showResults || submitting;
+  const timer         = useTimer(Number(resumeState?.timerSecs || resumeState?.remainingSeconds || ((test.duration||180)*60)), ()=>setShowResults(true), guardPaused || !isOnline || showInstructions || showResults || submitting);
+  const timingPaused  = guardPaused || !isOnline || showInstructions || showResults || submitting;
   const elapsedSecs   = (test.duration || 180) * 60 - timer.secs;
   const ugeeReapPhase = examType === "ugee" && elapsedSecs >= (examConfig.ugeeSuprMinutes || 60) * 60;
   const activeLazyImages = activeQId ? lazyImages[activeQId] : null;
@@ -246,6 +249,7 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
   }, [activeQId, globalQNum, showInstructions, showResults]);
 
   async function resumeExam() {
+    if (!isOnline) return;
     await enterFullscreen();
     setGuardPaused(false);
     setGuardReason("");
@@ -601,14 +605,18 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
       courseId: state.courseId,
     });
     resumePendingRef.current = false;
-    resumeLastSavedRef.current = fingerprint;
     resumeSaveBusyRef.current = true;
     fetch(`${IMPORTER_API}/attempt-resumes`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body,
       keepalive,
-    }).catch(() => null).finally(() => { resumeSaveBusyRef.current = false; });
+    }).then(res => {
+      if (res?.ok !== false) resumeLastSavedRef.current = fingerprint;
+      else resumePendingRef.current = true;
+    }).catch(() => {
+      resumePendingRef.current = true;
+    }).finally(() => { resumeSaveBusyRef.current = false; });
   }, [buildResumeState, resumeStateFingerprint, showResults, submitting, user?.email, user?.offlineId]);
 
   useEffect(() => {
@@ -629,6 +637,27 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
   }, [resumeStateFingerprint, saveResumeDraft, showInstructions, showResults, submitting]);
+
+  useEffect(() => {
+    if (showInstructions || showResults || submitting) return undefined;
+    const handleOffline = () => {
+      setIsOnline(false);
+      if (resumePendingRef.current || resumeStateFingerprint() !== resumeLastSavedRef.current) saveResumeDraft(true);
+      pauseFor("Internet connection lost. Your test is paused until the connection comes back.");
+    };
+    const handleOnline = () => {
+      setIsOnline(true);
+      setGuardReason("Back online. Your saved progress is ready; resume when you are ready.");
+      saveResumeDraft(false);
+    };
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+    if (navigator.onLine === false) handleOffline();
+    return () => {
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
+    };
+  }, [pauseFor, resumeStateFingerprint, saveResumeDraft, showInstructions, showResults, submitting]);
 
   const saveAttemptOnce = useCallback(async () => {
     if (attemptSavedRef.current) return;
@@ -993,14 +1022,18 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
       {guardPaused && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.72)", zIndex:100000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
           <div style={{ width:460, maxWidth:"92vw", background:"white", border:"1px solid #D1D5DB", borderRadius:8, padding:26, boxShadow:"0 24px 70px rgba(0,0,0,0.35)", textAlign:"center", fontFamily:"Roboto,Arial,sans-serif" }}>
-            <div style={{ width:48, height:48, borderRadius:"50%", background:"#FEF2F2", color:"#DC2626", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px" }}>
-              <I n="warning" s={26} c="#DC2626" />
+            <div style={{ width:48, height:48, borderRadius:"50%", background:!isOnline ? "#FEF3C7" : guardReason?.startsWith("Back online") ? "#DCFCE7" : "#FEF2F2", color:!isOnline ? "#B45309" : guardReason?.startsWith("Back online") ? "#16A34A" : "#DC2626", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px" }}>
+              <I n={!isOnline ? "wifi-off" : guardReason?.startsWith("Back online") ? "check-circle" : "warning"} s={26} c={!isOnline ? "#B45309" : guardReason?.startsWith("Back online") ? "#16A34A" : "#DC2626"} />
             </div>
-            <div style={{ fontSize:20, fontWeight:700, color:"#111827", marginBottom:8 }}>Test Paused</div>
-            <div style={{ fontSize:14, color:"#4B5563", lineHeight:1.6, marginBottom:8 }}>{guardReason || "The test was paused."}</div>
-            <div style={{ fontSize:14, color:"#991B1B", fontWeight:600, marginBottom:20 }}>Do not switch tabs or leave fullscreen while attempting the test.</div>
-            <button onClick={resumeExam} style={{ height:42, padding:"0 28px", border:"none", borderRadius:6, background:"#2563EB", color:"white", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"Roboto,Arial,sans-serif" }}>
-              Resume Test
+            <div style={{ fontSize:20, fontWeight:700, color:"#111827", marginBottom:8 }}>{!isOnline ? "No Internet" : "Test Paused"}</div>
+            <div style={{ fontSize:14, color:"#4B5563", lineHeight:1.6, marginBottom:8 }}>
+              {!isOnline ? "Your internet connection is offline. The timer is paused and your last saved progress is protected." : guardReason || "The test was paused."}
+            </div>
+            <div style={{ fontSize:14, color:!isOnline ? "#92400E" : "#991B1B", fontWeight:600, marginBottom:20 }}>
+              {!isOnline ? "Keep this tab open. Resume will unlock when you are back online." : "Do not switch tabs or leave fullscreen while attempting the test."}
+            </div>
+            <button onClick={resumeExam} disabled={!isOnline} style={{ height:42, padding:"0 28px", border:"none", borderRadius:6, background:!isOnline ? "#94A3B8" : "#2563EB", color:"white", fontSize:14, fontWeight:700, cursor:!isOnline ? "not-allowed" : "pointer", fontFamily:"Roboto,Arial,sans-serif" }}>
+              {!isOnline ? "Waiting for Internet..." : "Resume Test"}
             </button>
           </div>
         </div>

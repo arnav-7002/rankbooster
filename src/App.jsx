@@ -780,6 +780,9 @@ function hasRenderableQuestions(test) {
   );
 }
 
+const externalTestJsonCache = new Map();
+const zipTestCache = new Map();
+
 function deriveExternalTestMetrics(test) {
   const sections = test?.subjects || test?.sections || [];
   const questions = sections.flatMap(subject => subject.questions || []);
@@ -815,11 +818,15 @@ function deriveExternalTestMetrics(test) {
   };
 }
 
-async function loadExternalTestJson(sourceUrl) {
+async function loadExternalTestJson(sourceUrl, options = {}) {
   const url = normalizeExternalTestUrl(sourceUrl);
   if (!url) return null;
-  const freshUrl = `${url}${url.includes("?") ? "&" : "?"}_rb=${Date.now()}`;
-  const proxied = await fetch(`${IMPORTER_API}/test?sourceUrl=${encodeURIComponent(freshUrl)}`, { cache: "no-store" }).catch(() => null);
+  const fresh = !!options.fresh;
+  if (!fresh && externalTestJsonCache.has(url)) return externalTestJsonCache.get(url);
+  const loadPromise = (async () => {
+  const fetchUrl = fresh ? `${url}${url.includes("?") ? "&" : "?"}_rb=${Date.now()}` : url;
+  const fetchCache = fresh ? "no-store" : "force-cache";
+  const proxied = await fetch(`${IMPORTER_API}/test?sourceUrl=${encodeURIComponent(fetchUrl)}`, { cache: fetchCache }).catch(() => null);
   if (proxied?.ok) {
     const data = await proxied.json().catch(() => null);
     const test = unwrapExternalTestPayload(data);
@@ -829,12 +836,45 @@ async function loadExternalTestJson(sourceUrl) {
       return resolved;
     }
   }
-  const direct = await fetch(freshUrl, { cache: "no-store" }).catch(() => null);
+  const direct = await fetch(fetchUrl, { cache: fetchCache }).catch(() => null);
   if (!direct?.ok) return null;
   const data = unwrapExternalTestPayload(await direct.json().catch(() => null));
   const resolved = resolveExternalTestAssets(data, url);
   if (!hasRenderableQuestions(resolved)) throw new Error("Source test loaded, but questions have no text/images. Upload the latest converted .rbtest.json and update this test URL.");
   return resolved;
+  })();
+  if (!fresh) externalTestJsonCache.set(url, loadPromise);
+  try {
+    const data = await loadPromise;
+    if (!fresh) externalTestJsonCache.set(url, data);
+    return data;
+  } catch (err) {
+    if (!fresh) externalTestJsonCache.delete(url);
+    throw err;
+  }
+}
+
+async function loadZipBackedTest(course, folder, test) {
+  if (!test?.sourceZip) return null;
+  const qs = new URLSearchParams({
+    course: course?.folderName || course?.title || test.courseTitle || "",
+    folder: test.sourceFolder || folder?.name || test.folderName || "",
+    zip: test.sourceZip,
+  });
+  const key = qs.toString();
+  if (!key || zipTestCache.has(key)) return zipTestCache.get(key) || null;
+  const loadPromise = fetch(`${IMPORTER_API}/test?${key}`, { cache: "force-cache" })
+    .then(res => res.ok ? res.json() : null)
+    .then(data => data?.test || null);
+  zipTestCache.set(key, loadPromise);
+  try {
+    const data = await loadPromise;
+    zipTestCache.set(key, data);
+    return data;
+  } catch (err) {
+    zipTestCache.delete(key);
+    throw err;
+  }
 }
 
 function isConfiguredTest(test) {
@@ -2076,15 +2116,21 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
   const [attemptModal, setAttemptModal] = useState(null);
   const [savedAttempts, setSavedAttempts] = useState([]);
   const [savedResumes, setSavedResumes] = useState([]);
+  const [attemptStateReady, setAttemptStateReady] = useState(false);
   const [loadingTestId, setLoadingTestId] = useState(null);
   const selectedCourseObjRaw = myCourses.find(c => c.id === selectedCourse);
-  const selectedCourseObj = selectedCourseObjRaw ? { ...selectedCourseObjRaw, testFolders: configuredFolders(selectedCourseObjRaw) } : null;
+  const selectedCourseObj = useMemo(
+    () => selectedCourseObjRaw ? { ...selectedCourseObjRaw, testFolders: configuredFolders(selectedCourseObjRaw) } : null,
+    [selectedCourseObjRaw]
+  );
 
   useEffect(() => {
     let cancelled = false;
-    setSavedAttempts([]);
-    setSavedResumes([]);
-    if (!user?.offlineId) return undefined;
+    setAttemptStateReady(false);
+    if (!user?.offlineId) {
+      setAttemptStateReady(true);
+      return undefined;
+    }
     Promise.all([
       fetch(`${IMPORTER_API}/attempts?offlineId=${encodeURIComponent(user.offlineId)}`).then(res => res.ok ? res.json() : null).catch(() => null),
       fetch(`${IMPORTER_API}/attempt-resumes?offlineId=${encodeURIComponent(user.offlineId)}`, { cache: "no-store" }).then(res => res.ok ? res.json() : null).catch(() => null),
@@ -2094,9 +2140,30 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
         if (attemptData?.attempts) setSavedAttempts(attemptData.attempts);
         if (resumeData?.resumes) setSavedResumes(resumeData.resumes);
       })
-      .catch(() => null);
+      .catch(() => null)
+      .finally(() => { if (!cancelled) setAttemptStateReady(true); });
     return () => { cancelled = true; };
   }, [user?.id, user?.offlineId]);
+
+  useEffect(() => {
+    if (!selectedCourseObj || !attemptStateReady) return undefined;
+    const tests = configuredFolders(selectedCourseObj).flatMap(folder =>
+      configuredTests(folder).map(test => ({ folder, test }))
+    ).slice(0, 8);
+    const run = () => {
+      tests.forEach(({ folder, test }) => {
+        if (test.sourceUrl) loadExternalTestJson(test.sourceUrl).catch(() => null);
+        else if (test.sourceZip && (test.imagesMissing || !(test.subjects || []).some(s => (s.questions || []).some(q => q.images?.length)))) {
+          loadZipBackedTest(selectedCourseObj, folder, test).catch(() => null);
+        }
+      });
+    };
+    const idleId = window.requestIdleCallback ? window.requestIdleCallback(run, { timeout: 2200 }) : window.setTimeout(run, 900);
+    return () => {
+      if (window.cancelIdleCallback) window.cancelIdleCallback(idleId);
+      else clearTimeout(idleId);
+    };
+  }, [selectedCourseObj, attemptStateReady]);
 
   function toggleFolder(fid) {
     setOpenFolders(p => ({ ...p, [fid]: !p[fid] }));
@@ -2196,14 +2263,8 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
           };
         }
       } else if (test.sourceZip && (test.imagesMissing || !(test.subjects || []).some(s => (s.questions || []).some(q => q.images?.length)))) {
-        const qs = new URLSearchParams({
-          course: course.folderName || course.title,
-          folder: test.sourceFolder || folder.name,
-          zip: test.sourceZip,
-        });
-        const res = await fetch(`${IMPORTER_API}/test?${qs.toString()}`).catch(() => null);
-        const data = res?.ok ? await res.json() : null;
-        if (data?.test) fullTest = data.test;
+        const data = await loadZipBackedTest(course, folder, test);
+        if (data) fullTest = data;
       }
       onStartTest({
         ...fullTest,
@@ -2294,7 +2355,7 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
                     {folder.tests.map((test, i) => {
                       const savedAttempt = savedAttemptFor(selectedCourseObj, folder, test);
                       const savedResume = !savedAttempt ? savedResumeFor(selectedCourseObj, folder, test) : null;
-                      const attempted = !!savedAttempt;
+                      const attempted = attemptStateReady && !!savedAttempt;
                       const schedule = testScheduleState(test);
                       const score = savedAttempt ? Number(savedAttempt.score || 0) : test.score;
                       const maxMarks = savedAttempt ? Number(savedAttempt.maxMarks || test.maxMarks || 0) : test.maxMarks;
@@ -2302,8 +2363,8 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
                       const attemptRule = test.examConfig?.attemptRule || test.config?.attemptRule || "replace";
                       return (
                       <div key={test.id} className="test-item-row" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", borderBottom: i < folder.tests.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                        <div className="icon-tile" style={{ background: attempted ? "rgba(16,185,129,0.1)" : "rgba(124,58,237,0.1)", border: `1px solid ${attempted ? "rgba(16,185,129,0.22)" : "rgba(124,58,237,0.22)"}` }}>
-                          <Icon n={attempted ? "check-circle" : "clipboard"} s={17} c={attempted ? "#34D399" : "#A78BFA"} />
+                        <div className="icon-tile" style={{ background: !attemptStateReady ? "rgba(148,163,184,0.08)" : attempted ? "rgba(16,185,129,0.1)" : "rgba(124,58,237,0.1)", border: `1px solid ${!attemptStateReady ? "rgba(148,163,184,0.14)" : attempted ? "rgba(16,185,129,0.22)" : "rgba(124,58,237,0.22)"}` }}>
+                          <Icon n={!attemptStateReady ? "clock" : attempted ? "check-circle" : "clipboard"} s={17} c={!attemptStateReady ? "#94A3B8" : attempted ? "#34D399" : "#A78BFA"} />
                         </div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 13, fontWeight: 500, color: "#E2E8F0" }}>{test.name}</div>
@@ -2333,7 +2394,16 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
                               <button className="btn-ghost test-action-btn danger" onClick={() => deleteAttempt(selectedCourseObj, folder, test, savedAttempt)}><Icon n="trash" s={14} />Delete</button>
                             </>
                           )}
-                          {!attempted && (
+                          {!attemptStateReady && (
+                            <button
+                              className="btn-ghost"
+                              disabled
+                              style={{ padding: "9px 18px", fontSize: 13, minWidth: 128, opacity: 0.72 }}
+                            >
+                              Syncing...
+                            </button>
+                          )}
+                          {attemptStateReady && !attempted && (
                             <button
                               className={savedResume ? "btn-ghost" : schedule.available ? "btn-primary" : "btn-ghost"}
                               disabled={loadingTestId === test.id || !schedule.available}

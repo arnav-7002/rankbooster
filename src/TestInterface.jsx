@@ -1165,11 +1165,12 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
                       const optData = (activeQ.options || []).find(o => String(o.id) === String(opt) || String(o.label || "").toUpperCase() === label);
                       const optHtml = optData?.html || optData?.optionHtml || "";
                       const optText = !optHtml && optData?.text && optData.text !== label ? optData.text : "";
+                      const hasOptionContent = Boolean(optText || optHtml || optData?.images?.length);
                       return (
                         <button key={opt} className="opt-btn" onClick={()=>handleSelect(String(opt))}>
                           <span className={`opt-radio ${sel?"sel":""}`}></span>
-                          <span>{label}</span>
-                          {(optText || optHtml || optData?.images?.length) && (
+                          {!hasOptionContent && <span>{label}</span>}
+                          {hasOptionContent && (
                             <span className="opt-content">
                               {optHtml && <span className="opt-content-html" dangerouslySetInnerHTML={{ __html: optHtml }} />}
                               {optText && <span className="opt-content-text">{optText}</span>}

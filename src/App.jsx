@@ -776,6 +776,41 @@ function hasRenderableQuestions(test) {
   );
 }
 
+function deriveExternalTestMetrics(test) {
+  const sections = test?.subjects || test?.sections || [];
+  const questions = sections.flatMap(subject => subject.questions || []);
+  const duration = Number(
+    test?.duration
+    || test?.durationMinutes
+    || test?.timeLimitMinutes
+    || test?.timeLimit
+    || test?.totalTimeMinutes
+    || test?.totalTime
+    || 0
+  );
+  const topLevelMarks = Number(test?.maxMarks || test?.maximumMarks || test?.totalMarks || test?.marks || 0);
+  const summedMarks = questions.reduce((sum, q) => {
+    const marks = q?.marks || {};
+    return sum + Number(
+      marks.cm
+      || marks.correct
+      || marks.positive
+      || marks.full
+      || q?.positiveMarks
+      || q?.correctMarks
+      || q?.maxMarks
+      || 0
+    );
+  }, 0);
+  return {
+    duration: Number.isFinite(duration) && duration > 0 ? duration : 0,
+    maxMarks: Number.isFinite(topLevelMarks) && topLevelMarks > 0 ? topLevelMarks : summedMarks,
+    questionCount: questions.length,
+    subjectCount: sections.length,
+    title: test?.name || test?.title || test?.testName || "",
+  };
+}
+
 async function loadExternalTestJson(sourceUrl) {
   const url = normalizeExternalTestUrl(sourceUrl);
   if (!url) return null;
@@ -3768,10 +3803,46 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
   const [scheduleBusy, setScheduleBusy] = useState(false);
   const [validatorModal, setValidatorModal] = useState(null);
   const [validatorBusy, setValidatorBusy] = useState("");
+  const [sourceFetchStatus, setSourceFetchStatus] = useState("");
+  const lastFetchedNewSource = useRef("");
 
   const course = allCourses.find(c => c.id === selectedCourse);
 
   function saveAll(updated) { setAllCourses(updated); }
+
+  useEffect(() => {
+    if (!addTestModal) {
+      setSourceFetchStatus("");
+      lastFetchedNewSource.current = "";
+      return;
+    }
+    const sourceUrl = normalizeExternalTestUrl(newTest.sourceUrl);
+    if (!sourceUrl || !/^https?:\/\//i.test(sourceUrl) || lastFetchedNewSource.current === sourceUrl) return;
+    let cancelled = false;
+    setSourceFetchStatus("Reading source JSON...");
+    const timer = setTimeout(async () => {
+      try {
+        const data = await loadExternalTestJson(sourceUrl);
+        if (cancelled || !data) return;
+        const metrics = deriveExternalTestMetrics(data);
+        lastFetchedNewSource.current = sourceUrl;
+        setNewTest(prev => ({
+          ...prev,
+          sourceUrl,
+          name: prev.name?.trim() ? prev.name : metrics.title || prev.name,
+          duration: metrics.duration || prev.duration,
+          maxMarks: metrics.maxMarks || prev.maxMarks,
+        }));
+        setSourceFetchStatus(`Fetched ${metrics.subjectCount || 0} subjects · ${metrics.questionCount || 0} questions`);
+      } catch (err) {
+        if (!cancelled) setSourceFetchStatus(err.message || "Could not read source JSON.");
+      }
+    }, 650);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [addTestModal, newTest.sourceUrl]);
 
   async function addFolder() {
     if (!newFolderName.trim()) return;
@@ -3815,9 +3886,25 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
   }
 
   async function addTest(fid) {
-    if (!newTest.name.trim()) return;
+    if (!newTest.name.trim() && !newTest.sourceUrl.trim()) return;
     const sourceUrl = normalizeExternalTestUrl(newTest.sourceUrl);
-    const t = { id: "t" + Date.now(), ...newTest, sourceUrl, configured: !!sourceUrl, duration: Number(newTest.duration), maxMarks: Number(newTest.maxMarks), attempted: false };
+    let sourceData = null;
+    if (sourceUrl) {
+      try {
+        sourceData = await loadExternalTestJson(sourceUrl);
+      } catch {}
+    }
+    const metrics = deriveExternalTestMetrics(sourceData || {});
+    const t = {
+      id: "t" + Date.now(),
+      ...newTest,
+      name: newTest.name.trim() || metrics.title || "Untitled Test",
+      sourceUrl,
+      configured: !!sourceUrl,
+      duration: Number(newTest.duration || metrics.duration || 180),
+      maxMarks: Number(newTest.maxMarks || metrics.maxMarks || 0),
+      attempted: false,
+    };
     const folder = course?.testFolders?.find(f => f.id === fid);
     try {
       const res = await fetch(`${IMPORTER_API}/tests`, {
@@ -3840,7 +3927,7 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
       notify?.(err.message || "Test add failed. Check database connection.", "error");
       return;
     }
-    setAddTestModal(null); setNewTest({ name: "", sourceUrl: "", duration: 180, maxMarks: 300, date: "", scheduledAt: "", scheduledUntil: "" });
+    setAddTestModal(null); setSourceFetchStatus(""); setNewTest({ name: "", sourceUrl: "", duration: 180, maxMarks: 300, date: "", scheduledAt: "", scheduledUntil: "" });
   }
 
   async function refreshLibraryAfterDelete() {
@@ -4231,7 +4318,9 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
           <div style={{ gridColumn: "1/-1" }}>
             <label style={{ fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" }}>GitHub test JSON link *</label>
             <input className="input-field" placeholder="https://github.com/you/course-tests/blob/main/mock-1.rbtest.json" value={newTest.sourceUrl} onChange={e => setNewTest(p => ({ ...p, sourceUrl: e.target.value }))} />
-            <div style={{ fontSize: 11, color: "#475569", marginTop: 5 }}>GitHub blob links are converted to raw links automatically. Keep the repo public for now.</div>
+            <div style={{ fontSize: 11, color: sourceFetchStatus.includes("Could not") || sourceFetchStatus.includes("Upload") ? "#FCA5A5" : sourceFetchStatus ? "#A78BFA" : "#475569", marginTop: 5 }}>
+              {sourceFetchStatus || "GitHub blob links are converted to raw links automatically. Duration and max marks auto-fill from the JSON."}
+            </div>
           </div>
           <div>
             <label style={{ fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" }}>Duration (min)</label>
@@ -4254,7 +4343,9 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
             <input className="input-field" type="datetime-local" value={newTest.scheduledUntil || ""} onChange={e => setNewTest(p => ({ ...p, scheduledUntil: e.target.value }))} />
           </div>
         </div>
-        <button className="btn-primary" style={{ width: "100%", padding: 10 }} onClick={() => addTest(addTestModal)}>Add GitHub Test</button>
+        <button className="btn-primary" style={{ width: "100%", padding: 10 }} disabled={sourceFetchStatus === "Reading source JSON..."} onClick={() => addTest(addTestModal)}>
+          {sourceFetchStatus === "Reading source JSON..." ? "Reading Source..." : "Add GitHub Test"}
+        </button>
       </Modal>
 
       <Modal open={!!scheduleModal} onClose={() => !scheduleBusy && setScheduleModal(null)} title="Schedule Test" width={480}>
@@ -6668,9 +6759,10 @@ function TestAttemptReport({ report, user, onBack }) {
                         const optData = (activeQuestion?.options || []).find(o => String(o.id) === opt || String(o.label || "").toUpperCase() === optionLabel);
                         const optHtml = optData?.html || optData?.optionHtml || "";
                         const optText = !optHtml && optData?.text && optData.text !== optionLabel ? optData.text : "";
+                        const hasOptionContent = Boolean(optHtml || optText || optData?.images?.length);
                         return (
                           <div key={opt} className={`review-option ${isAns ? "correct" : isMarked ? "marked" : ""}`}>
-                            <span>{optionLabel}</span>
+                            {!hasOptionContent && <span>{optionLabel}</span>}
                             {optHtml && <span className="review-option-html" dangerouslySetInnerHTML={{ __html: optHtml }} />}
                             {optText && <span style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{optText}</span>}
                             {(optData?.images || []).map((src, oi) => (

@@ -10,6 +10,24 @@ function blockProtectedImageAction(e) {
   e.stopPropagation();
 }
 
+function appSlug(value) {
+  return String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+function appCleanId(value) {
+  return String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 120);
+}
+
 // ─── GLOBAL STYLES ───────────────────────────────────────────────────────────
 const GS = `
 *{box-sizing:border-box;margin:0;padding:0}
@@ -713,6 +731,57 @@ function normalizeExternalTestUrl(url) {
     }
   } catch {}
   return raw;
+}
+
+function isLikelyTestJsonUrl(url) {
+  const normalized = normalizeExternalTestUrl(url);
+  return /\.json(?:$|\?)/i.test(normalized);
+}
+
+function parseGitHubFolderUrl(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    if (u.hostname !== "github.com") return null;
+    const parts = u.pathname.split("/").filter(Boolean);
+    const treeIdx = parts.indexOf("tree");
+    if (parts.length < 4 || treeIdx !== 2) return null;
+    const owner = parts[0];
+    const repo = parts[1];
+    const branch = parts[3] || "main";
+    const path = parts.slice(4).join("/");
+    return { owner, repo, branch, path };
+  } catch {
+    return null;
+  }
+}
+
+async function listGitHubFolderJsons(folderUrl, maxDepth = 4) {
+  const parsed = parseGitHubFolderUrl(folderUrl);
+  if (!parsed) throw new Error("Paste a GitHub folder link like https://github.com/user/repo/tree/main/tests");
+  const found = [];
+  async function walk(pathPart, depth) {
+    const apiPath = pathPart ? `/${pathPart.split("/").map(encodeURIComponent).join("/")}` : "";
+    const api = `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/contents${apiPath}?ref=${encodeURIComponent(parsed.branch)}`;
+    const res = await fetch(api, { headers: { accept: "application/vnd.github+json" }, cache: "no-store" });
+    if (!res.ok) throw new Error(`Could not read GitHub folder (${res.status}). Make sure the repo/folder is public.`);
+    const items = await res.json();
+    const list = Array.isArray(items) ? items : [items];
+    for (const item of list) {
+      if (item?.type === "file" && /\.rbtest\.json$/i.test(item.name || "")) {
+        found.push({
+          name: item.name,
+          sourceUrl: item.download_url || normalizeExternalTestUrl(item.html_url || ""),
+          htmlUrl: item.html_url || "",
+        });
+      } else if (item?.type === "dir" && depth < maxDepth) {
+        await walk(item.path, depth + 1);
+      }
+    }
+  }
+  await walk(parsed.path, 0);
+  return found.filter(file => file.sourceUrl);
 }
 
 function sameExternalUrl(a, b) {
@@ -3885,6 +3954,9 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
   const [validatorModal, setValidatorModal] = useState(null);
   const [validatorBusy, setValidatorBusy] = useState("");
   const [sourceFetchStatus, setSourceFetchStatus] = useState("");
+  const [githubFolderUrl, setGithubFolderUrl] = useState("");
+  const [folderImportStatus, setFolderImportStatus] = useState("");
+  const [folderImportBusy, setFolderImportBusy] = useState(false);
   const lastFetchedNewSource = useRef("");
 
   const course = allCourses.find(c => c.id === selectedCourse);
@@ -3894,11 +3966,13 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
   useEffect(() => {
     if (!addTestModal) {
       setSourceFetchStatus("");
+      setFolderImportStatus("");
+      setGithubFolderUrl("");
       lastFetchedNewSource.current = "";
       return;
     }
     const sourceUrl = normalizeExternalTestUrl(newTest.sourceUrl);
-    if (!sourceUrl || !/^https?:\/\//i.test(sourceUrl) || lastFetchedNewSource.current === sourceUrl) return;
+    if (!sourceUrl || !/^https?:\/\//i.test(sourceUrl) || !isLikelyTestJsonUrl(sourceUrl) || lastFetchedNewSource.current === sourceUrl) return;
     let cancelled = false;
     setSourceFetchStatus("Reading source JSON...");
     const timer = setTimeout(async () => {
@@ -4009,6 +4083,66 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
       return;
     }
     setAddTestModal(null); setSourceFetchStatus(""); setNewTest({ name: "", sourceUrl: "", duration: 180, maxMarks: 300, date: "", scheduledAt: "", scheduledUntil: "" });
+  }
+
+  async function importGitHubFolder(fid) {
+    const folder = course?.testFolders?.find(f => f.id === fid);
+    if (!course || !folder || !githubFolderUrl.trim()) return;
+    setFolderImportBusy(true);
+    setFolderImportStatus("Reading GitHub folder...");
+    try {
+      const files = await listGitHubFolderJsons(githubFolderUrl);
+      if (!files.length) throw new Error("No .rbtest.json files found in this GitHub folder.");
+      const existing = new Set((folder.tests || []).map(t => normalizeExternalTestUrl(t.sourceUrl)).filter(Boolean));
+      let added = 0;
+      let skipped = 0;
+      let failed = 0;
+      for (const file of files) {
+        const sourceUrl = normalizeExternalTestUrl(file.sourceUrl);
+        if (!sourceUrl || existing.has(sourceUrl)) {
+          skipped += 1;
+          continue;
+        }
+        try {
+          setFolderImportStatus(`Importing ${added + skipped + failed + 1}/${files.length}: ${file.name}`);
+          const sourceData = await loadExternalTestJson(sourceUrl, { fresh: true });
+          const metrics = deriveExternalTestMetrics(sourceData || {});
+          const title = metrics.title || file.name.replace(/\.rbtest\.json$/i, "").replace(/[_-]+/g, " ");
+          const res = await fetch(`${IMPORTER_API}/tests`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: appCleanId(`${course.id}_${folder.name}_${appSlug(title)}`),
+              name: title,
+              courseId: course.id,
+              courseTitle: course.title,
+              folderName: folder.name,
+              sourceUrl,
+              duration: metrics.duration || 180,
+              maxMarks: metrics.maxMarks || 0,
+              totalQuestions: metrics.questionCount || 0,
+              configured: true,
+              examConfig: { examType: "other", attemptRule: "replace", instructions: "" },
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data?.error) throw new Error(data?.error || "Save failed.");
+          existing.add(sourceUrl);
+          added += 1;
+        } catch {
+          failed += 1;
+        }
+      }
+      await refreshLibrary();
+      setFolderImportStatus(`Done: ${added} added · ${skipped} skipped · ${failed} failed`);
+      notify?.(`GitHub folder synced: ${added} added, ${skipped} skipped.`, failed ? "warning" : "success");
+      recordAdminEvent?.("tests.github_folder_synced", `Synced ${added} tests from GitHub folder`, { courseId: course.id, folderName: folder.name, added, skipped, failed, folderUrl: githubFolderUrl });
+    } catch (err) {
+      setFolderImportStatus(err.message || "Could not import GitHub folder.");
+      notify?.(err.message || "GitHub folder import failed.", "error");
+    } finally {
+      setFolderImportBusy(false);
+    }
   }
 
   async function refreshLibraryAfterDelete() {
@@ -4310,7 +4444,7 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
                 <Icon n={folder.icon || "folder"} s={20} c="#7C3AED" />
                 <span style={{ fontSize: 14, fontWeight: 600, color: "#E2E8F0", flex: 1 }}>{folder.name}</span>
                 <span style={{ fontSize: 11, color: "#475569", marginRight: 6 }}>{folder.tests.length} tests</span>
-                <button className="btn-primary" style={{ padding: "8px 14px", fontSize: 12, minHeight: 36 }} onClick={e => { e.stopPropagation(); setAddTestModal(folder.id); }}>+ GitHub Test</button>
+                <button className="btn-primary" style={{ padding: "8px 14px", fontSize: 12, minHeight: 36 }} onClick={e => { e.stopPropagation(); setAddTestModal(folder.id); }}>+ GitHub Tests</button>
                 <button className="btn-danger" style={{ padding: "8px 14px", fontSize: 12, minHeight: 36 }} onClick={e => { e.stopPropagation(); deleteFolder(folder.id); }}>Delete</button>
                 <Icon n={openFolder === folder.id ? "chevdown" : "chevright"} s={14} c="#475569" />
               </div>
@@ -4320,7 +4454,7 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
                     <div style={{ padding: "16px 18px", fontSize: 12, color: "#334155", display: "flex", alignItems: "center", gap: 8 }}>
                       No tests yet.
                       <button className="btn-ghost" style={{ fontSize: 12, padding: "8px 14px", minHeight: 36 }} onClick={() => setAddTestModal(folder.id)}>
-                        + GitHub Test
+                        + GitHub Tests
                       </button>
                     </div>
                   )}
@@ -4390,14 +4524,34 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
         <button className="btn-primary" style={{ width: "100%", padding: 10 }} onClick={addFolder}>Create Folder</button>
       </Modal>
 
-      <Modal open={!!addTestModal} onClose={() => setAddTestModal(null)} title="Add Test from GitHub" width={520}>
+      <Modal open={!!addTestModal} onClose={() => setAddTestModal(null)} title="Add Tests from GitHub" width={560}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+          <div style={{ gridColumn: "1/-1", padding: 12, borderRadius: 12, background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.18)" }}>
+            <div style={{ color: "#E2E8F0", fontSize: 13, fontWeight: 800, marginBottom: 4 }}>Bulk sync folder</div>
+            <div style={{ color: "#64748B", fontSize: 11, lineHeight: 1.5, marginBottom: 10 }}>
+              Paste a public GitHub folder link. RankBooster will find every <strong>.rbtest.json</strong> inside it, including subfolders.
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
+              <input className="input-field" placeholder="https://github.com/you/course-tests/tree/main/bitsat/full-tests" value={githubFolderUrl} onChange={e => setGithubFolderUrl(e.target.value)} />
+              <button className="btn-primary" style={{ padding: "8px 14px", minHeight: 42, whiteSpace: "nowrap" }} disabled={folderImportBusy || !githubFolderUrl.trim()} onClick={() => importGitHubFolder(addTestModal)}>
+                {folderImportBusy ? "Syncing..." : "Sync Folder"}
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: folderImportStatus.includes("Could not") || folderImportStatus.includes("No .rbtest") ? "#FCA5A5" : folderImportStatus ? "#A78BFA" : "#475569", marginTop: 7 }}>
+              {folderImportStatus || "Duplicates are skipped automatically by source URL."}
+            </div>
+          </div>
+          <div style={{ gridColumn: "1/-1", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 10, color: "#475569", fontSize: 11, textTransform: "uppercase", letterSpacing: ".08em" }}>
+            <span style={{ height: 1, background: "rgba(255,255,255,0.08)" }} />
+            <span>or add one test</span>
+            <span style={{ height: 1, background: "rgba(255,255,255,0.08)" }} />
+          </div>
           <div style={{ gridColumn: "1/-1" }}>
-            <label style={{ fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" }}>Test Name *</label>
+            <label style={{ fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" }}>Test Name</label>
             <input className="input-field" placeholder="JEE Main Full Test 6" value={newTest.name} onChange={e => setNewTest(p => ({ ...p, name: e.target.value }))} autoFocus />
           </div>
           <div style={{ gridColumn: "1/-1" }}>
-            <label style={{ fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" }}>GitHub test JSON link *</label>
+            <label style={{ fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" }}>GitHub test JSON link</label>
             <input className="input-field" placeholder="https://github.com/you/course-tests/blob/main/mock-1.rbtest.json" value={newTest.sourceUrl} onChange={e => setNewTest(p => ({ ...p, sourceUrl: e.target.value }))} />
             <div style={{ fontSize: 11, color: sourceFetchStatus.includes("Could not") || sourceFetchStatus.includes("Upload") ? "#FCA5A5" : sourceFetchStatus ? "#A78BFA" : "#475569", marginTop: 5 }}>
               {sourceFetchStatus || "GitHub blob links are converted to raw links automatically. Duration and max marks auto-fill from the JSON."}
@@ -4425,7 +4579,7 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
           </div>
         </div>
         <button className="btn-primary" style={{ width: "100%", padding: 10 }} disabled={sourceFetchStatus === "Reading source JSON..."} onClick={() => addTest(addTestModal)}>
-          {sourceFetchStatus === "Reading source JSON..." ? "Reading Source..." : "Add GitHub Test"}
+          {sourceFetchStatus === "Reading source JSON..." ? "Reading Source..." : "Add Single Test"}
         </button>
       </Modal>
 

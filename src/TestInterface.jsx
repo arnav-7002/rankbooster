@@ -293,7 +293,7 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
       mathJax.typesetPromise().catch(() => {});
     }, 0);
     return () => clearTimeout(timer);
-  }, [activeQId, activeQ?.html, activeQ?.questionHtml]);
+  }, [activeQId, activeQ?.html, activeQ?.questionHtml, activeQ?.text, activeQ?.options]);
 
   useEffect(() => {
     flushQuestionTiming();

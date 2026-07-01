@@ -6436,7 +6436,7 @@ function TestAttemptReport({ report, user, onBack }) {
       mathJax.typesetPromise().catch(() => {});
     }, 0);
     return () => clearTimeout(timer);
-  }, [reportActiveQId, reportActiveQuestion?.html, reportActiveQuestion?.questionHtml, reportActiveQuestion?.solutionHtml]);
+  }, [reportActiveQId, reportActiveQuestion?.html, reportActiveQuestion?.questionHtml, reportActiveQuestion?.text, reportActiveQuestion?.solutionHtml, reportActiveQuestion?.solutionText, reportActiveQuestion?.options]);
 
   const totalQuestions = subjects.reduce((a, s) => a + (s.questions?.length || 0), 0) || summary.totalQuestions || 0;
   const attemptedMap = (summary.attemptedQuestions || []).reduce((acc, q) => {

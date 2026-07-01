@@ -417,10 +417,14 @@ svg{max-width:100%!important}
 .solution-watermark-layer span{align-self:center;justify-self:center;color:rgba(71,85,105,0.30);font-size:13px;font-weight:650;line-height:1;white-space:nowrap;transform:rotate(-48deg);user-select:none;text-shadow:0 0 1px rgba(255,255,255,0.25)}
 .insight-card{position:relative;background:rgba(255,255,255,0.035);border:1px solid rgba(255,255,255,0.065);border-radius:12px;padding:13px 13px 13px 36px}
 .insight-card::before{content:"";position:absolute;left:14px;top:16px;width:8px;height:8px;border-radius:50%;background:#A78BFA;box-shadow:0 0 0 4px rgba(124,58,237,0.16)}
-.review-option{padding:10px 12px;border-radius:9px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:#94A3B8;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.review-option{padding:10px 12px;border-radius:9px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:#94A3B8;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;flex-wrap:wrap;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .review-option.correct{border-color:rgba(52,211,153,0.42);background:rgba(16,185,129,0.09);color:#6EE7B7}
 .review-option.marked{border-color:rgba(248,113,113,0.42);background:rgba(239,68,68,0.09);color:#FCA5A5}
-.review-html-block{padding:18px;border-radius:10px;background:#fff;border:1px solid rgba(255,255,255,0.08);color:#111827;line-height:1.65;margin-bottom:14px;font-family:Arial,Helvetica,sans-serif;font-size:15px}
+.review-option-label{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:rgba(96,165,250,0.12);border:1px solid rgba(147,197,253,0.22);color:#BFDBFE;font-size:12px;font-weight:850;line-height:1;flex:0 0 auto}
+.review-option.correct .review-option-label{background:rgba(52,211,153,0.14);border-color:rgba(52,211,153,0.26);color:#6EE7B7}
+.review-option.marked .review-option-label{background:rgba(248,113,113,0.14);border-color:rgba(248,113,113,0.26);color:#FCA5A5}
+.review-html-block{position:relative;overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;padding:18px;border-radius:10px;background:#fff;border:1px solid rgba(255,255,255,0.08);color:#111827;line-height:1.65;margin-bottom:14px;font-family:Arial,Helvetica,sans-serif;font-size:15px}
+.review-protected-inner{position:relative;z-index:3}
 .review-html-block p{margin:0 0 10px}.review-html-block table{border-collapse:collapse;max-width:100%;margin:8px 0}.review-html-block td,.review-html-block th{border:1px solid #BBB;padding:6px 8px;vertical-align:top}.review-html-block sup,.review-html-block sub{font-size:.72em;line-height:0}.review-html-block mjx-container,.review-html-block .MathJax{font-size:inherit!important}
 .review-option-html{line-height:1.45}.review-option-html p{margin:0}.review-option-html table{border-collapse:collapse;max-width:100%}.review-option-html td,.review-option-html th{border:1px solid rgba(255,255,255,.14);padding:4px 6px}
 @media (max-width: 1100px){.quiz-layout,.analysis-shell{grid-template-columns:1fr;gap:24px}.search-pill{min-width:0;width:100%}.quiz-toolbar{align-items:flex-start;flex-direction:column}.metric-strip{padding:12px 22px;flex-wrap:wrap}.metric-table{min-width:760px}.analysis-card{overflow-x:auto}}
@@ -6725,10 +6729,22 @@ function TestAttemptReport({ report, user, onBack }) {
               </div>
               <div style={{ padding: 18 }}>
                     {activeQuestion?.html || activeQuestion?.questionHtml ? (
-                      <div className="review-html-block" dangerouslySetInnerHTML={{ __html: activeQuestion.html || activeQuestion.questionHtml }} />
+                      <div className="review-html-block" onCopy={blockProtectedImageAction} onCut={blockProtectedImageAction} onContextMenu={blockProtectedImageAction} onDragStart={blockProtectedImageAction}>
+                        {watermarkEmail && (
+                          <div className="solution-watermark-layer" aria-hidden="true">
+                            {watermarkTiles.map((_, wi) => <span key={wi}>{watermarkEmail}</span>)}
+                          </div>
+                        )}
+                        <div className="review-protected-inner" dangerouslySetInnerHTML={{ __html: activeQuestion.html || activeQuestion.questionHtml }} />
+                      </div>
                     ) : activeQuestion?.text ? (
-                      <div style={{ padding: 18, borderRadius: 10, background: "#fff", border: "1px solid rgba(255,255,255,0.08)", color: "#111827", lineHeight: 1.65, whiteSpace: "pre-wrap", marginBottom: 14 }}>
-                        {activeQuestion.text}
+                      <div className="review-html-block" style={{ whiteSpace: "pre-wrap" }} onCopy={blockProtectedImageAction} onCut={blockProtectedImageAction} onContextMenu={blockProtectedImageAction} onDragStart={blockProtectedImageAction}>
+                        {watermarkEmail && (
+                          <div className="solution-watermark-layer" aria-hidden="true">
+                            {watermarkTiles.map((_, wi) => <span key={wi}>{watermarkEmail}</span>)}
+                          </div>
+                        )}
+                        <div className="review-protected-inner">{activeQuestion.text}</div>
                       </div>
                     ) : null}
                     {activeImages.length > 0 ? (
@@ -6759,10 +6775,9 @@ function TestAttemptReport({ report, user, onBack }) {
                         const optData = (activeQuestion?.options || []).find(o => String(o.id) === opt || String(o.label || "").toUpperCase() === optionLabel);
                         const optHtml = optData?.html || optData?.optionHtml || "";
                         const optText = !optHtml && optData?.text && optData.text !== optionLabel ? optData.text : "";
-                        const hasOptionContent = Boolean(optHtml || optText || optData?.images?.length);
                         return (
-                          <div key={opt} className={`review-option ${isAns ? "correct" : isMarked ? "marked" : ""}`}>
-                            {!hasOptionContent && <span>{optionLabel}</span>}
+                          <div key={opt} className={`review-option ${isAns ? "correct" : isMarked ? "marked" : ""}`} onCopy={blockProtectedImageAction} onCut={blockProtectedImageAction} onContextMenu={blockProtectedImageAction} onDragStart={blockProtectedImageAction}>
+                            <span className="review-option-label">{optionLabel}</span>
                             {optHtml && <span className="review-option-html" dangerouslySetInnerHTML={{ __html: optHtml }} />}
                             {optText && <span style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{optText}</span>}
                             {(optData?.images || []).map((src, oi) => (
@@ -6791,10 +6806,22 @@ function TestAttemptReport({ report, user, onBack }) {
                           </div>
                         ))}
                         {activeQuestion?.solutionHtml ? (
-                          <div className="review-html-block" dangerouslySetInnerHTML={{ __html: activeQuestion.solutionHtml }} />
+                          <div className="review-html-block" onCopy={blockProtectedImageAction} onCut={blockProtectedImageAction} onContextMenu={blockProtectedImageAction} onDragStart={blockProtectedImageAction}>
+                            {watermarkEmail && (
+                              <div className="solution-watermark-layer" aria-hidden="true">
+                                {watermarkTiles.map((_, wi) => <span key={wi}>{watermarkEmail}</span>)}
+                              </div>
+                            )}
+                            <div className="review-protected-inner" dangerouslySetInnerHTML={{ __html: activeQuestion.solutionHtml }} />
+                          </div>
                         ) : !activeSolutionImages.length && activeQuestion?.solutionText && (
-                          <div style={{ padding: 16, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#CBD5E1", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>
-                            {activeQuestion.solutionText}
+                          <div style={{ position: "relative", overflow: "hidden", userSelect: "none", WebkitUserSelect: "none", padding: 16, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "#CBD5E1", lineHeight: 1.65, whiteSpace: "pre-wrap" }} onCopy={blockProtectedImageAction} onCut={blockProtectedImageAction} onContextMenu={blockProtectedImageAction} onDragStart={blockProtectedImageAction}>
+                            {watermarkEmail && (
+                              <div className="solution-watermark-layer" aria-hidden="true">
+                                {watermarkTiles.map((_, wi) => <span key={wi}>{watermarkEmail}</span>)}
+                              </div>
+                            )}
+                            <div className="review-protected-inner">{activeQuestion.solutionText}</div>
                           </div>
                         )}
                       </div>

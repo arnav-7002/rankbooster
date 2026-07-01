@@ -718,8 +718,9 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
     .question-area{flex:1;overflow-y:auto;background:#F7F7F7;padding:0 28px 95px}
     .question-image-wrap{position:relative;width:100%;max-width:980px;background:white;margin:0 0 22px;overflow:hidden;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
     .question-image{position:relative;z-index:1;width:100%;max-width:980px;max-height:430px;object-fit:contain;object-position:left top;border:none;border-radius:0;display:block;background:white;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
-    .question-text-fallback,.question-html-fallback{max-width:980px;background:white;color:#222;font-size:18px;line-height:1.65;margin:0 0 24px;padding:20px 22px;border:1px solid #d8d8d8;white-space:pre-wrap}
+    .question-text-fallback,.question-html-fallback{position:relative;max-width:980px;background:white;color:#222;font-size:18px;line-height:1.65;margin:0 0 24px;padding:20px 22px;border:1px solid #d8d8d8;white-space:pre-wrap;overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
     .question-html-fallback{white-space:normal}
+    .question-protected-content{position:relative;z-index:3}
     .question-html-fallback table{border-collapse:collapse;max-width:100%;margin:8px 0}
     .question-html-fallback td,.question-html-fallback th{border:1px solid #BBB;padding:6px 8px;vertical-align:top}
     .question-html-fallback p{margin:0 0 10px}
@@ -732,7 +733,7 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
     .opt-btn{width:100%;padding:11px 4px;border:none;background:transparent;color:#333;cursor:pointer;font-family:Roboto,Arial,Helvetica,sans-serif;font-size:20px;text-align:left;display:flex;align-items:center;gap:12px}
     .opt-radio{width:18px;height:18px;border:1px solid #777;border-radius:50%;background:white;display:inline-flex;align-items:center;justify-content:center}
     .opt-radio.sel:after{content:'';width:9px;height:9px;border-radius:50%;background:#1E86C1;display:block}
-    .opt-content{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+    .opt-content{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
     .opt-content-text{white-space:pre-wrap;line-height:1.45}
     .opt-content-html{line-height:1.45}
     .opt-content-html p{margin:0}
@@ -1114,9 +1115,23 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
             {activeQ ? (
               <>
                 {activeQ?.html || activeQ?.questionHtml ? (
-                  <div className="question-html-fallback" dangerouslySetInnerHTML={{ __html: activeQ.html || activeQ.questionHtml }} />
+                  <div className="question-html-fallback" onCopy={blockImageAction} onCut={blockImageAction} onContextMenu={blockImageAction} onDragStart={blockImageAction}>
+                    {watermarkEmail && (
+                      <div className="test-watermark-layer" aria-hidden="true">
+                        {watermarkTiles.map((_, wi) => <span key={wi}>{watermarkEmail}</span>)}
+                      </div>
+                    )}
+                    <div className="question-protected-content" dangerouslySetInnerHTML={{ __html: activeQ.html || activeQ.questionHtml }} />
+                  </div>
                 ) : activeQ?.text ? (
-                  <div className="question-text-fallback">{activeQ.text}</div>
+                  <div className="question-text-fallback" onCopy={blockImageAction} onCut={blockImageAction} onContextMenu={blockImageAction} onDragStart={blockImageAction}>
+                    {watermarkEmail && (
+                      <div className="test-watermark-layer" aria-hidden="true">
+                        {watermarkTiles.map((_, wi) => <span key={wi}>{watermarkEmail}</span>)}
+                      </div>
+                    )}
+                    <div className="question-protected-content">{activeQ.text}</div>
+                  </div>
                 ) : null}
 
                 {currentImages.length>0 ? (
@@ -1171,7 +1186,7 @@ export default function TestInterface({ test, user, onExit, onAttemptSaved }) {
                           <span className={`opt-radio ${sel?"sel":""}`}></span>
                           {!hasOptionContent && <span>{label}</span>}
                           {hasOptionContent && (
-                            <span className="opt-content">
+                            <span className="opt-content" onCopy={blockImageAction} onCut={blockImageAction} onContextMenu={blockImageAction} onDragStart={blockImageAction}>
                               {optHtml && <span className="opt-content-html" dangerouslySetInnerHTML={{ __html: optHtml }} />}
                               {optText && <span className="opt-content-text">{optText}</span>}
                               {(optData.images || []).map((src, oi) => (

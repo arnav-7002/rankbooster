@@ -2,6 +2,10 @@ import { json, staticJson, supabaseRequest } from "./_shared.js";
 
 export async function onRequestOptions() { return json({ ok: true }); }
 
+function naturalCompareName(a, b) {
+  return String(a?.name || a?.title || "").localeCompare(String(b?.name || b?.title || ""), undefined, { numeric: true, sensitivity: "base" });
+}
+
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const admin = url.searchParams.get("admin") === "1";
@@ -57,6 +61,12 @@ export async function onRequestGet({ request, env }) {
         scheduledAt: row.scheduled_at || "",
         scheduledUntil: row.scheduled_until || "",
       });
+    }
+    for (const course of byCourse.values()) {
+      course.testFolders.sort(naturalCompareName);
+      for (const folder of course.testFolders) {
+        folder.tests.sort(naturalCompareName);
+      }
     }
     courses = [...courses.filter(c => !byCourse.has(c.id)), ...byCourse.values()];
   } catch (err) {

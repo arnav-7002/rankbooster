@@ -28,6 +28,12 @@ function appCleanId(value) {
     .slice(0, 120);
 }
 
+const naturalNameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+
+function sortByNaturalName(items = []) {
+  return [...items].sort((a, b) => naturalNameCollator.compare(String(a?.name || a?.title || ""), String(b?.name || b?.title || "")));
+}
+
 // ─── GLOBAL STYLES ───────────────────────────────────────────────────────────
 const GS = `
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1669,7 +1675,7 @@ function Sidebar({ user, page, setPage, courses, userCourseIds, collapsed, setCo
                         </div>
                         {openFolder === folder.id && (
                           <div className="dropdown-panel">
-                          {folder.tests.map(test => (
+                          {sortByNaturalName(folder.tests).map(test => (
                           <div key={test.id} className="nav-leaf" style={{ padding: "4px 8px 4px 38px", fontSize: 11, color: "#334155", cursor: "pointer", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
                             onMouseEnter={e => e.currentTarget.style.color = "#64748B"}
                             onMouseLeave={e => e.currentTarget.style.color = "#334155"}>
@@ -2417,6 +2423,7 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
           {/* Folders & Tests */}
           <div style={{ flex: 1 }}>
             {selectedCourseObj && selectedCourseObj.testFolders.map(folder => {
+              const sortedTests = sortByNaturalName(folder.tests);
               const doneCount = folder.tests.filter(t => savedAttemptFor(selectedCourseObj, folder, t)).length;
               return (
               <div key={folder.id} className="card" style={{ marginBottom: 12, padding: 0, overflow: "hidden" }}>
@@ -2428,7 +2435,7 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
                 </div>
                 {openFolders[folder.id] && (
                   <div className="dropdown-panel" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                    {folder.tests.map((test, i) => {
+                    {sortedTests.map((test, i) => {
                       const savedAttempt = savedAttemptFor(selectedCourseObj, folder, test);
                       const savedResume = !savedAttempt ? savedResumeFor(selectedCourseObj, folder, test) : null;
                       const attempted = attemptStateReady && !!savedAttempt;
@@ -2438,7 +2445,7 @@ function TestsPage({ courses, setCoursesView, userCourseIds, onStartTest, onSetP
                       const performance = savedAttempt ? Number(savedAttempt.percentage ?? savedAttempt.percentile ?? 0) : test.percentile;
                       const attemptRule = test.examConfig?.attemptRule || test.config?.attemptRule || "replace";
                       return (
-                      <div key={test.id} className="test-item-row" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", borderBottom: i < folder.tests.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                      <div key={test.id} className="test-item-row" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", borderBottom: i < sortedTests.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
                         <div className="icon-tile" style={{ background: !attemptStateReady ? "rgba(148,163,184,0.08)" : attempted ? "rgba(16,185,129,0.1)" : "rgba(124,58,237,0.1)", border: `1px solid ${!attemptStateReady ? "rgba(148,163,184,0.14)" : attempted ? "rgba(16,185,129,0.22)" : "rgba(124,58,237,0.22)"}` }}>
                           <Icon n={!attemptStateReady ? "clock" : attempted ? "check-circle" : "clipboard"} s={17} c={!attemptStateReady ? "#94A3B8" : attempted ? "#34D399" : "#A78BFA"} />
                         </div>
@@ -4438,7 +4445,9 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
             </div>
           )}
 
-          {course.testFolders.map(folder => (
+          {course.testFolders.map(folder => {
+            const sortedTests = sortByNaturalName(folder.tests);
+            return (
             <div key={folder.id} className="card" style={{ marginBottom: 12, padding: 0, overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 16px", background: "rgba(255,255,255,0.02)", cursor: "pointer" }} onClick={() => setOpenFolder(openFolder === folder.id ? null : folder.id)}>
                 <Icon n={folder.icon || "folder"} s={20} c="#7C3AED" />
@@ -4458,8 +4467,8 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
                       </button>
                     </div>
                   )}
-                  {folder.tests.map((test, i) => (
-                    <div key={test.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 18px", borderBottom: i < folder.tests.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                  {sortedTests.map((test, i) => (
+                    <div key={test.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 18px", borderBottom: i < sortedTests.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 13, color: "#E2E8F0", fontWeight: 500, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                           {test.name}
@@ -4502,7 +4511,7 @@ function AdminTests({ allCourses, setAllCourses, notify, recordAdminEvent }) {
                 </div>
               )}
             </div>
-          ))}
+          )})}
         </>
       )}
 

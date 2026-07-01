@@ -6423,6 +6423,7 @@ function TestAttemptReport({ report, user, onBack }) {
   }, [needsFullTest, reportCourseName, reportFolderName, reportZipName, reportSourceUrl, test?.subjects]);
 
   const displayTest = fullTest || test;
+  const displayTestName = test?.name || summary.source?.testName || displayTest?.name || "Test";
   const subjects = displayTest?.subjects || [];
   const reportActiveQuestion = subjects[solutionSubjectIdx]?.questions?.[solutionQIdx];
   const reportActiveQId = reportActiveQuestion?.id;
@@ -6589,7 +6590,7 @@ function TestAttemptReport({ report, user, onBack }) {
       type: activeQuestion.type || "mcq",
       courseTitle: reportCourseName || "",
       folderName: reportFolderName || "",
-      testName: displayTest?.name || summary.source?.testName || "",
+      testName: displayTestName,
       sourceZip: reportZipName || "",
       sourceUrl: reportSourceUrl || "",
       marked: marked.length ? marked.map(optLabel).join(", ") : "",
@@ -6629,7 +6630,7 @@ function TestAttemptReport({ report, user, onBack }) {
       <div className="report-shell fade-in">
         <div className="report-top">
           <div>
-            <div className="report-title">{displayTest?.name || summary.source?.testName} Leaderboard</div>
+            <div className="report-title">{displayTestName} Leaderboard</div>
             <div className="report-subtitle">
               {leaderboardFull.total ? `Showing ${from}-${to} of ${leaderboardFull.total} ranked students` : "Best attempt per student for this test."}
             </div>
@@ -6748,7 +6749,7 @@ function TestAttemptReport({ report, user, onBack }) {
       <div className="report-shell fade-in">
         <div className="report-top">
           <div>
-            <div className="report-title">{displayTest?.name || summary.source?.testName} Solutions</div>
+            <div className="report-title">{displayTestName} Solutions</div>
             <div className="report-subtitle">Navigate by subject and question. Images load from the converted test cache.</div>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
@@ -6951,7 +6952,7 @@ function TestAttemptReport({ report, user, onBack }) {
       <div className="report-top">
         <div>
           <div className="report-title">Attempt Analysis</div>
-          <div className="report-subtitle">{displayTest?.name || summary.source?.testName} · {submitted}</div>
+          <div className="report-subtitle">{displayTestName} · {submitted}</div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button className="report-tab active"><span className="tab-icon"><Icon n="bar" s={13} /></span> Scorecard</button>
